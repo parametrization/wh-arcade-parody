@@ -1,6 +1,6 @@
 # Flappy Files — game plan and implementation specification
 
-Status: researched proposal; implementation not started. Owner: Flappy game workstream. Research date: 2026-09-07. Original: [Flappy Bill](https://www.whitehouse.gov/arcade/flappy-bill/). Proposed route: `/games/flappy-files/`. Priority: first complete vertical slice; establish patterns before implementing the other four games.
+Status: researched proposal; implementation not started. Owner: Flappy game workstream. Research date: 2026-09-07. Original: [Flappy Bill](https://www.whitehouse.gov/arcade/flappy-bill/). Proposed route: `/games/flappy-files/`. Priority: planning/specification reference for all five games; implementation can proceed concurrently with the other four once shared interfaces are ready.
 
 ## Observed original and research confidence
 
@@ -94,7 +94,7 @@ Model contains run phase, simulation time, eagle position/velocity, columns, pic
 | FF-05 | Burger pickup/inventory and deterministic Trump-event model; both entrances, seven-second behavior, immediate H dismissal, touch parity | FF-03, FF-04; layered Trump assets | Planned |
 | FF-06 | Delivery chapters, final crowd scene, endless mode, assist/reduced-motion/audio and local best storage | FF-04, FF-05 | Planned |
 | FF-07 | Finish chosen sprites/card/audio; meaningful unit tests plus Playwright desktop/mobile/keyboard smoke; performance and offline asset pass | FF-02, FF-06; shared browser harness | Planned |
-| FF-08 | User playtest with tuning report and side-by-side art options; update this plan/specs; declare the vertical slice ready before scaling remaining implementations | FF-07 | Planned |
+| FF-08 | User playtest with tuning report and side-by-side art options; update this plan/specs; record Flappy readiness independently of the other game implementations | FF-07 | Planned |
 
 Parallel work after contracts land: one model/input implementer, one art/cast researcher, one renderer/integration implementer. FF-05 joins model and art only after FF-03's state contract is stable. With four total agent slots shared across the project, use one Flappy implementation owner plus bounded help rather than occupying every slot with this game.
 

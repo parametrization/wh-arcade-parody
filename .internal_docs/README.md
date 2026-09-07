@@ -23,7 +23,7 @@ The sixth tile stays a visibly disabled “A new adventure awaits” placeholder
 
 ## Design decisions to review through play
 
-Flappy is the first complete slice. Preserve the user's exact seven-second default event and immediate hamburger dismissal. Use real names with clear fictional roles. Review character sheets before producing complete animation families. The Flappy proposal offers 40% opaque coverage as a readability starting point and a Full Distraction option; the user's original screen-covering gag is retained, and the default must be chosen through playtest rather than silently toned down. Literal McDonald's branding versus an original recognizably fast-food burger is an unresolved art/provenance choice.
+Flappy establishes the planning/specification level of detail; it is not an implementation prerequisite for the other games. The shared tuning panel is an accepted feature. Preserve the user's exact seven-second default event and immediate hamburger dismissal. Use real names with clear fictional roles. Review character sheets before producing complete animation families. The Flappy proposal offers 40% opaque coverage as a readability starting point and a Full Distraction option; the user's original screen-covering gag is retained, and the default must be chosen through playtest rather than silently toned down. Literal McDonald's branding versus an original recognizably fast-food burger is an unresolved art/provenance choice.
 
 The other four plans are detailed enough for estimation and pure-model work, but their new jokes, art choices and added campaign mechanics have not yet been user-reviewed. Do not mistake suggested defaults for explicit user decisions. Against the Wall is the largest mechanical departure and highest implementation risk.
 
@@ -36,4 +36,4 @@ The other four plans are detailed enough for estimation and pure-model work, but
 5. Update spec status honestly: planned, in progress, implemented, verified, or awaiting playtest.
 6. Review the playable result; record tuning/art choices; select the next eligible work.
 
-Finish a coherent Flappy vertical slice before scaling full production across all games. Planning and independent source/art research for all five are authorized now.
+Once plans/specs and the shared interfaces are ready, all five game implementations may progress concurrently. Schedule bounded tasks across the four available agent slots; no game waits for Flappy completion or playtest approval.

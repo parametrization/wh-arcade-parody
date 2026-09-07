@@ -80,7 +80,7 @@ Test meaningful reducer invariants, occupancy/reservation edge cases, delivery a
 
 ## Decisions for next review
 
-Recommended defaults: rescue-chain design, finite three-district campaign, A artwork, named Trump/Vance event caricatures, no attacks, optional Share mechanic. Open: exact title; whether helpers count visually as rescued followers; exact adult character stories; event captions; whether single-step practice ships with MVP. Flappy remains the first full production slice; source research, reducer design and asset briefs can proceed independently afterward.
+Recommended defaults: rescue-chain design, finite three-district campaign, A artwork, named Trump/Vance event caricatures, no attacks, optional Share mechanic. Open: exact title; whether helpers count visually as rescued followers; exact adult character stories; event captions; whether single-step practice ships with MVP. Flappy is the planning-detail reference only. Rio implementation, research and art can proceed concurrently with all other games once shared interfaces are ready.
 
 ## Shared contract and attribution
 

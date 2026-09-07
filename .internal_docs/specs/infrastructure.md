@@ -57,6 +57,8 @@ Shared settings: sound, volume, reduced motion, scanline intensity, high contras
 
 ## Developer UI
 
+User accepted the shared tuning panel on 2026-09-07. It is part of the implementation scope for all five games.
+
 `./dev` runs from the repository root without flags. First run installs lockfile dependencies if absent, then launches Vite at localhost:8643. Port conflict exits with a useful message instead of silently selecting another port. Browser opening is optional; URL always printed. `npm start` is equivalent after installation.
 
 Development-only panel: game selector, restart/pause, deterministic seed, current state/FPS, tuning sliders defined by each game's config schema, asset variant selector, reset defaults, export tuning JSON. Do not expose arbitrary code execution or a write-anywhere endpoint. HMR disposes/remounts changed game modules; retain settings but reset active run with a visible notice. CSS changes update immediately. Production build excludes debug panels and debug globals.
@@ -70,8 +72,8 @@ Development-only panel: game selector, restart/pause, deterministic seed, curren
 | INF-03 | Lifecycle, clock, input, canvas, RNG | INF-01 | mount/unmount 20 times without duplicate loops/listeners; deterministic rules; paused time cannot advance; touch mapping verified |
 | INF-04 | Audio/settings/scores and credits pipeline | INF-03 | sound unlock by gesture; mute persists; blocked/corrupt storage doesn't crash; missing assets have readable errors |
 | INF-05 | Developer tuning panel and HMR disposal | INF-02,03 | config edits visibly update; module replacement leaves one loop; production contains no panel |
-| INF-06 | Integrate Flappy vertical slice | INF-02..05, Flappy model/art | keyboard and touch full play/restart/exit journey; H counter and obstruction timing tests |
-| INF-07 | Add remaining games through same registry | approved game specs | lazy loaded routes; independent saves; every game passes common lifecycle/accessibility checks |
+| INF-06 | Integrate Flappy independently | INF-02..05, Flappy model/art | keyboard and touch full play/restart/exit journey; H counter and obstruction timing tests |
+| INF-07 | Integrate other four games concurrently through the same registry | approved game specs | lazy loaded routes; independent saves; every game passes common lifecycle/accessibility checks |
 | INF-08 | Release package and documentation | all delivered scopes | npm ci/build/typecheck/test/test:e2e pass; no uncredited assets, unintended remote calls or secrets; README reflects actual state |
 
 Browser checks use installed Chrome initially via Playwright `channel: chrome`; CI installs a matching pinned Chromium. Test pure collision, transitions, resource arithmetic and seeded scenarios with Vitest. Browser tests check gameplay and integration instead of duplicating rendering internals. Visual snapshots document expected layout at desktop/mobile; intentional art changes update baselines after inspection.

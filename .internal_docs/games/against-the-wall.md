@@ -70,7 +70,7 @@ Validation should focus on meaningful model tests for visibility, timing, reacha
 
 ## Decisions for the next design review
 
-Recommended defaults: three districts; adult player/companions; cartoon nonlethal fights; A artwork; real named politicians on authored billboards; story mode first. Open: protagonist names/backstories, exact scripted billboard jokes, whether companions persist between districts, and whether challenge mode ships in the first build. These do not block greybox work after the Flappy prototype and shared contract are stable.
+Recommended defaults: three districts; adult player/companions; cartoon nonlethal fights; A artwork; real named politicians on authored billboards; story mode first. Open: protagonist names/backstories, exact scripted billboard jokes, whether companions persist between districts, and whether challenge mode ships in the first build. These do not block greybox work once its specifications and the shared contract are ready; Flappy implementation is not a dependency.
 
 ## Shared contract and attribution
 

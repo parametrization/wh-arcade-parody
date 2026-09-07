@@ -39,4 +39,4 @@ Acceptance: runtime asset IDs all resolve; every shipped file has a manifest ent
 
 ## Production sequence
 
-ART-01 inventory and provenance → ART-02 Flappy concept contact sheet → ART-03 chosen Flappy sprites/animations → ART-04 palette/style guide freeze → ART-05 other game sheets → ART-06 chosen assets and browser-scale review. No concept image has been generated in this planning milestone.
+ART-01 inventory and provenance plus ART-04 shared palette/style contract enable concurrent art work: ART-02/03 Flappy concepts and chosen sprites, alongside ART-05/06 other game concepts, chosen assets and browser-scale review. The shared style contract does not require finished Flappy art or a Flappy playtest. No concept image has been generated in this planning milestone.

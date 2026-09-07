@@ -18,20 +18,19 @@ There are four simultaneous agent slots including the coordinator. Six dedicated
 | Wave | Coordinator / slot 1 | Slot 2 | Slot 3 | Slot 4 | Exit evidence |
 |---|---|---|---|---|---|
 | Planning (done) | Shared infrastructure, inventory, integration | Flappy plan | Wall + Rio plans | Supply + Tycoon plans | Five coherent designs and shared spec |
-| Foundation | INF-01/02 shell, registry, launcher | INF-03/04 runtime services | ART-01/02 provenance + Flappy concepts | FF-01/02 source/cast verification, then browser harness | Contracts typecheck; hub at 8643; asset concepts reviewable |
-| Flappy slice | Host integration and INF-05 tuning panel | FF-03..06 model/events/progression | Flappy sprites/rendering, bounded file ownership | Pure model tests + browser journeys | Complete playable Flappy; exact event timing; mobile controls |
-| Flappy review | Consolidate user feedback/spec updates | Tuning and mechanics fixes | Selected art refinements | Regression/visual verification | User can judge intended tone, difficulty and style |
-| Remaining games A | Integration/shared-contract ownership | Wall AW-01..06 | Rio RR-01..06 | Supply SL-01..06 | Each reaches independent graybox then playable milestone |
-| Remaining games B | Cross-game integration and release | Tycoon ST-01..06 | Remaining selected art/accessibility | Regression/browser coverage | All five run under same shell and pass checks |
+| Foundation | INF-01/02 shell, registry, launcher | INF-03/04 runtime services | Shared palette/provenance contracts | Browser harness and per-game spec readiness | Shared interfaces stable; no finished game required |
+| Concurrent game work | INF-05 tuning panel and rolling integration | Eligible model/render/art task from any game | Eligible task from another game | Eligible task from a third game | All five workstreams advance through rotating bounded tasks |
+| Rolling refinement | Integrate feedback and update specs | Per-game fixes/art | Per-game fixes/art | Browser/accessibility checks | Each game independently reaches its acceptance criteria |
+| Release | Cross-game integration and documentation | Remaining game work | Remaining art/accessibility | Regression/browser coverage | All five run under the same shell and pass checks |
 
-Work on isolated game modules may proceed once the common contract is stable. Avoid simultaneous edits to registry/package-lock/shared types: game owners request integration there. Root owns version changes and resolves contract conflicts. Existing workers can be reassigned after their bounded task finishes; additional permanent teams do not increase the four-slot throughput.
+User clarification: Flappy is the planning/specification reference, not a playable prerequisite. All five game workstreams may advance concurrently once their specs and common interfaces are ready. Four slots limit simultaneous tasks, not which games are eligible. Use a fair ready queue: prioritize dependency-unblocking tasks, then rotate among all five games; do not finish a game before giving the next game a slot. Work on isolated game modules may proceed once the common contract is stable. Avoid simultaneous edits to registry/package-lock/shared types: game owners request integration there. Root owns version changes and resolves contract conflicts. Existing workers can be reassigned after their bounded task finishes; additional permanent teams do not increase the four-slot throughput.
 
 ## Dependency gates
 
 1. INF-01 precedes app work. INF-03 defines clock/input/lifecycle before game model integration.
 2. ART-01 and cast verification precede shipping externally sourced art or factual role labels; grayboxes can use original placeholders.
 3. FF-03/04 precede FF-05. Chosen event art can be prepared independently after pose and anchor contracts are fixed.
-4. FF-07/08 establish a satisfactory Flappy slice before mass-producing the remaining game art and full implementations, matching the user's requested sequence.
+4. FF-07/08 verify and refine Flappy only. They do not gate AW, RR, SL, ST or other games’ art production. Each game has its own playtest and acceptance checks.
 5. Wall's AI, projection and confusion rules are game-local. Rio's occupancy/delivery rules, Supply's resource arithmetic and Tycoon's ledger get independent tests.
 6. INF-08 is a release criterion, not a reason to call an unfinished graybox complete.
 
@@ -52,3 +51,5 @@ No package is blocked on absent system software. Install Vite/TypeScript/test to
 ## Review record
 
 Initial review checked Flappy/common lifecycle compatibility and local documentation links. Clarified that obstruction ceases at exactly seven seconds (a decorative exit may follow) and Escape pauses while an explicit Exit control leaves the game. Asset variants are written briefs; actual graphics remain the next art deliverable.
+
+User clarification (2026-09-07): removed the Flappy implementation/playtest gate from every game plan and the art sequence. The shared tuning panel is explicitly accepted. Shared-interface readiness enables concurrent implementation of all five games.
