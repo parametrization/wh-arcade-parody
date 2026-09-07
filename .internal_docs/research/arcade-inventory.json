@@ -1,0 +1,165 @@
+{
+  "title": "Arcade – The White House",
+  "links": [
+    {
+      "text": "Skip to content",
+      "url": "https://www.whitehouse.gov/arcade/#wp--skip-link--target"
+    },
+    {
+      "text": "",
+      "url": "https://www.whitehouse.gov/arcade/"
+    },
+    {
+      "text": "FLAPPY BILL\n\nFly the bald eagle down the National Mall.\n\nPLAY ›",
+      "url": "https://www.whitehouse.gov/arcade/flappy-bill/"
+    },
+    {
+      "text": "BUILD THE WALL\n\nProtect the border from the coming horde.\n\nPLAY ›",
+      "url": "https://www.whitehouse.gov/arcade/build-the-wall/"
+    },
+    {
+      "text": "RIO RUN\n\nBorder patrol along the Rio Grande.\n\nPLAY ›",
+      "url": "https://www.whitehouse.gov/arcade/rio-run/"
+    },
+    {
+      "text": "SUPPLY LINE\n\nSort the school lunch to Make America Healthy Again.\n\nPLAY ›",
+      "url": "https://www.whitehouse.gov/arcade/supply-line/"
+    },
+    {
+      "text": "TRUMP SAVINGS TYCOON\n\nFill your kids’ Trump Accounts.\n\nPLAY ›",
+      "url": "https://www.whitehouse.gov/arcade/trump-savings-tycoon/"
+    }
+  ],
+  "scripts": [
+    "https://www.googletagmanager.com/gtag/js?id=G-5S5VLE733W&cx=c&gtm=4e6921",
+    "https://www.googletagmanager.com/gtm.js?id=GTM-NRKGZJZM",
+    "https://chimpstatic.com/mcjs-connected/js/users/255057cc391ca0facb169b81c/eaf82965b0829651ba8ee6ff0.js",
+    "https://www.whitehouse.gov/wp-content/themes/whitehouse/blocks/notifications-opt-in/view.js?ver=a9b582238fdb7fffbd68",
+    "https://www.whitehouse.gov/wp-content/themes/whitehouse/blocks/newsletter-field/view.js?ver=71441ef5593e3219002a",
+    "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js",
+    "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.es6.js?v=160610",
+    "https://www.whitehouse.gov/wp-content/themes/whitehouse/blocks/header-v2/view.js?ver=97a636e0cb658c632554",
+    "https://www.whitehouse.gov/wp-content/client-mu-plugins/announcement-bar/assets/js/announcement-bar.js?m=1777056676g",
+    "https://www.whitehouse.gov/_static/??-eJx9jkEOwjAMBD9EGpBQWw6ICw/gC1FipU4TJ6qdVvyeVlAOHDhZK+3MWi9F2UwCJNpGXI9KVZVYPRLrTMDoyUSVZ5gmdMDaMIOwLlNORZrAB/1XEXGGnQnvqOwAdvxFd2Bx3lnlJSmzDj8F7XfTIcsmeRgPdyNmVyDZWLffwqcz5Dxyk5DWxi1dT13ftcdzf2nDC/oVWN8=",
+    "https://www.whitehouse.gov/wp-includes/js/dist/i18n.min.js?ver=c26c3dc7bed366793375",
+    "https://www.whitehouse.gov/wp-content/mu-plugins/wp-parsely-3.24/build/loader.js?ver=ecf94842061bea03d54b",
+    "https://cdn.parsely.com/keys/whitehouse.gov/p.js?ver=3.24.1",
+    "https://www.whitehouse.gov/wp-content/themes/whitehouse/assets/js/main.js?m=1772816484g",
+    "https://form-assets.mailchimp.com/snippet/account/227922038?site=eaf82965b0829651ba8ee6ff0"
+  ],
+  "images": [
+    {
+      "src": "https://www.whitehouse.gov/wp-content/themes/whitehouse/assets/img/whitehouse-47-logo.png",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/themes/whitehouse/assets/img/whitehouse-47-logo-blue.png",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/04/WH-Mobile-App.png?w=1022",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/54986761298_15680bb214_o.jpg?w=419",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/President-Donald-Trump-Official-Presidential-Portrait.png-1-1.jpg?w=756",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/Vice-President-J.D.-Vance.jpg-1.jpg?w=580",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/54986761568_b5b3e6aa96_o-1.jpg?w=580",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/04/WH-Mobile-App.png?w=1022",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/Screenshot-2026-01-21-at-10.13.23-AM-3.jpg?w=580",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/Screenshot-2026-01-21-at-10.36.30-AM-2.jpg?w=580",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/Group-633658.jpg?w=580",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/Screenshot-2026-01-21-at-10.39.15-AM-1.jpg?w=580",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/Screenshot-2025-04-10-at-11.52.53-AM-7-1.jpg?w=797",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/White-House-State-Ballroom-Interior-View-Looking-South-Up.jpeg-1.jpg?w=580",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/54648004748_bac25b6b3f_o-1.jpg?w=541",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/01/Screenshot-2025-12-15-at-4.39.17-PM-1-4.jpg?w=908",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/09/Screenshot-2026-09-01-at-9.24.55-AM.png",
+      "alt": "Flappy Bill"
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/Screenshot-2026-08-31-at-4.39.20-PM.png",
+      "alt": "Build the Wall"
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/Screenshot-2026-08-31-at-4.44.00-PM-1.png",
+      "alt": "Rio Run"
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/Screenshot-2026-08-31-at-4.48.00-PM.png",
+      "alt": "Supply Line"
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/Screenshot-2026-08-31-at-4.50.33-PM.png",
+      "alt": "Trump Savings Tycoon"
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/apple.png",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/play.png",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/chrome.png",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/safari.png",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/firefox.png",
+      "alt": ""
+    },
+    {
+      "src": "https://www.whitehouse.gov/wp-content/uploads/2026/08/exten.png",
+      "alt": ""
+    }
+  ],
+  "styles": [
+    "https://www.whitehouse.gov/wp-content/themes/whitehouse/blocks/header-v2/style-index.css?m=1788286086g",
+    "https://www.whitehouse.gov/wp-content/client-mu-plugins/announcement-bar/assets/css/announcement-bar.css?m=1775682213g",
+    "https://www.whitehouse.gov/_static/??/wp-content/themes/whitehouse/style.css,/wp-content/themes/whitehouse/assets/css/main.css?m=1770932718"
+  ]
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "slug": "flappy-bill",
+    "url": "https://www.whitehouse.gov/arcade/flappy-bill/",
+    "retrievedAt": "2026-09-07",
+    "sha256": "05c70a02fdb79a879c7aa52c09211218e117735c53681f47684ac4914af9abe3",
+    "bytes": 278341,
+    "localPath": "raw/flappy-bill.html"
+  },
+  {
+    "slug": "build-the-wall",
+    "url": "https://www.whitehouse.gov/arcade/build-the-wall/",
+    "retrievedAt": "2026-09-07",
+    "sha256": "57b4d5e45397267a4dfb31bcba2efcca97ba1fac7930ad3ba3f59c4fe50181b6",
+    "bytes": 344955,
+    "localPath": "raw/build-the-wall.html"
+  },
+  {
+    "slug": "rio-run",
+    "url": "https://www.whitehouse.gov/arcade/rio-run/",
+    "retrievedAt": "2026-09-07",
+    "sha256": "128327f292d66029c5c2d1e30066e5860df1988acb3e5846816161d2f81f86b7",
+    "bytes": 419726,
+    "localPath": "raw/rio-run.html"
+  },
+  {
+    "slug": "supply-line",
+    "url": "https://www.whitehouse.gov/arcade/supply-line/",
+    "retrievedAt": "2026-09-07",
+    "sha256": "faf8723390f19eafd64b22b30a5ca4d08b65b8c281467c204974e34d5f1213bc",
+    "bytes": 444905,
+    "localPath": "raw/supply-line.html"
+  },
+  {
+    "slug": "trump-savings-tycoon",
+    "url": "https://www.whitehouse.gov/arcade/trump-savings-tycoon/",
+    "retrievedAt": "2026-09-07",
+    "sha256": "357f544709c64380649ef529335f5286c58d21155fa764a2f728bd3faf779878",
+    "bytes": 439633,
+    "localPath": "raw/trump-savings-tycoon.html"
+  }
+]
