@@ -8,6 +8,10 @@ Source: https://www.whitehouse.gov/arcade/. Local research: ../research/arcade-i
 
 The fetched page includes analytics, mailing-list, and notification scripts. Build our own static shell; reference HTML is research input only. Use an original parody masthead and persistent “Unofficial political satire” label, keeping the visual rhythm, colors, and arcade layout. Navigation should lead to local games, About, Sources, and accessibility settings. No fake newsletter submissions or government notification opt-ins.
 
+## Implementation entry gate
+
+Complete Flappy planning/specification, then finalize the other four to that standard, then verify all five plans/specs are complete (P-01..03 in [status](../status.md)). This gates INF-01 and every subsequent implementation package. Shared infrastructure can be specified during planning; its implementation begins only after this gate.
+
 ## Stack and folder contract
 
 Use Vite + TypeScript + Canvas 2D, vanilla semantic HTML/CSS shell, npm lockfile. No framework or large game engine needed initially. Vite documents HMR and static production builds: https://vite.dev/guide/. Install project-local Vite, TypeScript, Vitest, @playwright/test during INF-01; record resolved versions in package-lock.json.

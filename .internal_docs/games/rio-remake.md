@@ -2,6 +2,8 @@
 
 Status: proposed design and implementable backlog; no game or art is implemented. Source inspected 2026-09-07. Slug: `rio-rescue`. Original: **Rio Run**. Title alternatives: **Rio Runaround**, **Rio Run: Welcome Wagon**. Recommended title makes the reversal legible while retaining the original name.
 
+Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. Shared-interface readiness alone does not open this gate; see [P-01..03](../status.md).
+
 ## Verified original and research work
 
 Primary source: https://www.whitehouse.gov/arcade/rio-run/ (page plus inline JavaScript). Page controls identify arrows/WASD steering, mute and restart. The inline game is a Snake-style growing line with grid collision, collection placement, increasing movement speed, self-intersection avoidance, ready/playing/cleared/crashed states and a deportation score. It draws compact pixel sprites from text grids, including multiple human character variations, and uses a canvas presentation layer with integer scaling. This is not an endless runner or boat-racing game. Source inspection supports a rescue-chain remake closely related to its original mechanics.
@@ -80,7 +82,7 @@ Test meaningful reducer invariants, occupancy/reservation edge cases, delivery a
 
 ## Decisions for next review
 
-Recommended defaults: rescue-chain design, finite three-district campaign, A artwork, named Trump/Vance event caricatures, no attacks, optional Share mechanic. Open: exact title; whether helpers count visually as rescued followers; exact adult character stories; event captions; whether single-step practice ships with MVP. Flappy is the planning-detail reference only. Rio implementation, research and art can proceed concurrently with all other games once shared interfaces are ready.
+Recommended defaults: rescue-chain design, finite three-district campaign, A artwork, named Trump/Vance event caricatures, no attacks, optional Share mechanic. Open: exact title; whether helpers count visually as rescued followers; exact adult character stories; event captions; whether single-step practice ships with MVP. Flappy is the planning-detail reference only. Rio implementation, research and art can proceed concurrently with all other games once all five plans/specs are complete and shared interfaces are ready.
 
 ## Shared contract and attribution
 

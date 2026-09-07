@@ -1,6 +1,8 @@
 # Flappy Files — game plan and implementation specification
 
-Status: researched proposal; implementation not started. Owner: Flappy game workstream. Research date: 2026-09-07. Original: [Flappy Bill](https://www.whitehouse.gov/arcade/flappy-bill/). Proposed route: `/games/flappy-files/`. Priority: planning/specification reference for all five games; implementation can proceed concurrently with the other four once shared interfaces are ready.
+Status: researched proposal; implementation not started. Owner: Flappy game workstream. Research date: 2026-09-07. Original: [Flappy Bill](https://www.whitehouse.gov/arcade/flappy-bill/). Proposed route: `/games/flappy-files/`. Priority: planning/specification reference for all five games; implementation can proceed concurrently with the other four once all five plans/specs are complete and shared interfaces are ready.
+
+Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. Shared-interface readiness alone does not open this gate; see [P-01..03](../status.md).
 
 ## Observed original and research confidence
 

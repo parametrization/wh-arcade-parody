@@ -2,6 +2,8 @@
 
 Status: proposed design and implementable specification; no gameplay implemented. Planning inspection: 2026-09-07. Slug: `supply-the-people`. Alternatives: **Supply Lie**, **Make Lunch Affordable Again**. Recommended title makes the positive objective immediately legible; subtitle: “Keep the meals moving. Send the markup packing.”
 
+Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. Shared-interface readiness alone does not open this gate; see [P-01..03](../status.md).
+
 ## Original evidence and interpretation
 
 Primary source: [Supply Line](https://www.whitehouse.gov/arcade/supply-line/). The public page and its inline JavaScript were inspected. Temporary local research copies: `/tmp/supply-line.html` and `/tmp/supply-line.js`; these are reference material, not distributable project assets.
@@ -70,4 +72,4 @@ Shared imports only from `src/shared/`: clock/lifecycle, pixel viewport, input f
 
 ## Decisions for the next review
 
-Recommended starting choices are title **Supply the People**, cooperative crew option A, three destinations, and the above three named cameos. Open: whether the food focus should be broadened to medication/books; degree of cartoon likeness versus portrait medallions; whether routing overcomplicates the arcade homage. Start the vertical slice with sleeves only and add routing only after a short playtest proves its readability. This plan can proceed independently of Flappy Files art, but implementation requires only the shared lifecycle contract, not completion of Flappy.
+Recommended starting choices are title **Supply the People**, cooperative crew option A, three destinations, and the above three named cameos. Open: whether the food focus should be broadened to medication/books; degree of cartoon likeness versus portrait medallions; whether routing overcomplicates the arcade homage. Start the vertical slice with sleeves only and add routing only after a short playtest proves its readability. This plan can proceed independently of Flappy Files art, but implementation requires completion of all five plans/specs and the shared lifecycle contract, not Flappy implementation.

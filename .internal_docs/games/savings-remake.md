@@ -2,6 +2,8 @@
 
 Status: proposed design and implementable specification; no gameplay implemented. Inspection: 2026-09-07. Slug: `trickle-down-tycoon`. Alternatives: **Public Savings Tycoon**, **Catch the Trickle**. Recommended subtitle: “Build the safety net. Catch more than promises.”
 
+Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. Shared-interface readiness alone does not open this gate; see [P-01..03](../status.md).
+
 ## Original evidence and interpretation
 
 Primary source: [Trump Savings Tycoon](https://www.whitehouse.gov/arcade/trump-savings-tycoon/). Public HTML and inline JavaScript were inspected; temporary copies are `/tmp/trump-savings-tycoon.html` and `/tmp/trump-savings-tycoon.js`, retained outside distributable assets.
