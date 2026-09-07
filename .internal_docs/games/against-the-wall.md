@@ -2,7 +2,7 @@
 
 Status: proposed design and implementable backlog; no game or art is implemented. Source inspected 2026-09-07. Slug: `against-the-wall`. Original: **Build the Wall**. Alternatives: **Build a Welcome**, **The Asylum Games**. Recommended title preserves the wall reference and centers the people facing it.
 
-Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. Shared-interface readiness alone does not open this gate; see [P-01..03](../status.md).
+Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
 
 ## Original evidence and adaptation
 
@@ -72,7 +72,7 @@ Validation should focus on meaningful model tests for visibility, timing, reacha
 
 ## Decisions for the next design review
 
-Recommended defaults: three districts; adult player/companions; cartoon nonlethal fights; A artwork; real named politicians on authored billboards; story mode first. Open: protagonist names/backstories, exact scripted billboard jokes, whether companions persist between districts, and whether challenge mode ships in the first build. These do not block greybox work once all five plans/specs and the shared contract are ready; Flappy implementation is not a dependency.
+Recommended defaults: three districts; adult player/companions; cartoon nonlethal fights; A artwork; real named politicians on authored billboards; story mode first. Open: protagonist names/backstories, exact scripted billboard jokes, whether companions persist between districts, and whether challenge mode ships in the first build. These do not block greybox work once all five plans/specs are complete and the common foundation is implemented and verified; Flappy implementation is not a dependency.
 
 ## Shared contract and attribution
 

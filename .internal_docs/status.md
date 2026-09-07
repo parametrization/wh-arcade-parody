@@ -17,20 +17,21 @@ There are four simultaneous agent slots including the coordinator. Six dedicated
 
 | Wave | Coordinator / slot 1 | Slot 2 | Slot 3 | Slot 4 | Exit evidence |
 |---|---|---|---|---|---|
-| P-01: Flappy planning | Finalize Flappy design/spec and review decisions | Bounded Flappy research | Flappy asset concepts/spec detail | Flappy acceptance/dependency review | Complete Flappy planning/spec reference |
-| P-02: Other game planning | Apply finalized Flappy template and consolidate shared specs | Wall + Rio planning | Supply planning | Tycoon planning | All four plans reach the finalized Flappy level of detail |
-| P-03: Planning completeness | Check all five plans and shared specs together | Dependency review | Asset/research work-package review | Acceptance/consistency review | All five plans/specs complete; implementation gate opens |
-| Foundation | INF-01/02 shell, registry, launcher | INF-03/04 runtime services | Shared palette/provenance contracts | Browser harness and per-game spec readiness | Shared interfaces stable; no finished game required |
-| Concurrent game work | INF-05 tuning panel and rolling integration | Eligible model/render/art task from any game | Eligible task from another game | Eligible task from a third game | All five workstreams advance through rotating bounded tasks |
+| Parallel planning | Common infrastructure plan/spec | Finalize Flappy plan/spec | Bounded research/art concepts | Contract/acceptance review | Common specs ready; Flappy reference complete |
+| Parallel foundation + game planning | Implement INF-01..05 | Finalize Wall + Rio using Flappy reference | Finalize Supply + Tycoon using Flappy reference | Foundation tests and planning review | Common foundation implemented and verified; all five plans/specs complete |
+| Game-start gate | Check foundation and planning evidence | Review per-game dependencies | Review assets/work packages | Review acceptance coverage | Both P-03 and FOUNDATION-READY satisfied |
+| Concurrent game implementation | Rolling host integration | Eligible game task | Eligible task from another game | Eligible task from a third game | All five build on the finished common foundation |
 | Rolling refinement | Integrate feedback and update specs | Per-game fixes/art | Per-game fixes/art | Browser/accessibility checks | Each game independently reaches its acceptance criteria |
 | Release | Cross-game integration and documentation | Remaining game work | Remaining art/accessibility | Regression/browser coverage | All five run under the same shell and pass checks |
 
-Authoritative sequence: complete Flappy planning/specification first; then complete the other four plans/specs modeled on it; then verify all five are in hand before starting any implementation. Existing other-game drafts are preliminary until that pass is complete. After this global planning gate and shared-interface readiness, all five implementations may advance concurrently. Four slots limit simultaneous tasks, not which games are eligible. Use a fair ready queue: prioritize dependency-unblocking tasks, then rotate among all five games; do not finish a game before giving the next game a slot. Work on isolated game modules may proceed only after P-03 and once the common contract is stable. Avoid simultaneous edits to registry/package-lock/shared types: game owners request integration there. Root owns version changes and resolves contract conflicts. Existing workers can be reassigned after their bounded task finishes; additional permanent teams do not increase the four-slot throughput.
+Authoritative sequence: plan/spec the common infrastructure alongside Flappy planning. Once Flappy's reference plan/spec is complete, finalize the other four modeled on it. Once common specs are ready, implement and verify the common foundation while game planning continues. Start game implementation only when both the foundation is finished and all five game plans/specs are complete. Existing other-game drafts remain preliminary until that pass is complete.
+
+Four slots limit simultaneous tasks, not game eligibility. During foundation work reserve capacity for infrastructure and its verification while planning workers finish the game specs. After the game-start gate, rotate bounded tasks among all five games, prioritizing dependency-unblocking work. Root owns registry/package-lock/shared types and contract changes. No game waits for Flappy implementation or playtest completion.
 
 ## Dependency gates
 
-0. P-01 → P-02 → P-03 is mandatory. No game coding, grayboxes, or shared app implementation starts before all five plans/specs are complete. Planning research and concept graphics can support these stages.
-1. After P-03, INF-01 precedes app work. INF-03 defines clock/input/lifecycle before game model integration.
+0. Game planning follows P-01 (Flappy reference) → P-02 (other four at that standard) → P-03 (all five complete). Common planning runs alongside it.
+1. Common-spec readiness allows INF-01..05 implementation immediately; it does not wait for P-03. FOUNDATION-READY means INF-01..05 implemented and verified with a diagnostic module. All game coding/grayboxes require both P-03 and FOUNDATION-READY.
 2. ART-01 and cast verification precede shipping externally sourced art or factual role labels; grayboxes can use original placeholders.
 3. FF-03/04 precede FF-05. Chosen event art can be prepared independently after pose and anchor contracts are fixed.
 4. FF-07/08 verify and refine Flappy only. They do not gate AW, RR, SL, ST or other games’ art production. Each game has its own playtest and acceptance checks.
@@ -41,11 +42,12 @@ Authoritative sequence: complete Flappy planning/specification first; then compl
 
 | Group | State | Next eligible action |
 |---|---|---|
-| INF-01..08 | Planned | Complete shared spec review; scaffold only after P-03 |
+| INF-01..05 | Planned | Finish common spec review, then implement and verify foundation alongside game planning |
+| INF-06..08 | Planned | Game integration/release after P-03 and FOUNDATION-READY |
 | ART-01..06 | Planned; initial source URLs recorded | Inventory sprite/font/audio rights, produce first Flappy concept sheet |
-| FF-01..08 | Planned; inline source inspected | Browser play observations/cast records, then model only after P-03 and shared contract |
+| FF-01..08 | Planned; inline source inspected | Browser play observations/cast records, then model only after P-03 and FOUNDATION-READY |
 | AW-01..06 | Planned; inline source inspected | Author isometric graybox map specification |
-| RR-01..06 | Planned; inline source inspected | Confirm original board/timing and specify pure reducer; implement only after P-03 and contracts |
+| RR-01..06 | Planned; inline source inspected | Confirm original board/timing and specify pure reducer; implement only after P-03 and FOUNDATION-READY |
 | SL-01..06 | Planned; inline source inspected | Observe complete original run and validate remake resource schedule |
 | ST-01..06 | Planned; inline source inspected | Observe complete original round and validate catch/upgrade arithmetic |
 
@@ -55,4 +57,4 @@ No package is blocked on absent system software. Install Vite/TypeScript/test to
 
 Initial review checked Flappy/common lifecycle compatibility and local documentation links. Clarified that obstruction ceases at exactly seven seconds (a decorative exit may follow) and Escape pauses while an explicit Exit control leaves the game. Asset variants are written briefs; actual graphics remain the next art deliverable.
 
-User clarification (2026-09-07): Flappy planning/spec completion precedes finishing the other four plans/specs. Completion of all five plans/specs gates every implementation start. Flappy implementation/playtesting is not a prerequisite for the other games. The shared tuning panel remains accepted.
+User clarification (2026-09-07): common planning/specification runs alongside game planning. Complete common implementation before starting games. Flappy planning comes first within the game-planning track; finalize the other four from that standard. The game-start gate requires all five plans/specs plus the verified common foundation. The shared tuning panel remains accepted.

@@ -2,7 +2,7 @@
 
 Status: proposed design and implementable specification; no gameplay implemented. Inspection: 2026-09-07. Slug: `trickle-down-tycoon`. Alternatives: **Public Savings Tycoon**, **Catch the Trickle**. Recommended subtitle: “Build the safety net. Catch more than promises.”
 
-Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. Shared-interface readiness alone does not open this gate; see [P-01..03](../status.md).
+Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
 
 ## Original evidence and interpretation
 

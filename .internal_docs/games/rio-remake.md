@@ -2,7 +2,7 @@
 
 Status: proposed design and implementable backlog; no game or art is implemented. Source inspected 2026-09-07. Slug: `rio-rescue`. Original: **Rio Run**. Title alternatives: **Rio Runaround**, **Rio Run: Welcome Wagon**. Recommended title makes the reversal legible while retaining the original name.
 
-Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. Shared-interface readiness alone does not open this gate; see [P-01..03](../status.md).
+Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
 
 ## Verified original and research work
 
@@ -82,7 +82,7 @@ Test meaningful reducer invariants, occupancy/reservation edge cases, delivery a
 
 ## Decisions for next review
 
-Recommended defaults: rescue-chain design, finite three-district campaign, A artwork, named Trump/Vance event caricatures, no attacks, optional Share mechanic. Open: exact title; whether helpers count visually as rescued followers; exact adult character stories; event captions; whether single-step practice ships with MVP. Flappy is the planning-detail reference only. Rio implementation, research and art can proceed concurrently with all other games once all five plans/specs are complete and shared interfaces are ready.
+Recommended defaults: rescue-chain design, finite three-district campaign, A artwork, named Trump/Vance event caricatures, no attacks, optional Share mechanic. Open: exact title; whether helpers count visually as rescued followers; exact adult character stories; event captions; whether single-step practice ships with MVP. Flappy is the planning-detail reference only. Rio implementation, research and art can proceed concurrently with all other games once all five plans/specs are complete and the common foundation is implemented and verified.
 
 ## Shared contract and attribution
 

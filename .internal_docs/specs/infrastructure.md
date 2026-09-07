@@ -10,7 +10,9 @@ The fetched page includes analytics, mailing-list, and notification scripts. Bui
 
 ## Implementation entry gate
 
-Complete Flappy planning/specification, then finalize the other four to that standard, then verify all five plans/specs are complete (P-01..03 in [status](../status.md)). This gates INF-01 and every subsequent implementation package. Shared infrastructure can be specified during planning; its implementation begins only after this gate.
+Common planning/specification runs alongside Flappy planning and then the other game plans. Once this common spec is ready, implement INF-01..05 while game planning continues; P-03 does not block that work. Game implementation begins only after both all-five planning completion (P-03) and FOUNDATION-READY. See [delivery status](../status.md).
+
+FOUNDATION-READY requires INF-01..05 implemented and verified: `./dev` serves localhost:8643; responsive shell and five placeholder routes work; shared lifecycle/input/clock/audio/storage/asset services work; hot reload disposes cleanly; the accepted tuning panel works; build/typecheck and meaningful unit/browser checks pass. Use a development-only diagnostic module with a moving shape, seed, pause/reset and numeric tuning fields to exercise the API. It is test infrastructure, not a game prototype. Production cards state “In development” until each game is available. INF-06/07 integrate games later; INF-08 covers the final release. None is required to establish FOUNDATION-READY.
 
 ## Stack and folder contract
 

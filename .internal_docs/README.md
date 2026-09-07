@@ -4,12 +4,12 @@ Updated 2026-09-07. This is the first consolidated design proposal, not a claim 
 
 ## Required sequence
 
-1. Finish Flappy’s planning and implementable specs as the reference standard.
-2. Finish the other four games’ planning/specs modeled on that completed reference. Existing drafts are preliminary.
-3. Check that all five complete plans/specs and shared infrastructure specs are in hand.
-4. Start implementation, with all five games eligible for concurrent work as shared dependencies become ready.
+1. Plan/spec the common infrastructure alongside Flappy's planning/specification.
+2. Once Flappy's plan/spec is complete, finalize the other four to that standard.
+3. Once common specs are ready, implement and verify the shared foundation while game planning continues.
+4. When both the common foundation and all five plans/specs are complete, implement the five games concurrently on that foundation.
 
-No game or shared app implementation starts before step 3. Planning research and concept graphics may support the planning stages. See P-01..03 in [status](status.md).
+The foundation includes the localhost server, site shell, shared libraries, uniform module structure, hot reload, tuning panel and verification harness. It is tested using a diagnostic module, not an early Flappy implementation. See [delivery gates](status.md).
 
 ## Five game plans
 
@@ -45,4 +45,4 @@ The other four plans are preliminary drafts to bring to the finalized Flappy sta
 5. Update spec status honestly: planned, in progress, implemented, verified, or awaiting playtest.
 6. Review the playable result; record tuning/art choices; select the next eligible work.
 
-Only after all five plans/specs are complete and the shared interfaces are ready, all five game implementations may progress concurrently. Schedule bounded tasks across the four available agent slots; no game waits for Flappy completion or playtest approval.
+Only after all five plans/specs are complete and the common foundation is implemented and verified, all five game implementations may progress concurrently. Schedule bounded tasks across the four available agent slots; no game waits for Flappy completion or playtest approval.

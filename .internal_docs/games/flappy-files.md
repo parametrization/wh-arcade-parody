@@ -1,8 +1,8 @@
 # Flappy Files — game plan and implementation specification
 
-Status: researched proposal; implementation not started. Owner: Flappy game workstream. Research date: 2026-09-07. Original: [Flappy Bill](https://www.whitehouse.gov/arcade/flappy-bill/). Proposed route: `/games/flappy-files/`. Priority: planning/specification reference for all five games; implementation can proceed concurrently with the other four once all five plans/specs are complete and shared interfaces are ready.
+Status: researched proposal; implementation not started. Owner: Flappy game workstream. Research date: 2026-09-07. Original: [Flappy Bill](https://www.whitehouse.gov/arcade/flappy-bill/). Proposed route: `/games/flappy-files/`. Priority: planning/specification reference for all five games; implementation can proceed concurrently with the other four once all five plans/specs are complete and the common foundation is implemented and verified.
 
-Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. Shared-interface readiness alone does not open this gate; see [P-01..03](../status.md).
+Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
 
 ## Observed original and research confidence
 
@@ -114,4 +114,4 @@ Parallel work after contracts land: one model/input implementer, one art/cast re
 
 ## Decisions to revisit with the first playable build
 
-Default to Flappy Files, story plus endless, elephant-headed named obstacles and partial obstruction. User review is useful for choosing contact sheets, deciding how far the opaque hands should cover the scene, approving final comedy lines, and selecting the researched cast breadth. None blocks placeholder implementation. Confirm the first game feels sufficient before applying its production depth across the remaining games; update accepted tuning and content decisions here rather than leaving contradictory instructions in scattered tasks.
+Default to Flappy Files, story plus endless, elephant-headed named obstacles and partial obstruction. User review is useful for choosing contact sheets, deciding how far the opaque hands should cover the scene, approving final comedy lines, and selecting the researched cast breadth. None blocks placeholder implementation. Finalize this planning/specification standard before finalizing the other game plans; implement all five after the common foundation and all game plans are ready; update accepted tuning and content decisions here rather than leaving contradictory instructions in scattered tasks.
