@@ -1,5 +1,19 @@
 import type { TycoonConfig } from './config';
-export type Resource = 0 | 1 | 2 | 3 | 4;
+export type ResourceType = 0 | 1 | 2 | 3;
+export type Resource = ResourceType | 4;
+export interface StoredPromise {
+  type: ResourceType;
+  lane: number;
+}
+export interface Reaction {
+  kind: 'flood' | 'capitulation';
+  phase: 'filling' | 'overflow' | 'angry' | 'zoom' | 'flying';
+  lane: number;
+  type: ResourceType;
+  elapsed: number;
+  duration: number;
+  overflowDuration: number;
+}
 export const resourceNames = [
   'Book',
   'Care kit',
@@ -15,6 +29,7 @@ export interface Target {
   lane: number;
   y: number;
   warning: number;
+  promiseType?: ResourceType;
 }
 export interface TycoonModel {
   phase: 'title' | 'round' | 'invest' | 'won' | 'lost';
@@ -41,6 +56,12 @@ export interface TycoonModel {
   eventIn: number;
   message: string;
   practice: boolean;
+  storedPromises: StoredPromise[];
+  reaction: Reaction | null;
+  umbrella: boolean;
+  wetSeconds: number;
+  speedMult: number;
+  bonusPercent: number;
 }
 export function createModel(practice = false): TycoonModel {
   return {
@@ -66,8 +87,15 @@ export function createModel(practice = false): TycoonModel {
     bought: false,
     event: null,
     eventIn: 9,
-    message: 'Catch resources. Let hollow promises float past. Build all three services.',
+    message:
+      'Catch resources and return empty promises to their issuers. Build all three services.',
     practice,
+    storedPromises: [],
+    reaction: null,
+    umbrella: false,
+    wetSeconds: 0,
+    speedMult: 1,
+    bonusPercent: 0,
   };
 }
 export function startModel(m: TycoonModel) {
@@ -101,11 +129,15 @@ export function collect(m: TycoonModel, target: Target) {
   if (target.type === 4) {
     m.cooldown = 0.8;
     m.catchTime = 0;
-    m.message = 'An empty promise. No resources; clear the net.';
+    m.storedPromises.push({
+      type: target.promiseType ?? (target.lane as ResourceType),
+      lane: target.lane,
+    });
+    m.message = 'Promise stored. Return it to its issuer with Q.';
     return;
   }
   m.resources[target.type]++;
-  m.score += 10;
+  awardScore(m, 10);
   m.combo++;
   if (m.combo % 3 === 0) m.integrity = Math.min(6, m.integrity + 1);
   if (m.combo % 5 === 0) m.audits = Math.min(2, m.audits + 1);
@@ -143,11 +175,12 @@ export function spawn(m: TycoonModel, random: () => number, practice = false) {
     lane,
     y: practice ? 295 : 63,
     warning: practice ? 0 : 1.1,
+    ...(type === 4 ? { promiseType: (Math.floor(m.spawned / 5) % 4) as ResourceType } : {}),
   });
   m.spawned++;
 }
 export function practiceNext(m: TycoonModel, random: () => number) {
-  if (m.phase !== 'round' || m.targets.length) return;
+  if (m.phase !== 'round' || m.targets.length || m.reaction) return;
   m.cooldown = 0;
   m.catchTime = 0;
   if (m.spawned >= 20) {
@@ -180,7 +213,7 @@ export function buy(m: TycoonModel, track: number) {
   m.resources[track] -= 3;
   m.resources[3]--;
   m.levels[track]++;
-  m.score += 50;
+  awardScore(m, 50);
   m.bought = true;
   m.message = `${serviceNames[track]} improved. One purchase per round.`;
   return true;
@@ -224,11 +257,22 @@ export function continueRound(m: TycoonModel) {
   m.eventIn = 9;
   m.integrity = Math.min(6, m.integrity + 2 * m.levels[1]);
   m.phase = 'round';
-  m.message = `Round ${m.round}/5. Catch resources, not promises.`;
+  m.message = `Round ${m.round}/5. Catch resources and return empty promises.`;
 }
 export function tick(m: TycoonModel, dt: number, config: TycoonConfig, random: () => number) {
   if (m.phase !== 'round' || dt <= 0 || !Number.isFinite(dt)) return;
+  // Presentation takes priority: concealed targets and round clocks stay still.
+  const cinematic =
+    m.reaction?.kind === 'capitulation' &&
+    (m.reaction.phase === 'zoom' || m.reaction.phase === 'flying');
+  tickReaction(m, dt);
   m.time += dt;
+  if (
+    cinematic ||
+    (m.reaction?.kind === 'capitulation' &&
+      (m.reaction.phase === 'zoom' || m.reaction.phase === 'flying'))
+  )
+    return;
   m.elapsed += dt;
   m.catchTime = Math.max(0, m.catchTime - dt);
   m.cooldown = Math.max(0, m.cooldown - dt);
@@ -272,9 +316,81 @@ export function tick(m: TycoonModel, dt: number, config: TycoonConfig, random: (
     miss(m, target);
     if (m.phase !== 'round') return;
   }
-  if (m.elapsed >= config.roundSeconds && m.targets.length === 0) {
+  if (m.elapsed >= config.roundSeconds && m.targets.length === 0 && !m.reaction) {
     m.phase = 'invest';
     m.bought = false;
     m.message = 'Round complete. One investment makes a visible difference.';
+  }
+}
+
+/** Apply the cumulative dividend to every positive score award. */
+export function awardScore(m: TycoonModel, base: number) {
+  if (!Number.isFinite(base) || base <= 0) return 0;
+  const points = Math.floor((base * (100 + m.bonusPercent)) / 100);
+  m.score += points;
+  return points;
+}
+export function toggleUmbrella(m: TycoonModel) {
+  if (m.phase !== 'round') return false;
+  m.umbrella = !m.umbrella;
+  return m.umbrella;
+}
+export function returnPromise(m: TycoonModel, random: () => number) {
+  if (m.phase !== 'round' || m.reaction || !m.storedPromises.length) return false;
+  const promise = m.storedPromises.shift()!;
+  const flood = random() < 0.5;
+  m.reaction = {
+    kind: flood ? 'flood' : 'capitulation',
+    phase: flood ? 'filling' : 'angry',
+    lane: promise.lane,
+    type: promise.type,
+    elapsed: 0,
+    duration: flood ? 2 : 1,
+    overflowDuration: flood ? 5 + Math.max(0, Math.min(1, random())) * 10 : 0,
+  };
+  m.message = flood
+    ? 'Promise returned. Move under the stream with your umbrella open.'
+    : 'Promise returned. A real resource is on its way.';
+  return true;
+}
+/** Runs independently in untimed practice; callers must stop this while paused. */
+export function tickReaction(m: TycoonModel, dt: number) {
+  if (m.phase !== 'round' || !Number.isFinite(dt) || dt <= 0) return;
+  let remaining = dt;
+  while (m.reaction && remaining > 0) {
+    const reaction = m.reaction;
+    const step = Math.min(remaining, reaction.duration - reaction.elapsed);
+    if (
+      reaction.phase === 'overflow' &&
+      !m.umbrella &&
+      Math.abs(m.netX - laneX[reaction.lane]) <= catchWidth(m)
+    ) {
+      m.wetSeconds += step;
+      m.speedMult = 1 + 0.01 * m.wetSeconds;
+    }
+    reaction.elapsed += step;
+    remaining -= step;
+    if (reaction.elapsed + 1e-9 < reaction.duration) break;
+    reaction.elapsed = 0;
+    if (reaction.phase === 'filling') {
+      reaction.phase = 'overflow';
+      reaction.duration = reaction.overflowDuration;
+    } else if (reaction.phase === 'angry') {
+      reaction.phase = 'zoom';
+      reaction.duration = 3;
+    } else if (reaction.phase === 'zoom') {
+      reaction.phase = 'flying';
+      reaction.duration = 0.8;
+    } else if (reaction.phase === 'flying') {
+      m.bonusPercent = Math.min(200, m.bonusPercent + 10);
+      const count = m.resources.reduce((sum, value) => sum + value, 0);
+      m.resources[reaction.type]++;
+      const points = awardScore(m, 10 * Math.max(1, count));
+      m.message = `Promise fulfilled: ${resourceNames[reaction.type]} +1, score +${points}. Dividend bonus ${m.bonusPercent}%.`;
+      m.reaction = null;
+    } else {
+      m.message = 'The stream has stopped. Stored promises can be returned again.';
+      m.reaction = null;
+    }
   }
 }

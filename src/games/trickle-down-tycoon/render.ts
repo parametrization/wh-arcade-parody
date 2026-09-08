@@ -355,98 +355,127 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
   c.textAlign = 'left';
   c.setLineDash([]);
   rect(c, 0, 0, 640, 410, '#112438');
-  // Low-poly skyline and receding architectural wings under warm evening light.
-  const sky = c.createLinearGradient(0, 80, 0, 340);
-  sky.addColorStop(0, '#425b82');
-  sky.addColorStop(0.48, '#879ca5');
-  sky.addColorStop(1, '#d3c2a0');
+  const sky = c.createLinearGradient(0, 0, 0, 340);
+  sky.addColorStop(0, '#506c91');
+  sky.addColorStop(1, '#cfdbca');
   c.fillStyle = sky;
-  c.fillRect(0, 80, 640, 260);
-  for (let i = 0; i < 15; i++) {
-    const x = i * 49 - 15,
-      h = 32 + ((i * 31) % 57);
-    block(c, x, 261 - h, 30, h, 13, '#627c8c');
-    for (let j = 0; j < 3; j++) rect(c, x + 7 + j * 7, 273 - h, 3, 4, '#d2c3a075');
+  c.fillRect(0, 0, 640, 342);
+  // Symmetric pale mansion, columned portico and recessed sash windows.
+  block(c, 24, 80, 580, 202, 8, '#d4d8ca');
+  for (let row = 0; row < 2; row++)
+    for (let col = 0; col < 12; col++) {
+      const x = 38 + col * 48,
+        y = 108 + row * 75;
+      block(c, x, y, 24, 48, 2, '#f2eedb');
+      rect(c, x + 3, y + 3, 18, 41, '#3b5668');
+      rect(c, x + 11, y + 3, 2, 41, '#ced7cb');
+      rect(c, x + 3, y + 22, 18, 2, '#ced7cb');
+    }
+  poly(c, [14, 80, 320, 24, 624, 80], '#eeeada');
+  poly(c, [32, 76, 320, 36, 607, 76], '#c5cbbb');
+  rect(c, 18, 79, 602, 8, '#f8f0d9');
+  for (const x of [235, 270, 370, 405]) {
+    block(c, x - 7, 86, 14, 186, 3, '#e9e8d6');
+    rect(c, x - 10, 87, 23, 7, '#fff4d9');
+    rect(c, x - 10, 267, 24, 9, '#f5ecd5');
   }
-  // Perspective plaza tiles and broad, soft architectural contact shadows.
-  poly(c, [0, 272, 640, 272, 640, 342, 0, 342], '#8c9a91');
-  for (let i = -3; i < 10; i++) {
-    c.strokeStyle = '#d7deba48';
+  rect(c, 312, 8, 3, 24, '#d7ded9');
+  poly(c, [315, 8, 342, 11, 338, 22, 315, 19], '#e4d5c4');
+  rect(c, 315, 8, 10, 7, '#436383');
+  for (let k = 0; k < 3; k++) rect(c, 326, 11 + k * 3, 13, 1, '#ba6b70');
+  poly(c, [0, 279, 640, 279, 640, 342, 0, 342], '#8d9d91');
+  for (let k = -2; k < 9; k++) {
+    c.strokeStyle = '#d6dfc355';
     c.beginPath();
-    c.moveTo(320 + (i * 96 - 320) * 0.4, 272);
-    c.lineTo(i * 96, 342);
+    c.moveTo(320 + (k * 96 - 320) * 0.5, 280);
+    c.lineTo(k * 96, 342);
     c.stroke();
   }
-  for (const y of [285, 306, 334]) {
-    c.strokeStyle = '#536d7660';
-    c.beginPath();
-    c.moveTo(0, y);
-    c.lineTo(640, y);
-    c.stroke();
-  }
-  shadow(c, 329, 281, 285, 18, 0.25);
-  poly(c, [31, 133, 111, 104, 111, 276, 31, 292], '#314a64');
-  poly(c, [529, 104, 608, 133, 608, 292, 529, 276], '#243d55');
-  block(c, 106, 105, 425, 167, 12, '#526c7d');
-  // Broad recessed glazing and trapezoidal pilasters avoid a flat pixel facade.
-  for (let i = 0; i < 6; i++) {
-    const x = 119 + i * 68;
-    poly(c, [x, 124, x + 44, 124, x + 44, 251, x, 251], '#29475f');
-    poly(c, [x + 3, 127, x + 40, 127, x + 40, 248, x + 3, 248], '#416478');
-    poly(c, [x + 3, 127, x + 40, 127, x + 8, 199, x + 3, 231], '#a8c6c321');
-    for (let row = 0; row < 4; row++) {
-      rect(c, x + 3, 145 + row * 27, 37, 3, '#829896');
-      rect(c, x + 4, 147 + row * 27, 36, 1, '#2c4960');
-    }
-    rect(c, x + 19, 127, 3, 121, '#8da5a0');
-    poly(c, [x + 49, 114, x + 57, 111, x + 62, 114, x + 62, 270, x + 49, 270], '#aa9d75');
-    poly(c, [x + 49, 114, x + 54, 112, x + 54, 270, x + 49, 270], '#e1cca0');
-    poly(c, [x + 58, 113, x + 62, 114, x + 62, 270, x + 58, 270], '#6b756c');
-  }
-  poly(c, [27, 133, 108, 100, 543, 100, 612, 133, 535, 118, 106, 118], '#b7a77f');
-  poly(c, [27, 133, 106, 111, 535, 111, 612, 133, 535, 124, 106, 124], '#dbcaa0');
-  poly(c, [103, 100, 320, 72, 546, 100, 535, 109, 107, 109], '#687987');
-  poly(c, [107, 100, 320, 78, 534, 100, 321, 96], '#dac99f');
-  for (let side = 0; side < 2; side++)
-    for (let row = 0; row < 4; row++) {
-      const x = side ? 550 : 43;
-      poly(
-        c,
-        [x, 146 + row * 30, x + 37, 136 + row * 30, x + 37, 153 + row * 30, x, 163 + row * 30],
-        side ? '#4a6370' : '#7a9198',
-      );
-      poly(
-        c,
-        [
-          x + 3,
-          148 + row * 30,
-          x + 33,
-          140 + row * 30,
-          x + 33,
-          145 + row * 30,
-          x + 3,
-          153 + row * 30,
-        ],
-        '#bad0c044',
-      );
-    }
-  const haze = c.createLinearGradient(0, 181, 0, 277);
-  haze.addColorStop(0, '#b5c9bd00');
-  haze.addColorStop(1, '#b5c9bd35');
-  c.fillStyle = haze;
-  c.fillRect(28, 169, 584, 112);
+  for (const y of [292, 313, 339]) rect(c, 0, y, 640, 1, '#667f7c');
   for (let i = 0; i < 3; i++) {
-    const x = laneX[i];
-    block(c, x - 27, 87, 54, 13, 5, '#9ca381');
-    poly(c, [x - 20, 92, x + 19, 92, x + 16, 102, x - 17, 102], '#1d394f');
-    rect(c, x - 17, 93, 32, 2, '#d5d3ac');
+    const x = laneX[i] - 50;
+    panel(c, x - 4, 2, 108, 80, '#243d50', '#ebd5a1');
+    portrait(c, i, x, 3);
   }
-  panel(c, 7, 4, 630, 77, '#28364a', '#76848b');
-  for (let i = 0; i < 3; i++) portrait(c, i, 16 + i * 111, 5);
-  panel(c, 356, 9, 273, 62, '#18313d', '#b9a879');
-  label(c, 'TRICKLE-DOWN TYCOON', 369, 27, '#f1d99f', 13);
-  label(c, `ROUND ${m.round}/5   SCORE ${m.score}`, 369, 44, '#c4dccd', 11);
-  label(c, `NET ${'♥'.repeat(m.integrity)}  AUDIT ${m.audits}`, 369, 62, '#9ed4c4', 10);
+  const reaction = m.reaction;
+  if (reaction) {
+    const bx = laneX[reaction.lane] - 50;
+    if (reaction.kind === 'flood') {
+      const fill =
+        reaction.phase === 'filling' ? Math.min(1, reaction.elapsed / reaction.duration) : 1;
+      c.save();
+      c.beginPath();
+      c.rect(bx + 1, 4, 98, 59);
+      c.clip();
+      c.globalAlpha = 0.66;
+      rect(c, bx, 63 - 15 * fill, 100, 15 * fill, '#b5ff27');
+      c.globalAlpha = 1;
+      for (let i = 0; i < 4; i++) {
+        const yy = 48 - 15 * fill + ((i * 11 + reaction.elapsed * 18) % 15);
+        rect(c, bx + 15 + i * 21, yy, 3, 2, '#eeff98');
+      }
+      for (const ex of [43, 57]) {
+        poly(c, [bx + ex, 28, bx + ex - 3, 36, bx + ex + 3, 36], '#95e6ff');
+        rect(c, bx + ex - 2, 36, 4, 18, '#86cceaaa');
+      }
+      // Open sobbing mouth, pinched brows and pulsing tear jets.
+      c.fillStyle = '#573047';
+      c.beginPath();
+      c.ellipse(
+        bx + 50,
+        40,
+        5,
+        3 + Math.abs(Math.sin(reaction.elapsed * 8)) * 2,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      c.fill();
+      c.strokeStyle = '#583749';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(bx + 37, 24);
+      c.lineTo(bx + 44, 22);
+      c.moveTo(bx + 56, 22);
+      c.lineTo(bx + 63, 24);
+      c.stroke();
+      c.restore();
+      if (reaction.phase === 'overflow') {
+        const sx = laneX[reaction.lane];
+        c.save();
+        c.beginPath();
+        c.rect(0, 65, 640, m.umbrella && Math.abs(m.netX - sx) < catchWidth(m) + 12 ? 183 : 237);
+        c.clip();
+        poly(c, [sx - 16, 65, sx + 16, 65, sx + 9, 301, sx - 9, 301], '#afff2688');
+        for (let i = 0; i < 8; i++) {
+          const y = 80 + ((i * 31 + reaction.elapsed * 100) % 214);
+          rect(c, sx - 7 + (i % 3) * 5, y, 3, 10, '#e2ff9c');
+        }
+        c.restore();
+      }
+    } else if (reaction.phase === 'angry') {
+      c.save();
+      c.globalAlpha = 0.48;
+      poly(c, [bx + 32, 20, bx + 66, 20, bx + 65, 39, bx + 50, 47, bx + 33, 38], '#ff342f');
+      c.restore();
+      poly(c, [bx + 38, 24, bx + 46, 27, bx + 46, 29, bx + 38, 27], '#2b2431');
+      poly(c, [bx + 54, 27, bx + 62, 24, bx + 62, 27, bx + 54, 29], '#2b2431');
+      c.strokeStyle = '#502537';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(bx + 42, 39);
+      c.lineTo(bx + 49, 35);
+      c.lineTo(bx + 58, 39);
+      c.stroke();
+      for (const side of [-1, 1])
+        for (let i = 0; i < 3; i++) {
+          c.fillStyle = '#edf1e7';
+          c.beginPath();
+          c.arc(bx + 50 + side * (26 + i * 7), 30 - i * 7, 4 + i, 0, Math.PI * 2);
+          c.fill();
+        }
+    }
+  }
   // A subtle landing marker keeps the action readable over the detailed scene.
   for (let i = 0; i < 3; i++) {
     const x = laneX[i];
@@ -501,9 +530,21 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
       c.save();
       c.translate(x, y);
       c.scale(0.6, 0.6);
-      resource(c, target.type, 0, 0);
+      resource(c, target.type === 4 ? (target.promiseType ?? 0) : target.type, 0, 0);
       c.restore();
-    } else resource(c, target.type, x, y);
+    } else {
+      if (target.type === 4) {
+        c.save();
+        c.globalAlpha = 0.58;
+        resource(c, target.promiseType ?? 0, x, y);
+        c.restore();
+        c.setLineDash([3, 2]);
+        c.strokeStyle = '#f4e4af';
+        c.strokeRect(x - 21, y - 23, 42, 44);
+        c.setLineDash([]);
+        label(c, 'PROMISE', x, y + 29, '#fff0bd', 8, true);
+      } else resource(c, target.type, x, y);
+    }
     if (target.warning > 0) {
       panel(c, x - 53, 101, 106, 17, '#18364a', '#8cacac');
       label(c, resourceNames[target.type].toUpperCase(), x, 113, '#fff0bc', 9, true);
@@ -584,28 +625,113 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
     block(c, hx - 6, 301, 12, 13, 3, '#487a91');
     poly(c, [hx - 5, 301, hx + 5, 301, hx + 5, 305, hx - 5, 305], '#e2e4cb');
   }
-  panel(c, 3, 342, 634, 66, '#1b3244', '#5b7883');
+  panel(c, 3, 342, 348, 66, '#1b3244', '#5b7883');
   for (let track = 0; track < 3; track++) {
-    const bx = 13 + track * 211;
-    neighborhood(c, track, m.levels[track], bx, 350);
-    label(
-      c,
-      ['EDUCATION', 'CARE', 'HOMES'][track],
-      bx + 79,
-      367,
-      ['#dbe7b8', '#c5e6d8', '#ead0b2'][track],
-      10,
-    );
-    label(c, `LEVEL ${m.levels[track]}/2`, bx + 79, 383, '#b4c8c8', 10);
-    rect(c, bx + 79, 390, 100, 5, '#102235');
-    rect(c, bx + 80, 391, m.levels[track] * 48, 3, '#82b6a7');
+    const bx = 12 + track * 112;
+    c.save();
+    c.translate(bx, 350);
+    c.scale(0.48, 0.7);
+    neighborhood(c, track, m.levels[track], 0, 0);
+    c.restore();
+    label(c, ['EDUCATION', 'CARE', 'HOMES'][track], bx + 46, 360, '#dbe7cf', 8);
+    label(c, `${m.levels[track]}/2`, bx + 55, 376, '#b4cec8', 10);
+    rect(c, bx + 46, 384, 58, 4, '#142c39');
+    rect(c, bx + 46, 384, m.levels[track] * 29, 4, '#84c6a3');
   }
+  panel(c, 357, 342, 279, 66, '#18313d', '#b9a879');
+  label(c, 'TRICKLE-DOWN TYCOON', 367, 352, '#e8d5a4', 8);
+  label(c, `ROUND ${m.round}/5   SCORE ${m.score}`, 367, 363, '#e8d5a4', 9);
+  label(c, `NET ${'♥'.repeat(m.integrity)}  AUDIT ${m.audits}`, 367, 375, '#b8ddd0', 8);
+  label(
+    c,
+    `BONUS +${Math.round(m.bonusPercent)}%  STORED ${m.storedPromises.length}`,
+    367,
+    385,
+    '#d6edb2',
+    9,
+  );
+  label(
+    c,
+    `WET ${m.wetSeconds.toFixed(1)}s  SPEED ${m.speedMult.toFixed(2)}x`,
+    367,
+    400,
+    '#95d7ec',
+    9,
+  );
   if (m.freeze > 0) {
     c.strokeStyle = '#a0e8db';
     c.lineWidth = 3;
     c.strokeRect(5, 98, 630, 237);
     c.lineWidth = 1;
     label(c, 'PUBLIC AUDIT · READ THE FINE PRINT', 320, 272, '#e3f7d6', 10, true);
+  }
+  if (m.umbrella) {
+    poly(
+      c,
+      [x - width - 12, 280, x - width + 4, 258, x, 248, x + width - 4, 258, x + width + 12, 280],
+      '#6396c0',
+    );
+    poly(c, [x, 248, x - 15, 280, x + 15, 280], '#bfdfca');
+    c.strokeStyle = '#e2e7ce';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(x, 250);
+    c.lineTo(x, 299);
+    c.stroke();
+    label(c, 'UMBRELLA', x, 243, '#e5f8dd', 8, true);
+  }
+  if (
+    reaction &&
+    (reaction.phase === 'filling' || reaction.phase === 'angry') &&
+    reaction.elapsed < 0.5
+  ) {
+    const t = Math.min(1, reaction.elapsed / 0.5);
+    c.save();
+    c.translate(m.netX + (laneX[reaction.lane] - m.netX) * t, 300 - 250 * t);
+    c.rotate(Math.sin(t * Math.PI) * 0.5);
+    c.scale(1 - t * 0.4, 1 - t * 0.4);
+    resource(c, reaction.type, 0, 0);
+    c.restore();
+  }
+  if (reaction?.phase === 'overflow')
+    label(
+      c,
+      `MOUNTAIN DEW · ${Math.ceil(reaction.duration - reaction.elapsed)}s`,
+      laneX[reaction.lane],
+      128,
+      '#f0ff9a',
+      9,
+      true,
+    );
+  if (reaction?.kind === 'capitulation' && (reaction.phase !== 'angry' || reaction.elapsed > 0.7)) {
+    const entry = reaction.phase === 'angry' ? Math.min(1, (reaction.elapsed - 0.7) / 0.3) : 1;
+    const progress =
+      reaction.phase === 'flying' ? Math.min(1, reaction.elapsed / reaction.duration) : 0;
+    if (!progress) {
+      c.save();
+      c.beginPath();
+      c.rect(8, 84, 624, 251);
+      c.clip();
+      rect(c, 8, 84, 624, 251, '#10283bed');
+      for (let i = 0; i < 24; i++) {
+        const angle = (i * Math.PI) / 12;
+        c.strokeStyle = i % 2 ? '#b6c6ba55' : '#f3dab65a';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(320 + Math.cos(angle) * 100, 206 + Math.sin(angle) * 48);
+        c.lineTo(320 + Math.cos(angle) * 330, 206 + Math.sin(angle) * 180);
+        c.stroke();
+      }
+      c.restore();
+    }
+    c.save();
+    c.translate(320 + (x - 320) * progress, 201 + 100 * progress);
+    const size = (1 + 4.3 * entry) * (1 - progress) + progress;
+    c.scale(size, size);
+    resource(c, reaction.type, 0, 0);
+    c.restore();
+    if (!progress && entry === 1)
+      label(c, 'CAPITULATION NOT HOLLOW PROMISE', 320, 319, '#fff0b2', 16, true);
   }
   if (['title', 'won', 'lost'].includes(m.phase)) {
     panel(c, 41, 139, 558, 139, '#122a3eef', '#d4ba7f');
@@ -627,7 +753,7 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
     label(
       c,
       m.phase === 'title'
-        ? 'Catch books, care, keys and coins. Let promises pass.'
+        ? 'Catch resources. Return promises with Q. Umbrella: U.'
         : `Community levels ${m.levels.join(' / ')} · Score ${m.score}`,
       320,
       213,

@@ -6,11 +6,11 @@ const game: GameModule = {
     id: 'trickle-down-tycoon',
     title: 'Trump Trickle-Down Tycoon',
     description:
-      'Catch useful resources, dodge empty promises and build the community safety net across five rounds.',
+      'Catch useful resources, return empty promises and build the community safety net across five rounds.',
     controls: [
       'Arrows / A-D: move the net',
       'Space: catch window',
-      'Q: public audit',
+      'Q: return a caught promise · U: toggle umbrella · F: public audit',
       '1 / 2 / 3: select lane',
       'Touch: drag and Catch button',
     ],
