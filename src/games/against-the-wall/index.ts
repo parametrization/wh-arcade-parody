@@ -13,6 +13,8 @@ export const manifest = {
     'Space: aim distraction; Enter: confirm',
     'P / Escape: pause',
     'R: restart',
+    'Pursuers follow visible people as suspicion rises; a full meter enables gunfire. Use cover until suspicion drains.',
+    'ICE and Border Patrol are allied. Hostile factions can fight each other; Alex remains an unarmed civilian.',
   ],
   assetIds: [],
 };

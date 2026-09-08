@@ -15,6 +15,7 @@ export function draw(
   s: State,
   aim: null | { x: number; y: number },
   variant: string,
+  reducedMotion = false,
 ) {
   ctx.fillStyle = variant === 'B' ? '#30253e' : variant === 'C' ? '#20393d' : '#0b1429';
   ctx.fillRect(0, 0, 960, 640);
@@ -104,14 +105,14 @@ export function draw(
       }
     }
   for (const e of s.enemies) {
-    if (['clash', 'recover'].includes(e.state)) continue;
+    if (['clash', 'recover', 'dead'].includes(e.state)) continue;
     const a = p(e.x, e.y);
     ctx.fillStyle = e.meter > 0.1 ? '#ffae4940' : '#fe559522';
     ctx.strokeStyle = '#ef7c91';
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     for (let i = -35; i <= 35; i += 5) {
-      const r = ((i + (e.way < 0 ? 180 : 0)) * Math.PI) / 180;
+      const r = (i * Math.PI) / 180 + (e.heading ?? (e.way < 0 ? Math.PI : 0));
       const b = p(e.x + Math.cos(r) * s.config.vision, e.y + Math.sin(r) * s.config.vision);
       ctx.lineTo(b.x, b.y);
     }
@@ -238,6 +239,39 @@ export function draw(
     if (a.kind === 'companion' && s.companion.helped) continue;
     const q = p(a.x, a.y);
     const e = a.kind === 'enemy' ? s.enemies.find((e) => e.id === a.id) : null;
+    if (e?.state === 'dead') {
+      ctx.fillStyle = '#17212b88';
+      ctx.fillRect(q.x - 26, q.y - 4, 52, 13);
+      ctx.fillStyle =
+        e.faction === 'ICE'
+          ? '#486a93'
+          : e.faction === 'Cartel'
+            ? '#914f64'
+            : e.faction === 'Paramilitary'
+              ? '#929398'
+              : '#7d8957';
+      ctx.fillRect(q.x - 12, q.y - 5, 25, 10);
+      ctx.fillStyle = '#d8a982';
+      ctx.fillRect(q.x - 23, q.y - 6, 11, 10);
+      ctx.fillStyle = '#403238';
+      ctx.fillRect(q.x - 25, q.y - 6, 4, 10);
+      ctx.fillStyle = '#26364b';
+      ctx.fillRect(q.x + 12, q.y - 5, 13, 4);
+      ctx.fillRect(q.x + 12, q.y + 2, 14, 4);
+      ctx.fillStyle = '#d5cfb5';
+      ctx.textAlign = 'center';
+      ctx.font = '10px monospace';
+      ctx.fillText(`${e.faction} · DOWN`, q.x, q.y - 14);
+      continue;
+    }
+    const walking = a.kind === 'player' ? s.moving : e?.moving;
+    const stride =
+      walking && !reducedMotion
+        ? Math.round(
+            Math.sin((a.kind === 'player' ? s.walkDistance : (e?.walkDistance ?? 0)) * 11) * 3,
+          )
+        : 0;
+    if (walking && !reducedMotion) q.y -= Math.abs(stride) * 0.4;
     if (e?.state === 'clash') {
       ctx.fillStyle = '#e5d7a9';
       for (let j = 0; j < 5; j++) {
@@ -271,8 +305,8 @@ export function draw(
     ctx.fillRect(q.x - 8, q.y - 41, 16, 16);
     ctx.fillStyle = '#1d243c';
     ctx.fillRect(q.x - 10, q.y - 45, 20, 7);
-    ctx.fillRect(q.x - 9, q.y - 2, 7, 10);
-    ctx.fillRect(q.x + 2, q.y - 2, 7, 10);
+    ctx.fillRect(q.x - 9, q.y - 2 + stride, 7, 10);
+    ctx.fillRect(q.x + 2, q.y - 2 - stride, 7, 10);
     if (a.kind === 'player') {
       ctx.fillStyle = '#e5bb75';
       ctx.fillRect(q.x - 15, q.y - 23, 7, 20);
@@ -311,11 +345,11 @@ export function draw(
     r(10, -21, 3, 15, '#223143');
     r(10, -18, 3, 10, '#526473');
     r(10, -8, 3, 4, '#c89473');
-    r(-8, -1, 4, 8, '#526077');
-    r(3, -1, 4, 8, '#3e4e63');
-    r(-10, 6, 8, 4, '#141e2e');
-    r(2, 6, 9, 4, '#141e2e');
-    r(-9, 6, 5, 1, '#879193');
+    r(-8, -1 + stride, 4, 8, '#526077');
+    r(3, -1 - stride, 4, 8, '#3e4e63');
+    r(-10, 6 + stride, 8, 4, '#141e2e');
+    r(2, 6 - stride, 9, 4, '#141e2e');
+    r(-9, 6 + stride, 5, 1, '#879193');
     if (a.kind === 'player') {
       r(-17, -22, 7, 19, '#614d43');
       r(-16, -21, 5, 15, '#bda064');
@@ -352,6 +386,37 @@ export function draw(
       ctx.fillRect(q.x - 18, q.y - 63, 36, 4);
       ctx.fillStyle = '#ffbc59';
       ctx.fillRect(q.x - 18, q.y - 63, 36 * e.meter, 4);
+      ctx.fillStyle = '#1a2534';
+      ctx.fillRect(q.x - 18, q.y - 69, 36, 3);
+      ctx.fillStyle = '#a6cc8c';
+      ctx.fillRect(q.x - 18, q.y - 69, (36 * (e.health ?? 100)) / 100, 3);
+      if (e.state === 'combat') {
+        const target = e.target === 'player' ? s : s.enemies.find((other) => other.id === e.target);
+        if (target) {
+          const to = p(target.x, target.y),
+            angle = Math.atan2(to.y - q.y, to.x - q.x);
+          const mx = q.x + Math.cos(angle) * 21,
+            my = q.y - 20 + Math.sin(angle) * 13;
+          ctx.strokeStyle = '#242d3d';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(q.x, q.y - 20);
+          ctx.lineTo(mx, my);
+          ctx.stroke();
+          if ((e.shot ?? 0) > 0 && !reducedMotion) {
+            ctx.fillStyle = '#ffe5a0';
+            ctx.fillRect(mx - 3, my - 1, 7, 2);
+            ctx.fillRect(mx - 1, my - 3, 2, 7);
+            ctx.strokeStyle = '#e4c77c';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(mx, my);
+            ctx.lineTo(to.x, to.y - 18);
+            ctx.stroke();
+          }
+          ctx.lineWidth = 1;
+        }
+      }
     }
   }
   const board = p(6, 17);

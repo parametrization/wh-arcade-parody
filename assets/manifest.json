@@ -197,5 +197,13 @@
     "retrievedAt": "2026-09-08",
     "sha256": "a5f0b6e6219df60437a6e0f1d9902550a76f2e75746fe3f2fe8b9bcbd4f9bf6a",
     "modified": "Original generated16-bit National Mall composite backdrop; fictional geography;1536x1024."
+  },
+  {
+    "id": "burger-pickup-sprite",
+    "path": "src/shared/sprites/burger.ts",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Original Canvas drawing code",
+    "modified": "Layered16-bit-style burger sprite with shaded sesame bun, lettuce, tomato, cheese and patty."
   }
 ]

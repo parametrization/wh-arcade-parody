@@ -1,3 +1,4 @@
+import { drawBurger } from '../../shared/sprites/burger';
 import { CAST, type Model } from './model';
 import { value } from './config';
 export function render(
@@ -421,13 +422,9 @@ export function render(
     ctx.restore();
   }
   function hamburger(x: number, y: number) {
-    rect(x - 12, y - 7, 24, 6, '#d99136');
-    rect(x - 16, y - 1, 32, 5, '#f4bd59');
-    rect(x - 14, y + 4, 28, 5, '#553326');
-    rect(x - 15, y + 9, 30, 5, '#dca353');
-    rect(x - 9, y - 5, 3, 2, '#fff0a4');
-    rect(x + 5, y - 5, 3, 2, '#fff0a4');
+    drawBurger(ctx, x, y);
   }
+
   function portrait(name: string, x: number, y: number, size: number) {
     const index = CAST.indexOf(name);
     if (!portraits || index < 0) return false;

@@ -72,11 +72,59 @@ export async function mountGame(
     exitFullscreenButton.hidden = true;
     exitFullscreenButton.style.display = 'none';
     host.prepend(exitFullscreenButton);
+    let sizingFrame = 0;
+    const sizeFullscreen = () => {
+      sizingFrame = 0;
+      if (disposed || document.fullscreenElement !== host) return;
+      const canvas = host.querySelector('canvas');
+      const gameRoot = host.querySelector<HTMLElement>(':scope > section');
+      if (!canvas || !gameRoot) return;
+      const hostStyle = getComputedStyle(host);
+      const insetX = parseFloat(hostStyle.paddingLeft) + parseFloat(hostStyle.paddingRight) + 2;
+      const insetY = parseFloat(hostStyle.paddingTop) + parseFloat(hostStyle.paddingBottom) + 2;
+      // Measure actual HUD/control rows after fullscreen's compact layout. The
+      // canvas stays at its logical resolution; only its CSS display size changes.
+      const overhead = Math.max(
+        0,
+        gameRoot.getBoundingClientRect().height - canvas.getBoundingClientRect().height,
+      );
+      const availableWidth = Math.max(1, host.clientWidth - insetX);
+      const availableHeight = Math.max(120, host.clientHeight - insetY - overhead - 2);
+      const scale = Math.min(availableWidth / canvas.width, availableHeight / canvas.height);
+      const width = Math.floor(canvas.width * scale);
+      const height = (width * canvas.height) / canvas.width;
+      host.style.setProperty('--fullscreen-canvas-width', `${width}px`);
+      host.style.setProperty('--fullscreen-canvas-height', `${height}px`);
+    };
+    const scheduleSize = () => {
+      if (!sizingFrame && document.fullscreenElement === host)
+        sizingFrame = requestAnimationFrame(sizeFullscreen);
+    };
+    const resizeObserver = new ResizeObserver(scheduleSize);
+    resizeObserver.observe(host);
+    const gameRoot = host.querySelector<HTMLElement>(':scope > section');
+    if (gameRoot) resizeObserver.observe(gameRoot);
+    window.addEventListener('resize', scheduleSize, { signal: abort.signal });
+    abort.signal.addEventListener(
+      'abort',
+      () => {
+        resizeObserver.disconnect();
+        cancelAnimationFrame(sizingFrame);
+      },
+      { once: true },
+    );
     const changeFullscreen = () => {
       const active = document.fullscreenElement === host;
       fullscreenButton.textContent = active ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
       exitFullscreenButton.hidden = !active;
       exitFullscreenButton.style.display = active ? 'inline-flex' : 'none';
+      if (active) {
+        host.scrollTop = 0;
+        scheduleSize();
+      } else {
+        host.style.removeProperty('--fullscreen-canvas-width');
+        host.style.removeProperty('--fullscreen-canvas-height');
+      }
       if (host.isConnected) host.focus({ preventScroll: true });
     };
     const toggleFullscreen = async () => {

@@ -6,7 +6,16 @@ export interface Actor {
   id: number;
   faction: Faction;
   meter: number;
-  state: 'patrol' | 'chase' | 'investigate' | 'clash' | 'recover';
+  state: 'patrol' | 'alert' | 'chase' | 'investigate' | 'clash' | 'recover' | 'combat' | 'dead';
+  health?: number;
+  target?: 'player' | number | null;
+  committed?: boolean;
+  lastSeen?: { x: number; y: number };
+  heading?: number;
+  fireCooldown?: number;
+  shot?: number;
+  walkDistance?: number;
+  moving?: boolean;
   timer: number;
   cooldown: number;
   originX: number;
@@ -38,6 +47,9 @@ export interface State {
   x: number;
   y: number;
   stamina: number;
+  health: number;
+  walkDistance: number;
+  moving: boolean;
   tokens: number;
   grace: number;
   walls: Set<string>;
@@ -71,6 +83,9 @@ export function create(seed = 1, config = { ...defaults }): State {
     x: 3.5,
     y: 18.5,
     stamina: 100,
+    health: 100,
+    walkDistance: 0,
+    moving: false,
     tokens: 2,
     grace: 0.75,
     walls: new Set(),
@@ -95,6 +110,9 @@ export function loadDistrict(s: State) {
   s.x = 3.5;
   s.y = 18.5;
   s.stamina = 100;
+  s.health = 100;
+  s.walkDistance = 0;
+  s.moving = false;
   s.tokens = 2;
   s.grace = 0.75;
   s.beacon = null;
@@ -163,6 +181,14 @@ export function loadDistrict(s: State) {
     originY: 5.5 + i * 2,
     way: 1,
     arrival: -1,
+    health: 100,
+    target: null,
+    committed: false,
+    heading: 0,
+    fireCooldown: 0,
+    shot: 0,
+    walkDistance: 0,
+    moving: false,
   }));
   s.message = [
     '',
@@ -175,11 +201,37 @@ export function solid(s: State, x: number, y: number) {
   return x < 1 || y < 1 || x >= 31 || y >= 23 || s.walls.has(key(x, y));
 }
 export function sight(s: State, ax: number, ay: number, bx: number, by: number) {
-  const d = Math.hypot(bx - ax, by - ay);
-  for (let i = 1; i <= Math.ceil(d * 8); i++) {
-    const t = i / Math.ceil(d * 8);
-    if (solid(s, ax + (bx - ax) * t, ay + (by - ay) * t)) return false;
-  }
+  if (solid(s, ax, ay) || solid(s, bx, by)) return false;
+  const dx = bx - ax,
+    dy = by - ay;
+  for (let x = Math.floor(Math.min(ax, bx)); x <= Math.floor(Math.max(ax, bx)); x++)
+    for (let y = Math.floor(Math.min(ay, by)); y <= Math.floor(Math.max(ay, by)); y++) {
+      if (!s.walls.has(key(x, y))) continue;
+      let enter = 0,
+        exit = 1,
+        intersects = true;
+      for (const [origin, direction, min, max] of [
+        [ax, dx, x, x + 1],
+        [ay, dy, y, y + 1],
+      ]) {
+        if (Math.abs(direction) < 1e-12) {
+          if (origin < min || origin > max) {
+            intersects = false;
+            break;
+          }
+        } else {
+          const a = (min - origin) / direction,
+            b = (max - origin) / direction;
+          enter = Math.max(enter, Math.min(a, b));
+          exit = Math.min(exit, Math.max(a, b));
+          if (enter > exit) {
+            intersects = false;
+            break;
+          }
+        }
+      }
+      if (intersects && exit >= 0 && enter <= 1) return false;
+    }
   return true;
 }
 export function path(
@@ -218,9 +270,85 @@ export function path(
   }
   return out.reverse();
 }
-export function move(s: State, who: { x: number; y: number }, dx: number, dy: number, r = 0.22) {
-  if (!solid(s, who.x + dx + r, who.y) && !solid(s, who.x + dx - r, who.y)) who.x += dx;
-  if (!solid(s, who.x, who.y + dy + r) && !solid(s, who.x, who.y + dy - r)) who.y += dy;
+/** True circle/AABB overlap catches adjoining tile corners, not only axis samples. */
+export function overlapsWall(s: State, x: number, y: number, radius = 0.22): boolean {
+  if (x - radius < 1 || y - radius < 1 || x + radius > 31 || y + radius > 23) return true;
+  for (let tx = Math.floor(x - radius); tx <= Math.floor(x + radius); tx++)
+    for (let ty = Math.floor(y - radius); ty <= Math.floor(y + radius); ty++) {
+      if (!s.walls.has(key(tx, ty))) continue;
+      const nearestX = Math.max(tx, Math.min(x, tx + 1)),
+        nearestY = Math.max(ty, Math.min(y, ty + 1));
+      if ((x - nearestX) ** 2 + (y - nearestY) ** 2 < radius ** 2 - 1e-10) return true;
+    }
+  return false;
+}
+export function move(
+  s: State,
+  who: { x: number; y: number; walkDistance?: number; moving?: boolean },
+  dx: number,
+  dy: number,
+  r = 0.22,
+) {
+  const count = Math.max(1, Math.ceil(Math.hypot(dx, dy) / Math.min(0.1, r / 2)));
+  const startX = who.x,
+    startY = who.y;
+  for (let i = 0; i < count; i++) {
+    if (!overlapsWall(s, who.x + dx / count, who.y, r)) who.x += dx / count;
+    if (!overlapsWall(s, who.x, who.y + dy / count, r)) who.y += dy / count;
+  }
+  const travel = Math.hypot(who.x - startX, who.y - startY);
+  who.moving = travel > 0.0001;
+  who.walkDistance = (who.walkDistance ?? 0) + travel;
+}
+/** Fictional encounter rules: federal agencies are allied; neither fires on its own faction. */
+export function hostile(a: Faction, b: Faction): boolean {
+  if (a === b) return false;
+  if (['ICE', 'Border Patrol'].includes(a) && ['ICE', 'Border Patrol'].includes(b)) return false;
+  return true;
+}
+export function sees(s: State, e: Actor, target: { x: number; y: number }): boolean {
+  const dx = target.x - e.x,
+    dy = target.y - e.y,
+    angle = Math.atan2(dy, dx),
+    heading = e.heading ?? (e.way < 0 ? Math.PI : 0);
+  return (
+    Math.hypot(dx, dy) < s.config.vision &&
+    Math.abs(Math.atan2(Math.sin(angle - heading), Math.cos(angle - heading))) <=
+      (35 * Math.PI) / 180 &&
+    sight(s, e.x, e.y, target.x, target.y)
+  );
+}
+function targetActor(
+  s: State,
+  id: 'player' | number | null | undefined,
+): { x: number; y: number } | null {
+  if (id === 'player') return s;
+  return typeof id === 'number'
+    ? (s.enemies.find((e) => e.id === id && e.state !== 'dead') ?? null)
+    : null;
+}
+function clearTarget(e: Actor) {
+  e.target = null;
+  e.committed = false;
+  e.lastSeen = undefined;
+  e.meter = 0;
+  if (e.state !== 'dead') e.state = 'patrol';
+}
+function damage(s: State, target: 'player' | number, amount: number) {
+  if (target === 'player') {
+    if (s.grace <= 0) s.health = Math.max(0, s.health - amount);
+    return;
+  }
+  const e = s.enemies.find((e) => e.id === target);
+  if (!e || e.state === 'dead') return;
+  e.health = Math.max(0, (e.health ?? 100) - amount);
+  if (e.health === 0) {
+    e.state = 'dead';
+    e.target = null;
+    e.meter = 0;
+    e.moving = false;
+    e.shot = 0;
+  }
 }
 export function interact(s: State) {
   if (s.phase !== 'running') return;
@@ -250,9 +378,13 @@ export function distract(s: State, x: number, y: number) {
     if (
       e.cooldown <= 0 &&
       Math.hypot(x - e.x, y - e.y) < 8 &&
-      !['clash', 'recover'].includes(e.state)
-    )
+      !['clash', 'recover', 'dead'].includes(e.state)
+    ) {
       e.state = 'investigate';
+      e.target = null;
+      e.committed = false;
+      e.meter = 0;
+    }
   }
   s.message = 'Noise beacon placed. Draw competing factions together.';
   return true;
@@ -270,6 +402,7 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
   s.time += dt;
   gateStep(s, dt);
   s.grace = Math.max(0, s.grace - dt);
+  s.moving = false;
   const length = Math.hypot(input.x, input.y);
   const run = input.sprint && s.stamina > 0;
   if (length) {
@@ -290,7 +423,13 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
     s.beacon.time -= dt;
     if (s.beacon.time <= 0) s.beacon = null;
   }
+  const shots: { from: Actor; target: 'player' | number }[] = [];
   for (const e of s.enemies) {
+    e.health ??= 100;
+    e.fireCooldown = Math.max(0, (e.fireCooldown ?? 0) - dt);
+    e.shot = Math.max(0, (e.shot ?? 0) - dt);
+    e.moving = false;
+    if (e.state === 'dead') continue;
     e.cooldown = Math.max(0, e.cooldown - dt);
     if (e.state === 'clash' || e.state === 'recover') {
       e.timer -= dt;
@@ -299,61 +438,122 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
           e.state = 'recover';
           e.timer = 2;
         } else {
-          e.state = 'patrol';
+          clearTarget(e);
           e.cooldown = 10;
-          e.meter = 0;
         }
       }
       continue;
     }
-    const dist = Math.hypot(s.x - e.x, s.y - e.y),
-      dx = s.x - e.x,
-      dy = s.y - e.y;
-    const facing = e.way >= 0 ? 0 : Math.PI;
-    const angle = Math.atan2(dy, dx);
-    const cone =
-      Math.abs(Math.atan2(Math.sin(angle - facing), Math.cos(angle - facing))) <=
-      (35 * Math.PI) / 180;
-    const visible = dist < s.config.vision && cone && sight(s, e.x, e.y, s.x, s.y);
-    e.meter = Math.max(
-      0,
-      Math.min(1, e.meter + dt * (visible ? 1 / s.config.detection : -1 / 1.2)),
-    );
-    if (e.meter >= 1) e.state = 'chase';
-    if (e.state === 'chase' && e.meter <= 0) e.state = 'patrol';
-    let target: { x: number; y: number } | null = null,
+    if (e.state === 'investigate' && !s.beacon) clearTarget(e);
+    let target = targetActor(s, e.target);
+    if (e.target != null && !target) clearTarget(e);
+    // A beacon deliberately competes with perception until investigators reach it.
+    if (e.state !== 'investigate') {
+      if (!target) {
+        const candidates: ['player' | number, { x: number; y: number }][] = [
+          ['player', s],
+          ...s.enemies
+            .filter(
+              (other) =>
+                other.id !== e.id && other.state !== 'dead' && hostile(e.faction, other.faction),
+            )
+            .map((other) => [other.id, other] as [number, Actor]),
+        ];
+        const visible = candidates
+          .filter(([, a]) => sees(s, e, a))
+          .sort(
+            (a, b) =>
+              Math.hypot(a[1].x - e.x, a[1].y - e.y) - Math.hypot(b[1].x - e.x, b[1].y - e.y) ||
+              String(a[0]).localeCompare(String(b[0])),
+          );
+        if (visible.length) {
+          e.target = visible[0][0];
+          target = visible[0][1];
+        }
+      }
+      const visible = target !== null && sees(s, e, target);
+      e.meter = Math.max(
+        0,
+        Math.min(1, e.meter + dt * (visible ? 1 / s.config.detection : -1 / 1.2)),
+      );
+      if (visible && target) e.lastSeen = { x: target.x, y: target.y };
+      if (e.meter >= 1 - 1e-9) e.committed = true;
+      if (e.meter <= 0) {
+        clearTarget(e);
+        target = null;
+      } else e.state = e.committed ? 'chase' : 'alert';
+      if (e.committed && visible && target && Math.hypot(target.x - e.x, target.y - e.y) <= 3.6) {
+        e.state = 'combat';
+        e.heading = Math.atan2(target.y - e.y, target.x - e.x);
+        if ((e.fireCooldown ?? 0) <= 0 && e.target != null) {
+          shots.push({ from: e, target: e.target });
+          e.fireCooldown = 0.8;
+          e.shot = 0.12;
+        }
+        continue;
+      }
+    }
+    let destination: { x: number; y: number } | null = null,
       speed = 2.2;
     if (e.state === 'investigate' && s.beacon) {
-      target = s.beacon;
+      destination = s.beacon;
       speed = 2.6;
-      if (Math.hypot(e.x - target.x, e.y - target.y) < 0.6 && e.arrival < 0) e.arrival = s.time;
-    } else if (e.state === 'chase') {
-      target = { x: s.x, y: s.y };
-      speed = 3.2;
+      if (Math.hypot(e.x - destination.x, e.y - destination.y) < 0.6 && e.arrival < 0)
+        e.arrival = s.time;
+    } else if (e.meter > 0 && e.lastSeen) {
+      destination = e.lastSeen;
+      speed = e.committed ? 3.2 : 2.2;
     } else {
-      if (e.state === 'investigate') e.state = 'patrol';
-      target = { x: e.originX + e.way * 2, y: e.originY };
-      if (Math.hypot(e.x - target.x, e.y - target.y) < 0.3) e.way *= -1;
-    }
-    if (target) {
-      if (e.state === 'patrol' && solid(s, target.x, target.y)) {
+      destination = { x: e.originX + e.way * 2, y: e.originY };
+      if (
+        Math.hypot(e.x - destination.x, e.y - destination.y) < 0.3 ||
+        solid(s, destination.x, destination.y)
+      ) {
         e.way *= -1;
-        target = { x: e.originX + e.way * 2, y: e.originY };
+        destination = { x: e.originX + e.way * 2, y: e.originY };
       }
+    }
+    if (e.meter > 0 && target && Math.hypot(target.x - e.x, target.y - e.y) < 1.4) {
+      e.heading = Math.atan2(target.y - e.y, target.x - e.x);
+      destination = null;
+    }
+    if (destination) {
       const next =
-        path(s, e, target)[0] ??
-        (!solid(s, target.x, target.y) && key(e.x, e.y) === key(target.x, target.y)
-          ? target
+        path(s, e, destination)[0] ??
+        (!solid(s, destination.x, destination.y) &&
+        key(e.x, e.y) === key(destination.x, destination.y)
+          ? destination
           : null);
       if (next) {
-        const d = Math.hypot(next.x - e.x, next.y - e.y);
-        if (d > 0.03)
+        const distance = Math.hypot(next.x - e.x, next.y - e.y);
+        if (distance > 0.03) {
+          e.heading = Math.atan2(next.y - e.y, next.x - e.x);
           move(
             s,
             e,
-            ((next.x - e.x) / d) * Math.min(d, speed * dt),
-            ((next.y - e.y) / d) * Math.min(d, speed * dt),
+            ((next.x - e.x) / distance) * Math.min(distance, speed * dt),
+            ((next.y - e.y) / distance) * Math.min(distance, speed * dt),
           );
+        }
+      }
+    }
+  }
+  // Resolve a simultaneous volley after acquisition so iteration order cannot prevent return fire.
+  for (const shot of shots) {
+    const target = targetActor(s, shot.target);
+    if (!target || !sight(s, shot.from.x, shot.from.y, target.x, target.y)) continue;
+    if (shot.target === 'player') damage(s, 'player', 20);
+    else {
+      const rival = s.enemies.find((e) => e.id === shot.target);
+      if (rival && hostile(shot.from.faction, rival.faction)) {
+        damage(s, rival.id, 25);
+        if (rival.state !== 'dead') {
+          rival.target = shot.from.id;
+          rival.committed = true;
+          rival.meter = 1;
+          rival.lastSeen = { x: shot.from.x, y: shot.from.y };
+          rival.heading = Math.atan2(shot.from.y - rival.y, shot.from.x - rival.x);
+        }
       }
     }
   }
@@ -367,19 +567,35 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
     for (let i = 0; i + 1 < arrived.length; i += 2) {
       const a = arrived[i],
         b = arrived[i + 1];
-      a.state = b.state = 'clash';
-      a.timer = b.timer = a.faction === b.faction ? 2 : s.config.story ? 8 : s.config.clash;
-      s.message =
-        a.faction === b.faction
-          ? 'The pursuers argue over whose turn it is.'
-          : 'Wrong department! Rival pursuers are occupied.';
+      if (hostile(a.faction, b.faction)) {
+        for (const [actor, target] of [
+          [a, b],
+          [b, a],
+        ]) {
+          actor.state = 'combat';
+          actor.target = target.id;
+          actor.committed = true;
+          actor.meter = 1;
+          actor.lastSeen = { x: target.x, y: target.y };
+          actor.heading = Math.atan2(target.y - actor.y, target.x - actor.x);
+          actor.fireCooldown = 0.2;
+        }
+        s.message = 'Rival factions turn on one another. Use the opening to reach safety.';
+      } else {
+        a.state = b.state = 'clash';
+        a.timer = b.timer = 2;
+        s.message = 'Allied pursuers argue over the checkpoint; they do not shoot each other.';
+      }
     }
   }
   if (
     s.grace <= 0 &&
-    s.enemies.some(
-      (e) => !['clash', 'recover'].includes(e.state) && Math.hypot(e.x - s.x, e.y - s.y) < 0.55,
-    )
+    (s.health <= 0 ||
+      s.enemies.some(
+        (e) =>
+          !['clash', 'recover', 'dead', 'combat'].includes(e.state) &&
+          Math.hypot(e.x - s.x, e.y - s.y) < 0.55,
+      ))
   ) {
     s.phase = 'checkpoint';
     s.checkpointTime = 0.5;
@@ -425,7 +641,11 @@ export function gateStep(s: State, dt: number) {
     g.nextAt = s.time + 18;
     return;
   }
-  const occupied = [s, ...s.enemies].some((a) => key(a.x, a.y) === key(g.x, g.y));
+  const occupied = [s, ...s.enemies.filter((e) => e.state !== 'dead')].some((a) => {
+    const nx = Math.max(g.x, Math.min(a.x, g.x + 1)),
+      ny = Math.max(g.y, Math.min(a.y, g.y + 1));
+    return Math.hypot(a.x - nx, a.y - ny) < 0.22;
+  });
   if (occupied) {
     g.remaining = 0.5;
     return;
