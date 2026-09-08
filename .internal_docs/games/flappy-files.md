@@ -115,3 +115,77 @@ Parallel work after contracts land: one model/input implementer, one art/cast re
 ## Decisions to revisit with the first playable build
 
 Default to Flappy Files, story plus endless, elephant-headed named obstacles and partial obstruction. User review is useful for choosing contact sheets, deciding how far the opaque hands should cover the scene, approving final comedy lines, and selecting the researched cast breadth. None blocks placeholder implementation. Finalize this planning/specification standard before finalizing the other game plans; implement all five after the common foundation and all game plans are ready; update accepted tuning and content decisions here rather than leaving contradictory instructions in scattered tasks.
+
+## Implementation baseline v1 — resolved defaults
+
+This section resolves earlier proposals where an implementer needs a single initial value. Defaults are implementation choices for a reviewable build, not user approval of optional art. Plan completeness does not require finished sprites. Follow the [game planning standard](../specs/game-planning-standard.md). **Execution gate:** do not implement game code until all five game plans are complete and the common foundation has been verified; shared foundation work and planning research can proceed before that gate.
+
+### Inputs, scoring and timing
+
+Escape toggles pause/resume while the game owns focus; it never directly exits the route. The paused menu has a keyboard-accessible Exit button, and Tab can move focus to surrounding navigation. P is an alternate pause key. Restart during running/paused opens a confirmation menu and freezes simulation; title/results R starts a fresh seed without confirmation. Touch Burger never triggers Flap.
+
+Story is exactly 60 column pairs, with a delivery after pairs 10, 20, 30, 40, 50 and 60. Passing a pair increases `clearances` once. Passing the next reading stand automatically increases `deliveries` once; it does not require aiming or inventory. Final score is `{deliveries, clearances}` displayed as “6 deliveries · 60 cleared”, not an invented composite score. A chapter ends after its second delivery, with a frozen intermission and Continue button; victory follows delivery six. Endless mode is available from title from the beginning, with a delivery every ten pairs and no chapter pauses. Story and endless keep separate bests. No chapter checkpoint persistence in v1; practice picker remains a development tool. Loss preserves only already completed deliveries.
+
+All event durations below are active simulation time. Entry takes 0.5s following a 0.8s telegraph. At entry completion set `obscuringRemaining=7`. Exactly when that timer reaches zero, hands become non-obstructing; a 0.25s decorative exit may follow. Burger dismissal removes obstructing hands in the same model step as H, regardless of whether the optional ≤0.2s projectile animation has finished. H is accepted during entering/obscuring, not telegraph/cooldown. Inventory is unchanged for other event states. Event next-trigger cooldown is sampled once on exit completion from 18–26s; cooldown progresses only while running and only one event may exist. First trigger occurs on the first step with eight clearances and at least one prior burger spawn opportunity; the player need not have successfully collected it. Successive entrances strictly alternate left/right, starting left. Chapter transition cancels an active event, retains inventory and schedules a fresh cooldown on Continue. A missed pickup scrolls away normally.
+
+Initial art selection for implementation: asset option A in each row, with original independently authored pixel placeholders. Literal McDonald's branding remains an asset research choice; initial burger uses a sesame bun and red wrapper without imported logos. Preserve a manifest slot for a researched branded variant. Initial event coverage is 40% opaque with the eagle flight corridor visible; the Full Distraction preset is 70%, also retaining the HUD. These are unapproved tuning defaults to review, not a change to the requested seven-second gag. Layers never intercept pointer input.
+
+### Exact run and event state contract
+
+| Run state | Allowed transitions | Required behavior |
+|---|---|---|
+| loading | title, load-error | No simulation/input action consumption; shell shows retry on asset failure |
+| title | running, destroyed | First Flap begins and applies one impulse in that step; seed initialized once |
+| running | paused, falling, chapter-result, won, destroyed | Physics/events advance; collision checked before clearance and delivery |
+| falling | lost, paused, destroyed | Only fall/landing progresses; Trump overlay is already cleared; no pickups or scoring |
+| paused | remembered prior phase, title on confirmed reset, destroyed | All simulation clocks frozen; settings/menu remain usable |
+| chapter-result | running via Continue, title via reset, destroyed | World/event clocks frozen, inventory retained; next chapter begins with a safe approach |
+| lost / won | title via reset, destroyed | Result stable; score saved once; no world/event updates |
+| load-error | loading via Retry, destroyed | Error text and exit usable; no orphaned partially created listeners |
+| destroyed | none | No listeners, active sounds, timers or RAF work owned by the instance |
+
+Shell mapping: falling remains `running` until landing; chapter-result maps to `paused` with reason `chapter`; won/lost use the common terminal states. Pause preserves both run phase and event state; resume restores them. Direct reset produces title, clears all transient entities and reconstructs RNG from the provided seed. Start after reset is explicit. An accessibility setting change never advances simulation.
+
+Event states: `idle` waits for initial eligibility; `telegraph` waits 0.8s; `entering` waits 0.5s or accepts H; `obscuring` waits 7s or accepts H; `exiting` has zero blocking opacity and waits 0.25s; `cooldown` waits its sampled duration. A boolean exit cause (`burger`/`timeout`) selects presentation only. This supersedes the earlier combined dismissed/exiting shorthand. Death, chapter result and destroy cancel the event immediately without granting or consuming burgers.
+
+### Typed tuning schema and development behavior
+
+Expose only validated fields through `inspect/configure`, using the shared developer panel. Units are logical 512×448 world pixels and seconds. Store selected mode separately from tunings. Seed is an unsigned 32-bit integer. Invalid configuration leaves prior configuration intact and throws a readable validation error for the host panel to catch; `configure` retains the shared void return type.
+
+| Field | Default | Valid bounds | Application |
+|---|---:|---|---|
+| `physics.gravity` | 1280 | 600–1800 | Restart required |
+| `physics.flapVelocity` | -392 | -600 to -200 | Restart required |
+| `physics.terminalVelocity` | 536 | 300–800 | Restart required |
+| `columns.width` | 48 | 32–64 | Restart required |
+| `columns.spacing` | 240 | 200–320 | Restart required |
+| `columns.gapStart` / `gapMin` | 164 / 144 | 128–224; min ≤ start | Restart required |
+| `columns.maxCenterDelta` | 64 | 0–96; reachability guard still applies | Restart required |
+| `scroll.start` / `max` | 110 / 160 | 70–220; start ≤ max | Restart required |
+| `difficulty.capClearances` | 40 | 1–100 | Restart required |
+| `burger.capacity` | 3 | 1–5 | Restart required |
+| `burger.firstPair` | 3 | 1–4 | Restart required |
+| `burger.intervalMin` / `intervalMax` | 4 / 6 | 2–10; min ≤ max | Restart required |
+| `distraction.firstClearance` | 8 | 5–20 | Restart required |
+| `distraction.cooldownMin` / `cooldownMax` | 18 / 26 | 10–40; min ≤ max | Restart required |
+| `distraction.telegraphSeconds` / `entrySeconds` | 0.8 / 0.5 | Fixed v1 constants | Read-only |
+| `distraction.obscureSeconds` | 7 | Fixed user requirement | Read-only |
+| `distraction.exitSeconds` | 0.25 | Fixed v1 constant | Read-only |
+| `presentation.coverage` | 0.4 | 0.2–0.7 | Live; safe corridor/HUD constraints enforced |
+| `presentation.assetVariant` | A | Known manifest variants | Live once preloaded; old variant until ready |
+| `presentation.showColliders` | false | Boolean, development only | Live |
+| `assist.enabled` | false | Boolean | Restart required; separate score bucket |
+| `audio.volume` / `audio.muted` | Shared defaults | Shared service schema | Live |
+| `presentation.reducedMotion` | OS/shared preference | Boolean | Live |
+
+Assist applies gap +24px and scroll ×0.8 with maximum coverage 0.2. Geometry invariants are validated after assist transforms. Any change affecting simulation queues a visible “Restart to apply” action; it must not silently modify a current run. Applying restarts at title with the displayed seed. Pure presentation changes apply immediately; switching asset variants preserves hitboxes. Tunings persist only in development preferences, and exported JSON carries schema version and game ID. Production uses shipped config plus player accessibility settings; do not expose arbitrary difficulty sliders as ordinary controls.
+
+### Blocking research versus deferred production tasks
+
+No unresolved gameplay choice blocks the planning milestone. Before game implementation, all-five-plan and verified-foundation gates remain blocking. At FF-01 archive the inspected source date/hash, screenshots and mechanics inventory; verify source claims before copying constants or code. At FF-02 obtain cast office/reference sources and store verification date; use names without office labels until confirmed. These research tasks can run while the foundation is built. Default starter identities are Trump and JD Vance plus verified current GOP leadership; optional roster breadth must not block physics work after the gate.
+
+Before redistributing any imported original asset/code, record provenance and applicable copyright status; otherwise use independently created placeholders. Before presenting a named person as an Epstein collaborator, complete the separate evidence review described above; without it omit that classification and optional character. Art contacts, extra portraits, literal burger branding, finished music and final gag copy are deferred production selections, not prerequisites for model/spec completeness. Asset acceptance requires readable eagle/obstacle silhouettes, distinguishable entrances, consistent anchors and supplied frame metadata, regardless of whether the user later picks another art variant.
+
+Additional acceptance fixtures: saved deterministic seed with a pickup before first event; seeded left then right events; H during entry; H exactly on the timeout step (define input processing first, so one burger consumed and exit cause burger); collision and clearance on the same step (collision wins, no clearance); death during obstruction; pause during falling and obstruction; chapter completion while event active; double reset/destroy idempotency; asset load failure then retry; assist scores isolated from standard. Configure tests validate every bounds/cross-field rule and that restart-only edits cannot affect the active run. Rendering/browser acceptance demonstrates each fixture through developer controls without shipping test globals to production.
+
+Contract alignment: [src/shared/contracts.ts](../../src/shared/contracts.ts) is the implemented API authority. Expose dotted tuning keys as a flat `Record<string, TuningValue>` patch; use `TuningField.restart=true` for restart-required fields and `false` for live fields. Fixed/read-only timing constants are shown through `inspect()` rather than editable tuning fields, because `TuningField` has no read-only flag. Loading/load-error belong to the host factory flow, not `GameState`; internal falling/chapter states map as above. `inspect()` returns the shared state/time/fps fields plus game-specific counters/event/debug metadata. Store game-specific settings/configuration through namespaced `storage` keys; do not assume the services contract supplies a direct settings property. Audio volume/mute use the provided audio methods.

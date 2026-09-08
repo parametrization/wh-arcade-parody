@@ -1,6 +1,6 @@
 # Delivery plan and status
 
-Updated 2026-09-07. Initial drafts exist; planning completion has not yet been established against the Flappy standard. Implementation has not started.
+Updated 2026-09-07. P-01..03 complete. INF-01..05 implemented and FOUNDATION-READY verified on 2026-09-08. Game implementation is now unblocked.
 
 ## Evidence and completed work
 
@@ -9,7 +9,7 @@ Updated 2026-09-07. Initial drafts exist; planning completion has not yet been e
 - Five separate game designs include core loop, narrative, controls, tuning proposals, asset variants, implementation tasks and acceptance criteria.
 - Shared runtime/folder/HMR/server plan and provenance/editorial contract written.
 - Repository initialized on main, .gitignore and README created. Public publication status is reported by the actual Git remote, not assumed here.
-- No playable game, generated art, npm dependency installation, localhost server, or completed gameplay test is claimed.
+- Foundation is running at localhost:8643; 13 runtime and 14 browser checks pass. Game implementation begins after this checkpoint; game-specific tests and final artwork remain outstanding.
 
 ## Parallel teams and delivery order
 
@@ -42,7 +42,7 @@ Four slots limit simultaneous tasks, not game eligibility. During foundation wor
 
 | Group | State | Next eligible action |
 |---|---|---|
-| INF-01..05 | Planned | Finish common spec review, then implement and verify foundation alongside game planning |
+| INF-01..05 | Verified | Foundation complete; see foundation-verification.md |
 | INF-06..08 | Planned | Game integration/release after P-03 and FOUNDATION-READY |
 | ART-01..06 | Planned; initial source URLs recorded | Inventory sprite/font/audio rights, produce first Flappy concept sheet |
 | FF-01..08 | Planned; inline source inspected | Browser play observations/cast records, then model only after P-03 and FOUNDATION-READY |
@@ -58,3 +58,7 @@ No package is blocked on absent system software. Install Vite/TypeScript/test to
 Initial review checked Flappy/common lifecycle compatibility and local documentation links. Clarified that obstruction ceases at exactly seven seconds (a decorative exit may follow) and Escape pauses while an explicit Exit control leaves the game. Asset variants are written briefs; actual graphics remain the next art deliverable.
 
 User clarification (2026-09-07): common planning/specification runs alongside game planning. Complete common implementation before starting games. Flappy planning comes first within the game-planning track; finalize the other four from that standard. The game-start gate requires all five plans/specs plus the verified common foundation. The shared tuning panel remains accepted.
+
+## Execution checkpoint — 2026-09-08
+
+All five plans meet game-planning-standard.md. Shared foundation passes the recorded checks in specs/foundation-verification.md. Root clears both P-03 and FOUNDATION-READY. Next work: concurrent game implementations on the established contracts; integration owns registry/site/workbench.

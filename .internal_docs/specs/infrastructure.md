@@ -1,6 +1,6 @@
 # Shared infrastructure and site specification
 
-Status: proposed implementation contract, 2026-09-07. Owner: integration team.
+Status: INF-01..05 implemented and verified, 2026-09-08. Owner: integration team.
 
 ## Observed reference
 
@@ -88,4 +88,4 @@ Browser checks use installed Chrome initially via Playwright `channel: chrome`; 
 
 All performance numbers and tunings are starting targets, not measurements. Aim for 60fps on desktop and stable 30fps on a midrange phone; establish a device baseline before claiming results. Keyboard access to menus and touch equivalents are mandatory. Canvas action games need textual instructions/status and assist modes; do not promise equivalent screen-reader action gameplay without testing.
 
-The current planning milestone does not install dependencies or create a running app. Machine checks: Node 24.14.0, npm 11.9.0, Git 2.43.0, gh 2.45.0, Chrome 149.0.7827.200. Playwright successfully launched Chrome, clicked a JS button, loaded the arcade with HTTP 200, and captured it. Cached Playwright's default bundled browser was absent, so pinning project dependencies is required during implementation.
+The foundation is now installed and running; see foundation-verification.md for evidence. Machine checks: Node 24.14.0, npm 11.9.0, Git 2.43.0, gh 2.45.0, Chrome 149.0.7827.200. Playwright successfully launched Chrome, clicked a JS button, loaded the arcade with HTTP 200, and captured it. Cached Playwright's default bundled browser was absent, so pinning project dependencies is required during implementation.

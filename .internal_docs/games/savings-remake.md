@@ -2,7 +2,7 @@
 
 Status: proposed design and implementable specification; no gameplay implemented. Inspection: 2026-09-07. Slug: `trickle-down-tycoon`. Alternatives: **Public Savings Tycoon**, **Catch the Trickle**. Recommended subtitle: “Build the safety net. Catch more than promises.”
 
-Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
+Planning dependency: Flappy’s P-01 planning standard is complete; this plan has now been finalized against it. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
 
 ## Original evidence and interpretation
 
@@ -73,3 +73,49 @@ Shared libraries: game host contract, fixed-step clock, input and settings, canv
 ## Review decisions and scheduling
 
 Default to **Trump Trickle-Down Tycoon**, patchwork community net, positive resource upgrades, and three named cameos. Confirm whether subtitle and jokes should emphasize public services or household affordability. Keep the investment layer only if first playtest participants can explain each upgrade after one round; otherwise replace it with three automatic milestone unlocks. This game's simulation and asset briefs can be developed in parallel with Supply the People after common lifecycle work, with no dependency on Flappy implementation or playtest completion.
+
+## P-02 implementation baseline v1
+
+This baseline supersedes conflicting earlier proposal wording. Earlier alternatives remain historical design options, not simultaneous implementation requirements.
+
+Planning complete against [P-01](../specs/game-planning-standard.md). Route `/games/trickle-down-tycoon/`; title **Trump Trickle-Down Tycoon**. Implementation requires all-five-plan plus FOUNDATION-READY gate. V1 keeps five catching rounds and manual untimed investments; replacing investments after feedback remains a future revision, not an implementer choice. Include standard, assisted and untimed practice; no suspend save or endless mode. Art A independently authored placeholders are default, not an approved final selection. Services/public investment framing remains the chosen plot; exact captions are deferred.
+
+### Catching and resource rules
+
+Logical256×224 canvas. Net center starts x=128, y=190, width64, catch band y=184..196; clamp center to half-width..256−half-width. Movement speed180px/s, pointer drag clamps identically. Three lane centers x=48/128/208; targets spawn y=36, radius6 and fall at48px/s. Collision uses target circle against active net rectangle, inclusive edge touch, swept between prior/current target y so low render rate cannot skip catches. Base catch window0.4s followed by0.6s recovery; only one catch input is accepted while idle. Window can catch at most one object, earliest collision time then lowest ID, and closes immediately on catch before normal recovery. Space during recovery is ignored, not queued. Gold balloon capture replaces recovery with0.8s jam. Auto-catch opens window when a genuine target first intersects the available net band; does not teleport/reposition net and can still miss.
+
+Each35s round schedules16 targets at t=0,1.8,...27s, leaving8s flush time. Exactly four books, four kits, four keys, two flexible coins and two hollow balloons; seeded shuffle subject to no adjacent far-lane drops less than1.8s apart and at least1s preview at roofline. Preview starts at scheduled time; fall starts1s later, so latest target exits by32.75s. Increasing rounds keep speed/schedule constant initially; difficulty adds cameo events, avoiding hidden changes to budget feasibility. Scheduler checks net travel+recovery reachability for successive genuine targets under current width/scissors and defers/cancels event if it breaks that guarantee. Guarantees mean a feasible skilled schedule exists, not that arbitrary input succeeds.
+
+A genuine catch grants one matching unit (coin is flexible) and10 score. Good-catch streak resets on any missed genuine target or caught balloon; every3 successive good catches repairs1 integrity (max6), every5 grants1 Audit (max2), using separate modulo counters so both rewards can occur in a long streak. Missing balloon is harmless. Genuine target passing y>224+radius decrements integrity once. Audit Q with stock immediately freezes all target movement for2s and cancels active/warning interference; previews/spawn schedule continue but active target count is capped8 and queued spawns wait. Repeated Q refreshes2s and consumes another charge; input repeat ignored. At35s, finish active objects in a drain phase with no new spawn/events, then summarize; round timer never silently discards a genuine miss. Freeze therefore cannot force an end-of-round accounting error.
+
+Resource ledger starts all0; integrity6 and Audit0. Between rounds resources, integrity and Audit persist. Round retry restores exact round-start checkpoint including upgrades, score, resources, integrity, Audit and RNG; no collection farming. Each purchase costs3 of its matching resource plus1 flexible. Education each level adds0.08s to catch window (max0.56); care each level repairs2 integrity at each subsequent round start (cap6); homes each level adds15% of base net width64 (width73.6/83.2, not compounding). One purchase per investment screen, two levels per track; affordable purchase is optional, Continue always exists. Spend atomically; repeated click cannot double-purchase.
+
+Round5 still opens investment screen before final check. Final2:1 swap is optional and repeatable: choose any donor resource (including flexible), spend2 units for1 different target resource; cannot choose same donor/target. This addresses a shortage caused by uneven catches; it does not manufacture resources or guarantee recovery from every poor run. Victory requires all three tracks≥1 after round5. Otherwise show stalled-site lost outcome and Retry Final Round (restores its checkpoint) or New Campaign. Banked best score updates only at run result. Score=10 per genuine catch +100 per purchased level +5 per unspent unit at final result; final remainder bonus applies once. Practice has no integrity loss and separate results; no real currency claims.
+
+Cameos only rounds2–5. Round2 Trump at t=10; round3 Vance at10; round4 Johnson at10; round5 Trump8 then Johnson22. Each warns2s, active4s, exits0.25s, cooldown8s; no overlap includes warning/exit. Trump banner is transparent over all collision-relevant information; Vance swaps decorative wrappers only; Johnson width factor0.8 applies during active phase then restores exact upgrade width. Re-clamp net center on width change. Audit input precedes activation on a tie and cancels event. Events canceled on round end/failure/reset. No flash/strobe or actual input inversion.
+
+### Exact states and tunings
+
+Host owns loading/error. title → tutorial → round → draining → summary → invest → next round or won/lost. Round/draining map running; summary/invest map paused; tutorial maps title. Zero integrity in round/draining produces lost immediately after same-step catches/misses accounting (process catches first, then misses by ID, clamp once); a simultaneous repair can save the run. Pause resumes prior substate and freezes target/window/recovery/event/preview/drain timers. R confirms full campaign reset; lost Retry Round uses checkpoint without wiping earlier rounds. Escape toggles pause, explicit Exit leaves. Summary requires Continue, investment requires choice or Skip, preventing double transitions. Destroy/reset remove gestures, prompts and pending asset/audio work.
+
+Untimed practice supplies semantic Next Target, Select Lane and Catch buttons; Next Target previews the next scheduled object and holds it, Select Lane moves net instantly to chosen lane, Catch resolves that object with the same resource/balloon rules and advances simulation to its catch time. Investment remains identical. Manual keyboard/screen-reader check is required before claiming practice accessibility. Assisted mode defaults75% speed and optional auto-catch; scaling applies target/spawn/round clocks together, not only falls, preserving counts. Scores are separate by mode/speed/auto-catch.
+
+Use [contracts](../../src/shared/contracts.ts), flat scalar dotted `configure` keys and atomic validation that throws readable errors. Set `TuningField.restart` on mechanics, omit inspect-only fields from panel. `inspect` exposes state/time/fps, round phase, catch phase, integrity, ledger/upgrades, seed and event. No settings/roster service assumed: existing storage/assets plus local content references are sufficient. Editable art at `assets/source/trickle-down-tycoon/`; metadata in game assets; model tests local, browser journeys common.
+
+| Key | Default; bounds/units | Apply |
+|---|---|---|
+| `net.speed`, `net.baseWidth` | 180;120–260px/s /64;48–80px | Restart |
+| `catch.window`, `catch.recovery`, `catch.balloonJam` |0.4;0.25–0.6s /0.6;0.3–1s /0.8;0.5–1.2s | Restart |
+| `target.fallSpeed`, `target.radius` |48;36–64px/s /6;4–8px | Restart; schedule reachability must pass |
+| `integrity.max` |6;3–10 | Restart |
+| `audit.capacity`, `audit.freezeSeconds` |2;1–3 /2;1–3s | Restart |
+| `assist.speedMultiplier` |1;0.5/0.75/1 | Restart; separate score key |
+| `assist.autoCatch` |false;Boolean | Restart |
+| `mode` |standard;standard/assisted/practice | Restart |
+| `presentation.assetVariant`, `showCatchBand` |A;known variants /false;Boolean | Live; band dev only |
+
+Five rounds,35s spawn phase,16 targets/type mix,costs,upgrade percentages and cameo timing remain fixed inspect-only v1. Validate target travel leaves flush time and reachability under narrowest net; reject invalid developer patches rather than silently breaking guarantees. Live art changes preserve anchors/hitboxes. Volume/reduced motion use shared controls and existing audio methods.
+
+### Work evidence and deferred choices
+
+ST-01 remains research: capture source states/hash/date and portrait identities/provenance; original tuning uncertainty does not block this independently specified model after gate. ST-02..06 remain planned. Final artwork and joke review are ST-05 production choices, not blockers to placeholder engineering. Additional fixtures: swept/edge catch; two objects same step only one caught; Space repeat/recovery; balloon miss harmless; simultaneous repair/miss; fifth catch grants Audit once at cap; Q on cameo activation; end-round freeze drains every object; retry restores ledger/RNG; purchase atomicity; last investment/trade and victory check; sufficient perfect-play resources across fixture seeds; narrowest-net travel validity; five-round keyboard/touch journey and complete untimed semantic loop. No tests are claimed passing. All gameplay defaults are resolved; optional asset selection and final comedy remain deferred.

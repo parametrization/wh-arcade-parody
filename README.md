@@ -6,9 +6,9 @@ This is expressive political commentary, intended to exercise freedom of speech.
 
 ## Status
 
-Planning and source research. No playable remake or development server has been implemented yet. Start with [.internal_docs/README.md](.internal_docs/README.md).
+Shared foundation implemented and verified; all five game plans are complete. Game implementations are the next stage. Start with [.internal_docs/README.md](.internal_docs/README.md).
 
-The planned launch command is `./dev`, with no arguments, serving `http://localhost:8643` with hot reload and an interactive game tuning panel. Implementation will provide reproducible project-local dependencies rather than depend on a machine's cached Playwright installation.
+Run `./dev` with no arguments to serve `http://localhost:8643`. The development workbench at `/#/workbench` provides live tuning, deterministic seeds and hot reload. Dependencies are project-local and lockfile-pinned. See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and module contracts.
 
 ## Source and assets
 

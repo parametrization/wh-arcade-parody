@@ -2,7 +2,7 @@
 
 Status: proposed design and implementable backlog; no game or art is implemented. Source inspected 2026-09-07. Slug: `rio-rescue`. Original: **Rio Run**. Title alternatives: **Rio Runaround**, **Rio Run: Welcome Wagon**. Recommended title makes the reversal legible while retaining the original name.
 
-Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
+Planning dependency: Flappy’s P-01 planning standard is complete; this plan has now been finalized against it. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
 
 ## Verified original and research work
 
@@ -89,3 +89,46 @@ Recommended defaults: rescue-chain design, finite three-district campaign, A art
 The [shared infrastructure specification](../specs/infrastructure.md) is authoritative for `GameModule`, services, host-visible lifecycle, folder layout, HMR and dev UI. Map detailed game substates to host states: active play/delivery/checkpoint transitions are `running`, completion is `won`, and retry outcomes are `lost`; internal state machines remain local. Provide typed tuning fields to the shared development panel rather than building a separate panel.
 
 The [White House copyright policy](https://www.whitehouse.gov/copyright/), inspected 2026-09-07, says government-produced materials are not copyright protected and third-party content is CC BY 3.0 unless otherwise noted. Record authorship, exceptions, attribution and modifications per reused asset; do not equate government hosting with government authorship. All gameplay above is proposed except the explicitly identified original-source observations.
+
+## P-02 implementation baseline v1
+
+This baseline supersedes conflicting earlier proposal wording. Earlier alternatives remain historical design options, not simultaneous implementation requirements.
+
+Planning complete against [P-01](../specs/game-planning-standard.md). Route `/games/rio-rescue/`; title **Rio Rescue: No One Left Behind**; no art choice is user-approved. Implementation awaits all five completed plans plus FOUNDATION-READY. V1 includes three districts, standard/story presets and single-step practice, not endless. Two initial helpers are visually distinct volunteers, never counted as rescued people. Final stories/captions/portrait variants are deferred. Option A independently authored placeholders are the initial art baseline.
+
+### Board and deterministic rules
+
+The 24×18 board occupies 576×432 pixels with origin (32,32) in 640×520 canvas. Border cells are impassable except the authored dock. District maps are hand-authored JSON containing solid cells, dock, safe three-cell departure path, pickup zones and candidate hazard placements. No diagonal moves. Initial leader and two helpers occupy the departure path facing its open neighbor. A rescue pickup adds one follower immediately by retaining that tick's tail. Supply pickup does not grow. At most one rescue pickup and one supply exist. Normal pickup interval is every successful rescue; supply appears after rescue counts 2 and 5 in each district, if a legal cell exists.
+
+Dock opens when aboard rescued count ≥3, the final remaining district people are aboard, or free reachable cells fall below 25%; stays open until delivery. Remove the earlier optional key token from v1 (avoids another mechanic/art dependency). Aboard cap is six; at cap, do not spawn another rescue until delivery. Last group may be smaller than three. Reachability uses current solid/hazard reservations and occupied body cells, allowing the vacating tail; if no rescue cell is legal, force dock open. Map fixture must ensure a current dock route; if none exists and the convoy has caused the blockage, player can use normal retry/story rewind rather than teleport. A hazard scheduler must never be the cause of that isolation.
+
+Turn queue stores at most two perpendicular turns relative to last queued direction; duplicate directions and reversal rejected. Each tick processes one queued turn → intended next cell → classify pickup/growth → wall/body/hazard collision (tail exception only without growth) → movement/pickup → dock delivery → spawn next safe pickup. Collision precedes delivery/scoring. A pickup on the dock is forbidden. Delivery banks exactly aboard rescued count ×100 and carried supplies ×25, clears them, keeps two helper bodies and rebuilds on safe departure cells. A district completion adds 250 once, then waits for Continue. Final third district enters won. Resource counters never count visual helper bodies.
+
+Delivery freezes movement/hazards for a 0.6s presentation timer, then grants a **safe departure layout**, not collision immunity that would permit overlap. Earlier 600ms protection now means hazards cannot spawn on the authored departure path for 0.6s; ordinary wall/self collision still applies. Float is introduced in district two, tape in district three after pickup two (this supersedes earlier district-two tape wording). Float scheduler samples 18–24 active seconds after prior exit, warns 2.5s and lasts 4s. Banner tries every 16s, warns 2.5s and lasts 5s. Only one event including warning at a time. Revalidate occupancy and dock access at activation; invalid candidate cancels and retries after 3s. Float occupies an authored two-cell edge strip; banner occupies three authored cells. Neither touches any convoy cell, pickup or dock.
+
+Space Share consumes one charge (cap 2), sets slow effect for 3s and removes nearest active banner by Manhattan distance, tie ID; if none, slow alone still applies. No effect stacking: subsequent charge refreshes 3s. Input applies before tick and before event expiry. Slow multiplies interval by 1.5, preserving fractional tick accumulator. Supply pickup grants one charge and one carried supply; delivery empties carried supplies but retains charges. Group retry restores checkpoint at last delivery including banked score, charges, RNG and schedule; pending unbanked pickups disappear and replay from checkpoint.
+
+Story rewind restores a snapshot five completed ticks earlier including full RNG, entities, resources, queue, event and time state, then clears queued input. If fewer than five snapshots exist, use group checkpoint. Rewind grants 1s immunity from *new hazard activation* plus a new valid movement choice, not immunity to walls/body; reject an invalid next step and remain stationary for that step during grace. Auto-rewind cooldown is tracked on a separate monotonically increasing active-run clock not rewound with snapshot, preventing infinite recovery; a second collision inside 8s yields route-jam. Standard collision always route-jams. Retry is unlimited; district bank persists.
+
+### States, settings and API
+
+Host loading/error via factory. title → tutorial → ready → playing. Enter/direction starts ready without immediate unsolicited turn. playing → delivering → playing or district-complete; playing → route-jam (host lost), or story rewind → ready; district-complete → next ready; final completion → won. Tutorial/ready map title; delivering maps running but advances only presentation timer; district-complete maps paused. Pause remembers prior substate and freezes presentation too. Route-jam offers Retry Group or Reset Campaign. R confirms reset campaign; Escape pauses, explicit Exit leaves. Destroy/reset clear queues, gestures, effects and snapshots; visibility/focus pause all clocks.
+
+Use [contracts](../../src/shared/contracts.ts), common lifecycle and flat scalar tuning keys. `configure` validates atomically and throws on errors; restart fields queue restart, live fields preserve geometry. Read-only values appear only through `inspect`, which includes convoy length, aboard/banked counts, tick accumulator, current event, seed and mode. Editable source art `assets/source/rio-rescue/`; game assets directory holds descriptors. Audio settings use existing methods; namespaced settings storage supplies mode, no assumed `services.settings`.
+
+| Key | Default; bounds/units | Apply |
+|---|---|---|
+| `tick.startMs`, `tick.minMs`, `tick.pickupDecreaseMs` | 240; 180–500ms / 140; 100–240ms / 5; 0–10ms; min ≤ start | Restart |
+| `convoy.maxRescued`, `dock.openAt` | 6; 3–8 / 3; 1–6; openAt ≤ max | Restart |
+| `hazard.warningSeconds`, `floatSeconds`, `bannerSeconds` | 2.5; 2–5 / 4; 2–6 / 5; 2–8s | Restart |
+| `share.capacity`, `share.seconds` | 2; 1–3 / 3; 2–5s | Restart |
+| `assist.speedMultiplier` | 1; 0.6–1.5 actual movement speed (interval divided by it) | Restart; own score bucket |
+| `mode` | standard; story, standard, single-step | Restart |
+| `presentation.assetVariant`, `showReservations` | A; manifest variants / false; Boolean | Live; reservations dev only |
+| `presentation.leftHanded` | false; Boolean | Live |
+
+Board dimensions, 6/10/14 district goals, 5-tick rewind, 8s cooldown and delivery duration are fixed inspect-only v1. Speed reduction counts completed rescues in the current district, resets at district transition and clamps at min. Share applies after speed preset. Single-step practice advances one board tick and corresponding simulation/event time only on Next Step; actions/announced board summary remain DOM usable. No automatic timed loss in that mode.
+
+### Work acceptance and deferred content
+
+RR-00 research separates source dimensions/timings yet to verify from new constants; archive hashes/screenshots, portrait identity sources and asset provenance. RR-01..06 remain planned; RR-05 can use original placeholders and does not require user-selected final sheets to unlock engineering. No blocking gameplay choices remain. Additional fixtures: final one-person delivery opens dock; six-person cap; delivery banks once despite repeated overlap; source tail exception with/without growth; turns queued versus neck; conflicting hazard candidates cancel; no-spawn board terminates; Share at expiry boundary; rewind charge/RNG restoration but cooldown not rewound; group retry keeps banked people; practice tick exact; keyboard/touch three-district completion; route-jam and asset retry accessible. No tests are claimed to have passed.

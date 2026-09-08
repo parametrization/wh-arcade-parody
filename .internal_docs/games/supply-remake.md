@@ -2,7 +2,7 @@
 
 Status: proposed design and implementable specification; no gameplay implemented. Planning inspection: 2026-09-07. Slug: `supply-the-people`. Alternatives: **Supply Lie**, **Make Lunch Affordable Again**. Recommended title makes the positive objective immediately legible; subtitle: “Keep the meals moving. Send the markup packing.”
 
-Planning dependency: complete Flappy’s plan/spec first, then finalize the other four against that standard. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
+Planning dependency: Flappy’s P-01 planning standard is complete; this plan has now been finalized against it. All five plans/specs must be complete before any game implementation starts. The common foundation must also be implemented and verified (FOUNDATION-READY); see [P-01..03](../status.md).
 
 ## Original evidence and interpretation
 
@@ -73,3 +73,48 @@ Shared imports only from `src/shared/`: clock/lifecycle, pixel viewport, input f
 ## Decisions for the next review
 
 Recommended starting choices are title **Supply the People**, cooperative crew option A, three destinations, and the above three named cameos. Open: whether the food focus should be broadened to medication/books; degree of cartoon likeness versus portrait medallions; whether routing overcomplicates the arcade homage. Start the vertical slice with sleeves only and add routing only after a short playtest proves its readability. This plan can proceed independently of Flappy Files art, but implementation requires completion of all five plans/specs and the verified common foundation, not Flappy implementation.
+
+## P-02 implementation baseline v1
+
+This baseline supersedes conflicting earlier proposal wording. Earlier alternatives remain historical design options, not simultaneous implementation requirements.
+
+Planning complete against [P-01](../specs/game-planning-standard.md); route `/games/supply-the-people/`. All-five-plan plus FOUNDATION-READY gate applies before game code. Title **Supply the People**, three destinations and named cameos remain initial defaults. V1 includes the routing layer, three shifts, untimed practice and all three upgrades; endless and additional goods categories are deferred. The earlier suggestion to decide routing after playtest is a future scope review, not an unresolved implementation branch. Art option A uses independently authored placeholders; final contact sheets remain unapproved.
+
+### Belt, resource and event specification
+
+Logical 320×224 world has lanes y=72/120/168, spawn x=−24 and dispatch x=280. Crates are 24×24, visual effects decorative. Lane gate buttons live at right with DOM equivalents. Starting destinations are lane1 school, lane2 clinic, lane3 pantry; destination order of a crate is immutable. Gate cycle order school→clinic→pantry→school. Pointer selects a crate by visual bounds; ties use largest x then smallest ID. Keyboard Up/Down chooses lane, Left/Right walks stable x-sorted crate targets then gate; 1/2/3 focuses that lane's gate, Space cycles gate or strips selected sleeve. No food-discard action exists. Gate lock is L or a separate DOM Lock button on selected gate, lasts 4s, cooldown 6s, no resource cost; unlike Space it does not cycle. B rings bell; duplicate key repeats ignored for all discrete actions.
+
+Three shifts last 45 active seconds; spawns stop at 36s, leaving nine seconds to flush lanes before results. Speeds 40/48/56 px/s permit any spawn before 36s to dispatch before 45s; fastest transit ≤7.6s. Each shift schedules 18 fresh crates, exactly six per destination, at 2s intervals starting 0s, lanes round-robin with seeded destination permutation. Minimum same-lane spacing 48px; a delayed spawn retains its identity/order and enters next legal slot. Events cannot delay beyond 36s: cancel a freeze that would make the fresh schedule impossible. Seed randomizes arrival destinations and sleeve placement but not guaranteed counts. Six of 18 crates start sleeved; event-created sleeves replace plain overlays and never stack cost. Initial budget=100, cap=100; sleeve removal +5 score once, dispatch +10 once, missed sleeve −8 budget at dispatch even if misrouted, misroute −4 and resets combo. Correct unsleeved dispatch increments combo; combo is displayed, no undocumented multiplier. A balanced set consumes one unpaired correct delivery of each type, adds 20 score and +5 budget clamped to100.
+
+Recovery bin capacity=6; misroutes retain food as pending crates. Overflow goes to an offscreen depot with no extra budget penalty and re-enters next shift after bin items; food is never destroyed. At shift start recovery/depot crates re-enter at most one per 2s between fresh spawn times without exceeding spacing. Remaining recovered items can carry to later shift; after final shift show them as undelivered, not successful deliveries. A misrouted crate retains stripped status and unique ID; each budget penalty applies per dispatch attempt, each delivery score only on first successful delivery. Bell accrual counts correct deliveries across the campaign; every12 grants one up to cap2 and resets progress even at cap. Bell slows belt movement ×0.65 for4s and cancels telegraph or active interference; reactivation refreshes duration, no stacking. Spawn schedule stays on simulation time and respects spacing while slowed.
+
+At end shift: if budget zero earlier, lost immediately; retry restores shift-start snapshot including budget/upgrades/recovered queue/score/RNG (no farming). At45s stop simulation; any legal delayed items still on belts are put in recovery without extra loss. After shifts1/2 enter upgrade; choose one then Continue. Shift3 enters won if total correct deliveries≥36 and each destination≥8; otherwise lost with Retry Shift3. This is a skill requirement, not a promise every player wins. Authored spawn counts admit the required outcome without random scarcity. Fresh crates 54 total leave slack for mistakes; regression fixtures verify a perfect-routing input schedule achieves victory.
+
+Upgrades cost no currency and each can be chosen once: **Handling Window** adds a 2s exit holding pocket per lane for last-moment gate changes (world item waits at dispatch, occupying that lane's queue); **Recovery Capacity** increases bin6→12 (depot remains fallback); **Longer Bell** changes bell4→6s. Exit pocket dispatches when correct gate selected or its timer expires. At45s holding pockets resolve with current gate before victory check; transition timing cannot create an extra free pause. No upgrade is necessary for a mathematically winnable campaign.
+
+Cameos: shift1 Trump at t=8 and24; shift2 alternates Trump/Vance at t=8/24; shift3 Vance/Johnson at8/24. Event scheduler skips if prior interference/cooldown persists. Trump warns1.5s, then sleeves next3 unsleeved spawns; pending effect expires6s after warning. Vance warns selected gate2s then attempts one cycle and shows active portrait2s; lock at attempt or Bell blocks it. Johnson warns1.5s then freezes one lane spawner3s (existing crates keep moving); eight seconds cooldown after exit. Only one event active including warning; no event begins after30s. Gate/actor names remain fictional roles, not assertions of real actions.
+
+Update order: discrete actions/locks/Bell → event transitions → eligible spawns → belt movement → holding-pocket timers/dispatch by ID → accounting/budget-zero → shift completion. Simultaneous budget zero and last qualifying delivery is lost if budget remains zero after balanced-set restoration; restoration is part of dispatch accounting. Pausing, hidden tab and focus loss freeze every clock including locks/pockets.
+
+### State and tuning contract
+
+Factory owns loading/error/retry. title → tutorial → shift; shift ↔ paused; shift → upgrade → next shift; shift → won/lost. Tutorial maps title, upgrade maps paused, shift maps running. Lost offers retry-current-shift or full reset; reset returns title. Practice uses same rules but budget cannot end run, and Next Step advances0.1s including schedules/events; explicit Next Spawn advances until next spawn then pauses. This implements a complete semantic non-timed loop rather than claiming canvas accessibility. Escape pauses/resumes; Exit button leaves. Destroy is terminal/idempotent and clears DOM crate actions as well as Canvas resources.
+
+Use [contracts](../../src/shared/contracts.ts). `configure` flat scalar dotted keys validate atomically and throw readable errors; `TuningField.restart` marks simulation changes, read-only constants appear in `inspect`. Inspection includes shift/time, crates, gate/lock state, budget, counts, recovery, event and seed. Asset descriptors in game assets folder, editable art in `assets/source/supply-the-people/`; no assumed shared roster/settings service until explicitly provided, load cast through local content/manifest and settings through existing storage/UI.
+
+| Key | Default; bounds/units | Apply |
+|---|---|---|
+| `belt.speed1`, `speed2`, `speed3` | 40/48/56; 36–72px/s; nondecreasing | Restart |
+| `budget.start`, `missedSleeveCost`, `misrouteCost` | 100;50–200 / 8;0–20 / 4;0–12 | Restart; cap=start |
+| `recovery.capacity` | 6;3–12 crates | Restart |
+| `bell.capacity`, `duration`, `speedFactor` | 2;1–3 / 4;2–8s /0.65;0.4–0.9 | Restart |
+| `gate.lockSeconds`, `cooldownSeconds` | 4;2–6s /6;4–10s; cooldown≥lock | Restart |
+| `assist.speedMultiplier` | 1;0.5–1 | Restart; separate score category |
+| `mode` | standard; standard/practice | Restart |
+| `presentation.assetVariant`, `showDispatchZones` | A; known variants /false;Boolean | Live; zones dev only |
+
+Shift duration/counts/goals, destination symbols and event schedule are v1 fixed inspect-only. Lower assist speed scales spawn/event/shift clock by same factor as belt movement, retaining route timing; Next Step uses the selected simulation time increment without wall time. Reject speed/window combinations that cannot clear an unheld last spawn; holding pocket exception is resolved as specified. Live presentation never alters crate hitboxes.
+
+### Acceptance additions and remaining work
+
+SL-01 source play/research remains planned; archive source/date/hash, identity references and rights evidence. SL-02..06 retain dependencies; SL-05 final sprite selection can follow placeholder integration and is not a planning blocker. Add fixtures: stripping same crate twice; sleeve and misroute combined penalties; balance refund at zero boundary; bell capped accrual; Vance switch versus L on exact step; frozen spawner deadline; recovery overflow/depot and retry rollback; holding pocket at shift end; 54-crate perfect route satisfies36/8 thresholds; final failure retry does not duplicate prior score; practice completes all upgrades using semantic actions. Browser keyboard/touch focus, 44px controls, hidden-tab freeze, error/retry, HMR and 20 destroy/remount checks are planned. Final food art, jokes and optional expanded goods are deferred; no unresolved core mechanic remains.
