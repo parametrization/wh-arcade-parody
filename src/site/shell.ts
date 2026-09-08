@@ -62,14 +62,7 @@ export function createShell(root: HTMLElement) {
   );
 
   function renderHome() {
-    const thumbnails: Record<string, string> = {
-      'flappy-files': 'flappy-bill-card.png',
-      'against-the-wall': 'build-the-wall-card.png',
-      'rio-rescue': 'rio-run-card.png',
-      'supply-the-people': 'supply-line-card.png',
-      'trickle-down-tycoon': 'trump-savings-tycoon-card.png',
-    };
-    main.innerHTML = `<section class="house-arcade"><div class="house-arcade-inner"><div class="house-hero"><p class="house-eyebrow">NOW PLAYING</p><h1>THE PEOPLE'S HOUSE<br><strong>ARCADE</strong></h1><hr><p>Select Your Game</p></div><div class="house-game-grid">${games.map((game) => `<article class="house-game-card" data-testid="arcade-card"><a href="#/games/${game.id}" aria-label="Play ${game.title}"><h2>${game.title}</h2><div class="house-game-frame"><img src="/assets/reference/${thumbnails[game.id]}" alt="${game.originalTitle} — original arcade artwork" width="640" height="360"></div><div class="house-game-body"><p>${game.description}</p><span class="house-play">PLAY ›</span></div></a></article>`).join('')}<article class="house-game-card house-coming-soon" data-testid="coming-soon" aria-label="A new adventure awaits. Coming later."><h2>COMING SOON</h2><div class="house-mystery" aria-hidden="true">?</div><div class="house-game-body"><p>A new adventure awaits</p><span class="house-play">STAY TUNED</span></div></article></div><p class="house-attribution">Original arcade images. Remixed games. <a href="#/sources">Sources & credits</a>.<br>Independent satire. Not affiliated with or endorsed by the White House.</p></div></section>`;
+    main.innerHTML = `<section class="house-arcade"><div class="house-arcade-inner"><div class="house-hero"><p class="house-eyebrow">NOW PLAYING</p><h1>THE PEOPLE'S HOUSE<br><strong>ARCADE</strong></h1><hr><p>Select Your Game</p></div><div class="house-game-grid">${games.map((game) => `<article class="house-game-card" data-testid="arcade-card"><a href="#/games/${game.id}" aria-label="Play ${game.title}"><h2>${game.title}</h2><div class="house-game-frame"><img src="/assets/previews/${game.id}.png" alt="${game.title} — actual gameplay" width="640" height="360"></div><div class="house-game-body"><p>${game.description}</p><span class="house-play">PLAY ›</span></div></a></article>`).join('')}<article class="house-game-card house-coming-soon" data-testid="coming-soon" aria-label="A new adventure awaits. Coming later."><h2>COMING SOON</h2><div class="house-mystery" aria-hidden="true">?</div><div class="house-game-body"><p>A new adventure awaits</p><span class="house-play">STAY TUNED</span></div></article></div><p class="house-attribution">Screenshots from these playable remakes. <a href="#/sources">Sources & credits</a>.<br>Independent satire. Not affiliated with or endorsed by the White House.</p></div></section>`;
   }
   function renderGame(id: string) {
     const game = findGame(id);

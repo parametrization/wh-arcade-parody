@@ -4,7 +4,7 @@ Downloaded unchanged on 2026-09-08 from the URLs below. These are the original s
 
 ## Current use
 
-The homepage displays the five source thumbnails in its game-card grid and the building-only icon in the masthead. The card titles and descriptions identify the parody remakes; a nearby note distinguishes original arcade images from remixed games and links to Sources & credits. Gameplay artwork remains separately authored for this project. The full eagle/wordmark header image is available as a reference download but is not the displayed masthead.
+The homepage displays screenshots captured from the playable remakes in its game-card grid and the building-only reference icon in the masthead. The original game thumbnails are retained here for research and comparison. The full eagle/wordmark header image remains a reference download and is not the displayed masthead.
 
 ## Attribution and rights
 
