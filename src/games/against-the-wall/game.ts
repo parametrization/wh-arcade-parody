@@ -1,7 +1,7 @@
 import type { GameModule, GameInstance, GameState } from '../../shared/contracts';
 import { fitCanvas } from '../../shared/canvas';
 import * as M from './model';
-import { draw, unproject } from './render';
+import { drawScene as draw, unprojectScene as unproject } from './scene';
 import { tuning } from './config';
 export const createGame: GameModule['create'] = (host, services): GameInstance => {
   let config = Object.fromEntries(tuning.map((f) => [f.key, f.default])),
@@ -15,7 +15,7 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
     overlayKey = '',
     muted = host.dataset.muted !== 'false';
   const root = document.createElement('section');
-  root.innerHTML = `<style>.aw{font:14px system-ui;color:#f7e7bd;max-width:1440px;margin:auto}.aw-head{display:flex;flex-wrap:wrap;gap:16px;padding:14px;background:#24273e}.aw-stamina{display:flex;align-items:center;gap:8px}.aw-stamina progress{width:120px;accent-color:#8cf1d2}.aw-stage{position:relative}.aw-overlay{position:absolute;inset:15% 10%;background:#18213bf5;border:2px solid #8cf1d2;padding:20px;text-align:center;align-content:center}.aw-controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.aw button{min-width:48px;min-height:46px;padding:10px;background:#263951;color:#f6ecc7;border:1px solid #82bba9;font:inherit;touch-action:none}.aw-note{line-height:1.6}.aw-status{min-height:40px}</style><div class="aw-head"><strong>AGAINST THE WALL</strong><span data-hud></span><label class="aw-stamina">Sprint <progress data-stamina max="4" value="4" aria-label="Sprint time remaining"></progress> <span data-stamina-label>4.0s / 4s</span></label></div><div class="aw-stage"><canvas aria-label="Isometric fictional districts with cover, pursuers and an asylum intake office"></canvas><div class="aw-overlay"></div></div><div class="aw-controls"><button data-dir="up" aria-label="Move up">↑</button><button data-dir="left" aria-label="Move left">←</button><button data-dir="down" aria-label="Move down">↓</button><button data-dir="right" aria-label="Move right">→</button><button data-sprint>Sprint: off</button><button data-help>Help / Collect · E</button><button data-aim>Distraction · Space</button><button data-confirm>Confirm · Enter</button><button data-step>Step time</button><button data-sound>Sound · M</button></div><p class="aw-status" role="status" aria-live="polite"></p><p class="aw-note">WASD / arrows move on screen · Shift runs for up to 4 seconds; release to recharge · E helps nearby adults and collects supplies · Space aims a noise beacon, click a location within four tiles, Enter confirms. Draw hostile factions together: they can exchange fire while you escape. ICE and Border Patrol are allied; same-faction pursuers never shoot one another. Losing health returns Alex safely to the district checkpoint. Mint office marker is your destination. Fictional geography and political cartoon dialogue; reaching intake does not mean asylum approval.</p>`;
+  root.innerHTML = `<style>.aw{font:14px system-ui;color:#f7e7bd;max-width:1440px;margin:auto}.aw-head{display:flex;flex-wrap:wrap;gap:16px;padding:14px;background:#24273e}.aw-stamina{display:flex;align-items:center;gap:8px}.aw-stamina progress{width:120px;accent-color:#8cf1d2}.aw-stage{position:relative}.aw-overlay{position:absolute;inset:15% 10%;background:#18213bf5;border:2px solid #8cf1d2;padding:20px;text-align:center;align-content:center}.aw-controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.aw button{min-width:48px;min-height:46px;padding:10px;background:#263951;color:#f6ecc7;border:1px solid #82bba9;font:inherit;touch-action:none}.aw-note{line-height:1.6}.aw-status{min-height:40px}</style><div class="aw-head"><strong>AGAINST THE WALL</strong><span data-hud></span><label class="aw-stamina">Sprint <progress data-stamina max="4" value="4" aria-label="Sprint time remaining"></progress> <span data-stamina-label>4.0s / 4s</span></label></div><div class="aw-stage"><canvas aria-label="Perspective border districts with constructed crossings, pursuers and an Asylum Office"></canvas><div class="aw-overlay"></div></div><div class="aw-controls"><button data-dir="up" aria-label="Move up">↑</button><button data-dir="left" aria-label="Move left">←</button><button data-dir="down" aria-label="Move down">↓</button><button data-dir="right" aria-label="Move right">→</button><button data-sprint>Sprint: off</button><button data-breach>Build crossing · B</button><button data-help>Help / Collect · E</button><button data-aim>Distraction · Space</button><button data-confirm>Confirm · Enter</button><button data-step>Step time</button><button data-sound>Sound · M</button></div><div class="aw-construction"><label>Crossing construction <progress data-construction max="1" value="0" aria-label="Crossing construction progress"></progress></label><span data-crossing-info>Approach the barrier and press B.</span></div><p class="aw-status" role="status" aria-live="polite"></p><p class="aw-note">WASD / arrows move on screen · B builds/cancels a crossing; moving cancels construction · Shift runs for up to 4 seconds; release to recharge · E helps nearby adults and collects supplies · Space aims a noise beacon, click a location within four tiles, Enter confirms. Draw hostile factions together: they can exchange fire while you escape. ICE and Border Patrol are allied; same-faction pursuers never shoot one another. Losing health returns Alex safely to the district checkpoint. Mint office marker is your destination. Fictional geography and political cartoon dialogue; reaching intake does not mean asylum approval.</p>`;
   root.className = 'aw';
   host.append(root);
   const canvas = root.querySelector('canvas')!,
@@ -57,6 +57,22 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
     meter.setAttribute('aria-valuetext', `${(s.stamina / 25).toFixed(1)} seconds remaining`);
     root.querySelector('[data-stamina-label]')!.textContent =
       `${(s.stamina / 25).toFixed(1)}s / 4s${s.sprintLocked ? ' · release sprint' : ''}`;
+    const barrier = M.nearestBarrier(s);
+    const work = s.construction;
+    root.querySelector<HTMLProgressElement>('[data-construction]')!.value = work?.progress ?? 0;
+    const method = barrier
+      ? ({ wire: 'Cut wire', fence: 'Build ladder', concrete: 'Dig tunnel' } as const)[
+          barrier.material
+        ]
+      : '';
+    root.querySelector('[data-crossing-info]')!.textContent = work
+      ? `${method} · ${Math.round(work.progress * 100)}% · stay still`
+      : barrier
+        ? `${method}: ${M.barrierRules[barrier.material].seconds}s · ${barrier.material === 'fence' ? '20s ladder, slower crossing' : 'permanent crossing'}`
+        : 'Approach the barrier and press B. Asylum Office is beyond it.';
+    root.querySelector('[data-breach]')!.textContent = work
+      ? 'Cancel construction · B'
+      : 'Build crossing · B';
     if (s.message !== lastMessage) {
       lastMessage = s.message;
       status.textContent = s.message;
@@ -86,12 +102,12 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
   function tick(dt: number) {
     const i = input();
     if (aim) {
-      aim.x = Math.max(1, Math.min(30, aim.x + (i.x + i.y) * dt * 2));
-      aim.y = Math.max(1, Math.min(22, aim.y + (i.y - i.x) * dt * 2));
+      aim.x = Math.max(1, Math.min(30, aim.x + i.x * dt * 2));
+      aim.y = Math.max(1, Math.min(22, aim.y + i.y * dt * 2));
       return;
     }
-    if (config.mode === 'turn-assisted' && !i.x && !i.y) return;
-    M.step(s, dt, { x: i.x + i.y, y: i.y - i.x, sprint: i.sprint });
+    if (config.mode === 'turn-assisted' && !i.x && !i.y && !s.construction) return;
+    M.step(s, dt, { x: i.x, y: i.y, sprint: i.sprint });
     if (s.phase === 'won')
       services.storage.set('best', Math.max(services.storage.get('best', 0), s.score));
   }
@@ -186,6 +202,7 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
     sprint: ['ShiftLeft', 'ShiftRight'],
     help: ['KeyE'],
     aim: ['Space'],
+    breach: ['KeyB'],
     confirm: ['Enter'],
     pause: ['Escape', 'KeyP'],
     restart: ['KeyR'],
@@ -197,6 +214,10 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
       paint();
     }),
     services.input.on('aim', aimAction),
+    services.input.on('breach', () => {
+      if (!aim && s.phase === 'running') M.beginBreach(s);
+      paint();
+    }),
     services.input.on('confirm', confirm),
     services.input.on('pause', () => {
       if (aim) {
@@ -238,6 +259,13 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
       },
     ],
     ['[data-aim]', aimAction],
+    [
+      '[data-breach]',
+      () => {
+        if (!aim && s.phase === 'running') M.beginBreach(s);
+        paint();
+      },
+    ],
     ['[data-confirm]', confirm],
     ['[data-sound]', mute],
     [
@@ -304,6 +332,9 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
       enemies: s.enemies.map((e) => ({ ...e })),
       gate: { ...s.gate },
       aim,
+      construction: s.construction,
+      barriers: s.barriers.map((barrier) => ({ ...barrier })),
+      crossing: s.crossing,
       seed,
       config: { ...config },
       pendingConfig: { ...pending },

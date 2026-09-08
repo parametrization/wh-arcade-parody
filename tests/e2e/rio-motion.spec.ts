@@ -13,16 +13,12 @@ test('Rio renders movement between grid ticks and freezes it on pause', async ({
       for (let frame = 0; frame < 12; frame++) {
         await new Promise(requestAnimationFrame);
         const pixels = ctx.getImageData(32, 32, 576, 432).data;
-        let sum = 0,
-          count = 0;
-        for (let i = 0; i < pixels.length; i += 4) {
-          // Exact leader coat color, excluding pickups, shadows and background.
-          if (pixels[i] === 70 && pixels[i + 1] === 201 && pixels[i + 2] === 170) {
-            sum += (i / 4) % 576;
-            count++;
-          }
-        }
-        if (count) positions.push(Math.round(sum / count));
+        // The perspective camera follows the leader: track scene movement
+        // between ticks instead of expecting the leader to leave screen center.
+        let signature = 2166136261;
+        for (let i = 0; i < pixels.length; i += 64)
+          signature = Math.imul(signature ^ pixels[i], 16777619);
+        positions.push(signature);
       }
       return positions;
     });
@@ -32,4 +28,22 @@ test('Rio renders movement between grid ticks and freezes it on pause', async ({
   const before = await canvas.evaluate((node) => (node as HTMLCanvasElement).toDataURL());
   await page.waitForTimeout(150);
   expect(await canvas.evaluate((node) => (node as HTMLCanvasElement).toDataURL())).toBe(before);
+});
+
+test('Rio can wait for a camera sweep without ending the run', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-09-08T12:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-09-08T12:00:01Z'));
+  await page.goto('/games/rio-rescue/');
+  await page.getByTestId('game-start').click();
+  await page.getByTestId('game-surface').press('x');
+  const before = await page.locator('[data-board]').textContent();
+  await page.clock.runFor(900);
+  expect(await page.locator('[data-board]').textContent()).toBe(before);
+  await expect(page.getByTestId('game-surface')).toHaveAttribute('data-state', 'running');
+  await expect(
+    page.getByRole('button', { name: 'Continue moving · X', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('game-surface').press('x');
+  await page.clock.runFor(300);
+  await expect(page.locator('[data-board]')).toContainText('column 5, row 8');
 });

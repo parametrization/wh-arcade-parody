@@ -1,3 +1,5 @@
+import { createBarriers, barrierRules, type Barrier, type BarrierMaterial } from './barriers';
+export { barrierRules } from './barriers';
 import { wallEntry, VISION_HALF_ANGLE, DISTRACTION_RANGE } from './visibility';
 export type Faction = 'Cartel' | 'Paramilitary' | 'Border Patrol' | 'ICE';
 export type Phase = 'title' | 'running' | 'paused' | 'checkpoint' | 'district' | 'won';
@@ -6,6 +8,7 @@ export interface Actor {
   y: number;
   id: number;
   faction: Faction;
+  group?: string;
   meter: number;
   state: 'patrol' | 'alert' | 'chase' | 'investigate' | 'clash' | 'recover' | 'combat' | 'dead';
   health?: number;
@@ -41,6 +44,9 @@ export const defaults: Config = {
   story: true,
 };
 export interface State {
+  barriers: Barrier[];
+  construction: null | { x: number; y: number; progress: number };
+  crossing: null | { x: number; y: number; material: BarrierMaterial };
   phase: Phase;
   time: number;
   district: number;
@@ -80,6 +86,9 @@ export interface State {
 export const key = (x: number, y: number) => `${Math.floor(x)},${Math.floor(y)}`;
 export function create(seed = 1, config = { ...defaults }): State {
   const s: State = {
+    barriers: [],
+    construction: null,
+    crossing: null,
     phase: 'title',
     time: 0,
     district: 1,
@@ -128,6 +137,10 @@ export function loadDistrict(s: State) {
   s.beacon = null;
   s.localSupplies = 0;
   s.walls = new Set();
+  s.barriers = createBarriers();
+  s.construction = null;
+  s.crossing = null;
+  for (const b of s.barriers) s.walls.add(key(b.x, b.y));
   for (let x = 0; x < 32; x++) {
     s.walls.add(key(x, 0));
     s.walls.add(key(x, 23));
@@ -137,10 +150,10 @@ export function loadDistrict(s: State) {
     s.walls.add(key(31, y));
   }
   for (const [x, y, w, h] of [
-    [8, 4, 2, 11],
-    [15, 10, 2, 10],
-    [22, 4, 2, 10],
-    [3, 11, 3, 2],
+    [8, 4, 2, 5],
+    [15, 14, 2, 6],
+    [22, 4, 2, 4],
+    [6, 14, 2, 2],
   ] as number[][])
     for (let a = x; a < x + w; a++) for (let b = y; b < y + h; b++) s.walls.add(key(a, b));
   const extra =
@@ -153,7 +166,7 @@ export function loadDistrict(s: State) {
         ? [
             [4, 5, 3, 1],
             [18, 13, 2, 2],
-            [26, 10, 2, 2],
+            [26, 13, 2, 2],
           ]
         : [];
   for (const [x, y, w, h] of extra)
@@ -172,23 +185,26 @@ export function loadDistrict(s: State) {
     { x: 19.5, y: 16.5, type: 'supply', taken: false },
     { x: 26.5, y: 8.5, type: 'supply', taken: false },
   ];
-  const factions: Faction[] =
-    s.district === 1
-      ? ['Cartel', 'Cartel']
-      : s.district === 2
-        ? ['Paramilitary', 'Border Patrol', 'Cartel']
-        : ['ICE', 'Border Patrol', 'Paramilitary', 'Cartel'];
-  s.enemies = factions.map((f, i) => ({
+  const spawns: { faction: Faction; group?: string; x: number; y: number }[] = [
+    { faction: 'Cartel', group: 'Sinaloa', x: 6.5, y: 19.5 },
+    { faction: 'Cartel', group: 'CJNG', x: 12.5, y: 13.5 },
+    { faction: 'Cartel', group: 'Gulf', x: 25.5, y: 18.5 },
+    { faction: 'Paramilitary', x: 19.5, y: 15.5 },
+    { faction: 'Border Patrol', x: 12.5, y: 5.5 },
+    { faction: 'ICE', x: 26.5, y: 5.5 },
+  ];
+  s.enemies = spawns.map((spawn, i) => ({
     id: i,
-    x: 12.5 + i * 4,
-    y: 5.5 + i * 2,
-    faction: f,
+    x: spawn.x,
+    y: spawn.y,
+    faction: spawn.faction,
+    group: spawn.group,
     meter: 0,
     state: 'patrol',
     timer: 0,
     cooldown: 0,
-    originX: 12.5 + i * 4,
-    originY: 5.5 + i * 2,
+    originX: spawn.x,
+    originY: spawn.y,
     way: 1,
     arrival: -1,
     health: 100,
@@ -388,6 +404,8 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
   if (s.phase !== 'running') return;
   s.time += dt;
   gateStep(s, dt);
+  if (Math.hypot(input.x, input.y) > 0) cancelBreach(s);
+  barrierStep(s, dt);
   s.grace = Math.max(0, s.grace - dt);
   s.moving = false;
   const length = Math.hypot(input.x, input.y);
@@ -396,9 +414,14 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
   const sprintSeconds = run && length ? Math.min(dt, s.stamina / 25) : 0;
   if (length) {
     s.heading = Math.atan2(input.y, input.x);
-    const distance = s.config.run * sprintSeconds + s.config.walk * (dt - sprintSeconds);
+    const crossing = s.barriers.find((b) => b.open && key(s.x, s.y) === key(b.x, b.y));
+    const distance =
+      (s.config.run * sprintSeconds + s.config.walk * (dt - sprintSeconds)) *
+      (crossing ? barrierRules[crossing.material].speed : 1);
     move(s, s, (input.x / length) * distance, (input.y / length) * distance);
   }
+  const underfoot = s.barriers.find((b) => b.open && key(s.x, s.y) === key(b.x, b.y));
+  s.crossing = underfoot ? { x: underfoot.x, y: underfoot.y, material: underfoot.material } : null;
   s.sprinting = sprintSeconds > 0 && s.moving;
   if (s.sprinting) {
     s.stamina = Math.max(0, s.stamina - sprintSeconds * 25);
@@ -660,4 +683,76 @@ export function gateStep(s: State, dt: number) {
   g.phase = 'closed';
   g.remaining = 4;
   s.message = 'Gate closed briefly. Follow the open route around it.';
+}
+
+export function nearestBarrier(s: State): Barrier | null {
+  return (
+    s.barriers
+      .filter((b) => !b.open && Math.hypot(s.x - b.x - 0.5, s.y - b.y - 0.5) <= 1.6)
+      .sort(
+        (a, b) =>
+          Math.hypot(s.x - a.x - 0.5, s.y - a.y - 0.5) -
+          Math.hypot(s.x - b.x - 0.5, s.y - b.y - 0.5),
+      )[0] ?? null
+  );
+}
+export function cancelBreach(s: State) {
+  if (s.construction) {
+    const b = s.barriers.find((b) => b.x === s.construction!.x && b.y === s.construction!.y);
+    if (b && !b.open) b.progress = 0;
+  }
+  s.construction = null;
+}
+export function beginBreach(s: State) {
+  if (s.phase !== 'running') return false;
+  if (s.construction) {
+    cancelBreach(s);
+    return false;
+  }
+  const b = nearestBarrier(s);
+  if (!b) return false;
+  b.progress = 0;
+  s.construction = { x: b.x, y: b.y, progress: 0 };
+  s.message =
+    b.material === 'wire'
+      ? 'Cutting a gap in the wire. Stay still.'
+      : b.material === 'fence'
+        ? 'Building a ladder. Stay still.'
+        : 'Digging a tunnel. Stay still.';
+  return true;
+}
+function barrierStep(s: State, dt: number) {
+  for (const b of s.barriers) {
+    if (!b.open || barrierRules[b.material].lifetime === 0) continue;
+    b.remaining = Math.max(0, b.remaining - dt);
+    if (b.remaining > 0) continue;
+    const occupied = [s, ...s.enemies.filter((e) => e.state !== 'dead')].some((a) => {
+      const nx = Math.max(b.x, Math.min(a.x, b.x + 1)),
+        ny = Math.max(b.y, Math.min(a.y, b.y + 1));
+      return Math.hypot(a.x - nx, a.y - ny) < 0.22;
+    });
+    if (occupied) continue;
+    b.open = false;
+    b.progress = 0;
+    s.walls.add(key(b.x, b.y));
+  }
+  if (!s.construction) return;
+  const b = s.barriers.find((b) => b.x === s.construction!.x && b.y === s.construction!.y);
+  if (!b || b.open || Math.hypot(s.x - b.x - 0.5, s.y - b.y - 0.5) > 1.6) {
+    cancelBreach(s);
+    return;
+  }
+  b.progress = Math.min(1, b.progress + dt / barrierRules[b.material].seconds);
+  s.construction.progress = b.progress;
+  if (b.progress >= 1 - 1e-9) {
+    b.progress = 1;
+    b.open = true;
+    b.remaining = barrierRules[b.material].lifetime;
+    s.walls.delete(key(b.x, b.y));
+    s.construction = null;
+    s.message =
+      b.material === 'fence'
+        ? 'Ladder ready for twenty seconds. Cross before it closes.'
+        : 'Crossing open. Continue toward the Asylum Office.';
+  }
 }

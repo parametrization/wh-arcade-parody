@@ -1,3 +1,4 @@
+import { cameras, getTerrain, terrainBlocked, type CameraDefinition } from './terrain';
 import { defaults, type Config } from './config';
 export interface Cell {
   x: number;
@@ -12,6 +13,9 @@ export interface Hazard {
   remaining: number;
 }
 export interface Model {
+  cameraAlerts: number[];
+  cameraEnabled: boolean;
+  waiting: boolean;
   seed: number;
   rng: number;
   district: number;
@@ -60,10 +64,7 @@ const key = (c: Cell) => `${c.x},${c.y}`;
 export function walls(district: number): Cell[] {
   const cells: Cell[] = [];
   for (let y = 0; y < HEIGHT; y++)
-    for (let x = 0; x < WIDTH; x++)
-      if (x === 0 || y === 0 || x === WIDTH - 1 || y === HEIGHT - 1) cells.push({ x, y });
-  if (district >= 1) for (let y = 4; y <= 6; y++) cells.push({ x: 10, y });
-  if (district === 2) for (let x = 14; x <= 17; x++) cells.push({ x, y: 12 });
+    for (let x = 0; x < WIDTH; x++) if (terrainBlocked(district, x, y)) cells.push({ x, y });
   return cells;
 }
 function random(m: Model) {
@@ -75,7 +76,7 @@ function random(m: Model) {
 }
 function blocked(m: Model, c: Cell, reservations = true) {
   return (
-    walls(m.district).some((w) => equal(w, c)) ||
+    terrainBlocked(m.district, c.x, c.y) ||
     (m.hazard !== null &&
       (reservations || m.hazard.phase === 'active') &&
       m.hazard.cells.some((h) => equal(h, c)))
@@ -145,6 +146,9 @@ function checkpoint(m: Model) {
 }
 export function createModel(seed = 1, config = defaults()): Model {
   const m: Model = {
+    cameraAlerts: [0, 0, 0],
+    cameraEnabled: true,
+    waiting: false,
     seed: seed >>> 0,
     rng: seed >>> 0,
     district: 0,
@@ -285,7 +289,7 @@ function hazardSafe(m: Model, cells: Cell[]): boolean {
         m.body.some((b) => equal(b, c)) ||
         (m.pickup && equal(c, m.pickup)) ||
         (m.supply && equal(c, m.supply)) ||
-        walls(m.district).some((w) => equal(w, c)),
+        terrainBlocked(m.district, c.x, c.y),
     )
   )
     return false;
@@ -302,7 +306,7 @@ function schedule(m: Model) {
         { x: 12, y: 7 },
         { x: 12, y: 8 },
       ]
-    : Array.from({ length: 12 }, (_, i) => ({ x: 17 + (i % 6), y: 1 + Math.floor(i / 6) }));
+    : Array.from({ length: 6 }, (_, i) => ({ x: 17 + (i % 3), y: 1 + Math.floor(i / 3) }));
   if (hazardSafe(m, cells))
     m.hazard = {
       id: Math.floor(m.time * 1000),
@@ -328,7 +332,8 @@ export function interval(m: Model) {
     ) /
       1000 /
       Number(m.config['assist.speedMultiplier'])) *
-    (m.slow > 0 ? 1.5 : 1)
+    (m.slow > 0 ? 1.5 : 1) *
+    (getTerrain(m.district, m.body[0].x, m.body[0].y) === 'climb' ? 1.8 : 1)
   );
 }
 export function advance(m: Model, dt: number, step = false) {
@@ -389,6 +394,8 @@ export function advance(m: Model, dt: number, step = false) {
       }
     }
   } else schedule(m);
+  updateCameras(m, dt);
+  if (m.phase !== 'playing' || m.waiting) return;
   m.acc += dt;
   while (m.acc >= interval(m) && m.phase === 'playing') {
     m.acc -= interval(m);
@@ -412,4 +419,56 @@ export function nextDistrict(m: Model) {
   });
   spawn(m);
   checkpoint(m);
+}
+
+export interface CameraView extends CameraDefinition {
+  district: number;
+  alert: number;
+}
+export function getCameraViews(m: Model): CameraView[] {
+  if (!m.cameraEnabled) return [];
+  return cameras(m.district).map((camera) => ({
+    ...camera,
+    district: m.district,
+    heading: camera.heading + Math.sin((m.time * Math.PI * 2) / camera.period + camera.id) * 0.9,
+    alert: m.cameraAlerts[camera.id] ?? 0,
+  }));
+}
+export function cameraSees(camera: CameraView, cell: Cell) {
+  const dx = cell.x - camera.x,
+    dy = cell.y - camera.y;
+  const distance = Math.hypot(dx, dy);
+  const angle = Math.atan2(dy, dx) - camera.heading;
+  const wrapped = Math.atan2(Math.sin(angle), Math.cos(angle));
+  if (distance > camera.range || Math.abs(wrapped) > camera.halfAngle) return false;
+  // Sample at a quarter-cell spacing so narrow fence cells cannot be skipped.
+  const steps = Math.ceil(distance * 4);
+  for (let i = 1; i < steps; i++) {
+    const x = Math.round(camera.x + (dx * i) / steps);
+    const y = Math.round(camera.y + (dy * i) / steps);
+    if (x === camera.x && y === camera.y) continue;
+    const terrain = getTerrain(camera.district, x, y);
+    if (terrain === 'wall' || terrain === 'fence') return false;
+  }
+  return true;
+}
+export function setWaiting(m: Model, waiting: boolean) {
+  m.waiting = waiting;
+}
+function updateCameras(m: Model, dt: number) {
+  for (const camera of getCameraViews(m)) {
+    const visible = m.safe <= 0 && cameraSees(camera, m.body[0]);
+    m.cameraAlerts[camera.id] = Math.max(0, Math.min(1, camera.alert + (visible ? dt / 1.5 : -dt)));
+    if (m.cameraAlerts[camera.id] >= 1) {
+      collide(m);
+      m.cameraAlerts = [0, 0, 0];
+      m.safe = 1;
+      m.waiting = false;
+      m.message =
+        m.phase === 'jam'
+          ? 'Camera alert! Retry the group and use a different crossing.'
+          : 'Camera alert. The route rewound; wait for the scan to pass.';
+      return;
+    }
+  }
 }

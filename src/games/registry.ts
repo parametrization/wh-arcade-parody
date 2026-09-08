@@ -30,7 +30,7 @@ export const games: readonly ArcadeEntry[] = [
     genre: 'EVADE · OUTSMART · ARRIVE',
     description: 'A different side of the wall. A chance to build a future.',
     detail:
-      'An isometric journey from the perspective of people seeking asylum. Guide a family past fictional competing pursuers, create slapstick distractions and reach the asylum office together.',
+      'Find a route through a divided border landscape. Cut wire, build a ladder or dig under concrete, evade competing pursuers and reach the Asylum Office.',
     accent: '#ef89e8',
     icon: 'wall',
     status: 'in-development',
@@ -42,7 +42,7 @@ export const games: readonly ArcadeEntry[] = [
     genre: 'CONNECT · GUIDE · RESCUE',
     description: 'Make room in the welcome wagon. Nobody gets left behind.',
     detail:
-      'Build a growing rescue chain through a colorful grid, collect supplies and guide people to safety. Plan your path, avoid traffic jams and turn political spectacle into community action.',
+      'Guide a growing convoy over canyon bridges, across rivers and through climbable fence sections. Time your route around scanning cameras, share supplies and bring everyone to safety.',
     accent: '#d4ff76',
     icon: 'rio',
     status: 'in-development',

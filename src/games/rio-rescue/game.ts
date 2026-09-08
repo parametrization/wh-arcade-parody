@@ -1,5 +1,5 @@
 import { createMotion } from './motion';
-import { drawPerson, drawGround, drawObstacle, drawDock, drawSupply } from './render';
+import { drawScene } from './scene';
 import type { GameInstance, GameModule, GameState } from '../../shared/contracts';
 import { fitCanvas } from '../../shared/canvas';
 import { defaults, tuning, validateConfig } from './config';
@@ -12,7 +12,7 @@ import {
   queueTurn,
   retry,
   share,
-  walls,
+  setWaiting,
   type Direction,
 } from './model';
 export const game: GameModule = {
@@ -20,12 +20,13 @@ export const game: GameModule = {
     id: 'rio-rescue',
     title: 'Rio Rescue: No One Left Behind',
     description:
-      'Lead a growing convoy to the welcome center. Share supplies and outmaneuver political photo ops.',
+      'Guide a convoy across canyon bridges, rivers and climbable fences while avoiding scanning cameras.',
     controls: [
       'Arrows/WASD: steer',
       'Space: share',
       'Enter: start/resume · P/Escape: pause · R: reset run · M: mute',
       'Use the welcome center at the left edge to deliver',
+      'X: wait/resume while cameras sweep · marked fence sections climb automatically',
       'Practice: Next step',
     ],
     assetIds: [],
@@ -34,14 +35,14 @@ export const game: GameModule = {
   create(host, services) {
     const root = document.createElement('section');
     root.innerHTML =
-      '<p data-hud role="status" aria-live="polite"></p><canvas></canvas><p data-message></p><p data-board></p><div data-controls style="display:flex;flex-wrap:wrap;gap:8px"></div>';
+      '<p class="rio-route-help">Cross on bridges · Climb marked fence sections · X: wait for cameras · Space: share supplies</p><p data-hud role="status" aria-live="polite"></p><canvas></canvas><p data-message></p><p data-board></p><div data-controls style="display:flex;flex-wrap:wrap;gap:8px"></div>';
     host.append(root);
     const canvas = root.querySelector('canvas')!;
-    const { ctx } = fitCanvas(canvas, 640, 520);
+    const { ctx } = fitCanvas(canvas, 960, 640);
     canvas.style.touchAction = 'none';
     canvas.setAttribute(
       'aria-label',
-      'Rio rescue grid. Use directional buttons or arrow keys to guide the convoy.',
+      'Perspective canyon rescue route with bridges, river crossings, climbable fences and scanning cameras. Arrow keys steer; X waits.',
     );
     const hud = root.querySelector<HTMLElement>('[data-hud]')!,
       message = root.querySelector<HTMLElement>('[data-message]')!,
@@ -80,6 +81,10 @@ export const game: GameModule = {
       if (state === 'running' && share(model)) services.audio.tone(650);
       draw();
     });
+    const waitButton = button('Wait · X', () => {
+      if (state === 'running') setWaiting(model, !model.waiting);
+      draw();
+    });
     const next = button('Next step', () => {
       if (state === 'running') advance(model, 0, true);
       motion.reset(model);
@@ -98,111 +103,19 @@ export const game: GameModule = {
       state = 'title';
       draw();
     });
-    function person(x: number, y: number, i: number, leader = false, stride = 0) {
-      drawPerson(ctx, x, y, i, leader, stride);
-    }
     function draw() {
       if (destroyed) return;
-      ctx.fillStyle =
-        config['presentation.assetVariant'] === 'B'
-          ? '#342b30'
-          : config['presentation.assetVariant'] === 'C'
-            ? '#172d35'
-            : '#111a2e';
-      ctx.fillRect(0, 0, 640, 520);
-      // Raised diorama base below the unchanged gameplay grid.
-      ctx.fillStyle = '#080f2080';
-      ctx.fillRect(39, 42, 576, 432);
-      ctx.fillStyle = '#293c4d';
-      ctx.fillRect(32, 464, 576, 9);
-      ctx.fillStyle = '#62827c';
-      ctx.fillRect(32, 464, 576, 2);
-      for (let y = 0; y < 18; y++)
-        for (let x = 0; x < 24; x++) {
-          const px = 32 + x * 24,
-            py = 32 + y * 24;
-          drawGround(ctx, px, py, x, y);
-        }
-      for (const c of walls(model.district)) {
-        const px = 32 + c.x * 24,
-          py = 32 + c.y * 24;
-        const edge = c.x === 0 || c.y === 0 || c.x === 23 || c.y === 17;
-        drawObstacle(ctx, px, py, edge, c.y);
-      }
-      const dx = 32 + dock.x * 24,
-        dy = 32 + dock.y * 24;
-      drawDock(ctx, dx, dy, model.dockOpen);
-      if (model.pickup) {
-        person(32 + model.pickup.x * 24, 32 + model.pickup.y * 24, model.rescued + 3);
-        ctx.strokeStyle = '#d4ff76';
-        ctx.strokeRect(32 + model.pickup.x * 24, 32 + model.pickup.y * 24, 23, 23);
-      }
-      if (model.supply) {
-        const px = 32 + model.supply.x * 24,
-          py = 32 + model.supply.y * 24;
-        drawSupply(ctx, px, py);
-      }
-      if (model.hazard) {
-        for (const c of model.hazard.cells) {
-          ctx.fillStyle = model.hazard.phase === 'warning' ? '#957541' : '#b24666';
-          ctx.fillRect(32 + c.x * 24, 32 + c.y * 24, 23, 23);
-          ctx.fillStyle = '#fff0bd';
-          ctx.font = 'bold 18px monospace';
-          ctx.fillText(model.hazard.phase === 'warning' ? '!' : '×', 38 + c.x * 24, 51 + c.y * 24);
-        }
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px monospace';
-        ctx.fillText(
-          `${model.hazard.kind === 'float' ? 'DONALD TRUMP · PHOTO OP' : 'JD VANCE · RED TAPE'} ${model.hazard.remaining.toFixed(1)}s`,
-          32,
-          490,
-        );
-      }
-      if (model.hazard) {
-        const px = 574,
-          py = 475,
-          isTrump = model.hazard.kind === 'float';
-        ctx.fillStyle = isTrump ? '#ea9b56' : '#e2b797';
-        ctx.fillRect(px + 7, py, 18, 17);
-        ctx.fillStyle = isTrump ? '#ffd454' : '#684832';
-        ctx.fillRect(px + 4, py - 4, 24, 7);
-        if (!isTrump) {
-          ctx.fillStyle = '#684832';
-          ctx.fillRect(px + 7, py + 11, 18, 7);
-        }
-        ctx.fillStyle = '#3466a3';
-        ctx.fillRect(px + 2, py + 18, 28, 20);
-        ctx.fillStyle = '#f44963';
-        ctx.fillRect(px + 15, py + 18, 4, 18);
-        ctx.fillStyle = '#162339';
-        ctx.fillRect(px + 10, py + 7, 3, 3);
-        ctx.fillRect(px + 20, py + 7, 3, 3);
-      }
-      motion
-        .sample(model, host.dataset.reducedMotion === 'true')
-        .slice()
-        .reverse()
-        .forEach((c, j) =>
-          person(
-            32 + c.x * 24,
-            32 + c.y * 24,
-            model.body.length - 1 - j,
-            j === model.body.length - 1,
-            c.stride,
-          ),
-        );
-      ctx.fillStyle = '#d4ff76';
-      ctx.font = '12px monospace';
-      ctx.fillText('WELCOME CENTER ←     SPACE: SHARE     FICTIONAL SATIRE', 32, 22);
-      ctx.fillStyle = '#d8e8ec';
-      ctx.fillText(
-        `DISTRICT ${model.district + 1} / 3 · GROUP ${model.aboard} · SHARED CHARGES ${model.charges}`,
-        32,
-        470,
+      drawScene(
+        ctx,
+        model,
+        motion.sample(model, host.dataset.reducedMotion === 'true'),
+        host.dataset.reducedMotion === 'true',
       );
+      waitButton.textContent = model.waiting ? 'Continue moving · X' : 'Wait · X';
+      waitButton.setAttribute('aria-pressed', String(model.waiting));
       if (state !== 'running') {
         ctx.fillStyle = '#101725dd';
-        ctx.fillRect(80, 175, 480, 105);
+        ctx.fillRect(120, 225, 720, 160);
         ctx.textAlign = 'center';
         ctx.fillStyle = '#65f4ed';
         ctx.font = 'bold 22px monospace';
@@ -214,8 +127,8 @@ export const game: GameModule = {
               : state === 'paused'
                 ? 'PAUSED'
                 : 'RIO RESCUE',
-          320,
-          215,
+          480,
+          278,
         );
         ctx.font = '13px monospace';
         ctx.fillStyle = '#fff';
@@ -227,8 +140,8 @@ export const game: GameModule = {
               : model.phase === 'district-complete'
                 ? 'Continue district below.'
                 : 'Use the host controls to start or resume.',
-          320,
-          246,
+          480,
+          325,
         );
         ctx.textAlign = 'left';
       }
@@ -270,6 +183,7 @@ export const game: GameModule = {
       left: ['ArrowLeft', 'KeyA'],
       right: ['ArrowRight', 'KeyD'],
       share: ['Space'],
+      wait: ['KeyX'],
       pause: ['KeyP', 'Escape'],
       restart: ['KeyR'],
       mute: ['KeyM'],
@@ -280,6 +194,12 @@ export const game: GameModule = {
     unsub.push(
       services.input.on('share', () => {
         if (state === 'running') share(model);
+      }),
+    );
+    unsub.push(
+      services.input.on('wait', () => {
+        if (state === 'running') setWaiting(model, !model.waiting);
+        draw();
       }),
     );
     let muted = host.dataset.muted !== 'false';
@@ -385,6 +305,8 @@ export const game: GameModule = {
         progress: model.banked,
         goal: GOALS[model.district],
         convoyLength: model.body.length,
+        waiting: model.waiting,
+        cameraAlerts: [...model.cameraAlerts],
         aboard: model.aboard,
         seed,
         mode: config.mode,

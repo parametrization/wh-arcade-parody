@@ -9,6 +9,8 @@ import {
   next,
   interact,
   type Actor,
+  beginBreach,
+  solid,
 } from './model';
 const enemy = (id: number, faction: Actor['faction'], x = 12.5, y = 17.5): Actor => ({
   id,
@@ -25,11 +27,18 @@ const enemy = (id: number, faction: Actor['faction'], x = 12.5, y = 17.5): Actor
   arrival: -1,
 });
 describe('Against the Wall simulation', () => {
-  it('every authored district has a walk-only route to intake', () => {
+  it('every authored district requires and supports a constructed route to intake', () => {
     const s = create();
     for (let d = 1; d <= 3; d++) {
       s.district = d;
       loadDistrict(s);
+      expect(path(s, s, s.office)).toEqual([]);
+      s.phase = 'running';
+      s.enemies = [];
+      s.x = 3.5;
+      s.y = 11.5;
+      expect(beginBreach(s)).toBe(true);
+      step(s, 3);
       expect(path(s, s, s.office).length).toBeGreaterThan(0);
     }
   });
@@ -163,6 +172,10 @@ describe('authored districts and moving gate', () => {
     loadDistrict(s);
     s.phase = 'running';
     s.enemies = [];
+    s.x = 3.5;
+    s.y = 11.5;
+    expect(beginBreach(s)).toBe(true);
+    step(s, 3);
     s.gate.nextAt = 0;
     step(s, 1 / 60);
     expect(s.gate.phase).toBe('warning');
@@ -174,25 +187,36 @@ describe('authored districts and moving gate', () => {
     for (let i = 0; i < 240; i++) step(s, 1 / 60);
     expect(s.gate.phase).toBe('idle');
   });
-  it('walking controller reaches all three district offices without supplies or sprinting', () => {
+  it('walking and construction controller reaches all three offices without supplies or sprinting', () => {
     const s = create(4);
     s.phase = 'running';
     for (let district = 1; district <= 3; district++) {
-      const route = path(s, s, s.office);
-      for (const target of route) {
-        for (
-          let i = 0;
-          i < 60 && Math.hypot(s.x - target.x, s.y - target.y) > 0.08 && s.phase === 'running';
-          i++
-        ) {
-          const dx = target.x - s.x,
-            dy = target.y - s.y;
-          step(s, 1 / 60, { x: dx, y: dy, sprint: false });
+      const walk = (route: { x: number; y: number }[]) => {
+        expect(route.length).toBeGreaterThan(0);
+        for (const target of route) {
+          for (
+            let i = 0;
+            i < 120 && Math.hypot(s.x - target.x, s.y - target.y) > 0.08 && s.phase === 'running';
+            i++
+          ) {
+            step(s, 1 / 60, { x: target.x - s.x, y: target.y - s.y, sprint: false });
+          }
+          if (String(s.phase) === 'district' || String(s.phase) === 'won') break;
+          if (String(s.phase) === 'checkpoint')
+            throw Error(`Captured on authored route in district ${district}`);
         }
-        if (String(s.phase) === 'district' || String(s.phase) === 'won') break;
-        if (String(s.phase) === 'checkpoint')
-          throw Error(`Captured on authored route in district${district}`);
-      }
+      };
+      const approaches = s.barriers
+        .filter((b) => b.material === 'wire' && !solid(s, b.x, 11) && !solid(s, b.x, 9))
+        .map((b) => ({ x: b.x + 0.5, y: 11.5 }))
+        .map((p) => path(s, s, p))
+        .filter((p) => p.length)
+        .sort((a, b) => a.length - b.length);
+      walk(approaches[0]);
+      expect(beginBreach(s)).toBe(true);
+      for (let i = 0; i < 180; i++) step(s, 1 / 60);
+      expect(s.construction).toBeNull();
+      walk(path(s, s, s.office));
       expect(s.phase).toBe(district === 3 ? 'won' : 'district');
       if (district < 3) next(s);
     }
