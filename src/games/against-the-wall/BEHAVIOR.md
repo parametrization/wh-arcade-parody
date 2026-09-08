@@ -11,3 +11,7 @@
 - **Walking:** Gait phase advances from actual collision-resolved distance, not elapsed time. Stationary or fully blocked characters do not walk in place. Reduced motion removes cosmetic limb bobbing.
 
 The existing three-district walking campaign fixture remains unchanged and passes with the live updated pursuers present. Regression cases cover wall tunneling, adjoining corners, sliding, partial suspicion, last-seen behavior, autonomous rival acquisition, damage/death persistence, allies, dead nonblocking actors, player-health checkpoint recovery and displacement-driven walking.
+
+Vision wedges use the same closed-tile intersection as detection, stop at cover and map edges, and follow the observer's heading. Distracted investigators do not show a detection wedge while they ignore perception. The mint dashed aiming boundary shows the beacon placement radius; a red cross marks an invalid target. Characters use front/back/side views aligned with projected world headings.
+
+Sprint has four seconds of capacity in every mode, displayed above the playfield. Moving at sprint speed drains 25 stamina per second; walking/resting restores 25 per second. Exhaustion requires releasing sprint before another burst, preventing automatic speed flicker while the key stays held. Water remains available to collect after stopping a sprint. Pause freezes stamina; checkpoint/district resets refill it.

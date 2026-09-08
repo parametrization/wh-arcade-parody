@@ -1,4 +1,5 @@
-import type { State } from './model';
+import { canDistract, type State } from './model';
+import { visionBoundary, DISTRACTION_RANGE } from './visibility';
 import { figure } from './figures';
 export const project = (x: number, y: number) => ({ x: (x - y) * 32, y: (x + y) * 16 });
 export function camera(s: State) {
@@ -115,20 +116,40 @@ export function draw(
       }
     }
   for (const e of s.enemies) {
-    if (['clash', 'recover', 'dead'].includes(e.state)) continue;
+    if (['clash', 'recover', 'dead', 'investigate'].includes(e.state)) continue;
     const a = p(e.x, e.y);
+    const rx = s.config.vision * 46,
+      ry = s.config.vision * 23;
+    if (a.x + rx < 0 || a.x - rx > 960 || a.y + ry < 0 || a.y - ry > 640) continue;
     ctx.fillStyle = e.meter > 0.1 ? '#ffae4940' : '#fe559522';
     ctx.strokeStyle = '#ef7c91';
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
-    for (let i = -35; i <= 35; i += 5) {
-      const r = (i * Math.PI) / 180 + (e.heading ?? (e.way < 0 ? Math.PI : 0));
-      const b = p(e.x + Math.cos(r) * s.config.vision, e.y + Math.sin(r) * s.config.vision);
+    for (const point of visionBoundary(s, e)) {
+      const b = p(point.x, point.y);
       ctx.lineTo(b.x, b.y);
     }
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+  }
+  if (aim) {
+    ctx.strokeStyle = '#82fff3';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    for (let i = 0; i <= 120; i++) {
+      const angle = (i / 120) * Math.PI * 2;
+      const point = p(
+        s.x + Math.cos(angle) * DISTRACTION_RANGE,
+        s.y + Math.sin(angle) * DISTRACTION_RANGE,
+      );
+      if (i === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x, point.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1;
   }
   const scenery: { x: number; y: number; wall: boolean; paint: () => void }[] = [];
   for (let d = 0; d < 56; d++)
@@ -353,6 +374,7 @@ export function draw(
           stride,
           a.kind === 'player',
           !!e,
+          a.kind === 'player' ? s.heading : e?.heading,
         );
         ctx.fillStyle = '#f6ecc9';
         ctx.font = 'bold 11px monospace';
@@ -477,7 +499,7 @@ export function draw(
   }
   for (const [at, color] of [
     [s.beacon, '#ffe68d'],
-    [aim, '#82fff3'],
+    [aim, aim && canDistract(s, aim.x, aim.y) ? '#82fff3' : '#ff7790'],
   ] as const) {
     if (!at) continue;
     const a = p(at.x, at.y);
@@ -488,7 +510,7 @@ export function draw(
     ctx.stroke();
     ctx.fillStyle = color;
     ctx.font = '22px monospace';
-    ctx.fillText('♪', a.x, a.y - 13);
+    ctx.fillText(at === aim && !canDistract(s, at.x, at.y) ? '×' : '♪', a.x, a.y - 13);
   }
   const marker = p(s.office.x, s.office.y);
   if (marker.x < 70 || marker.x > 890 || marker.y < 50 || marker.y > 560) {

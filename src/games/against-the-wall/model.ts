@@ -1,3 +1,4 @@
+import { wallEntry, VISION_HALF_ANGLE, DISTRACTION_RANGE } from './visibility';
 export type Faction = 'Cartel' | 'Paramilitary' | 'Border Patrol' | 'ICE';
 export type Phase = 'title' | 'running' | 'paused' | 'checkpoint' | 'district' | 'won';
 export interface Actor {
@@ -47,6 +48,9 @@ export interface State {
   x: number;
   y: number;
   stamina: number;
+  heading: number;
+  sprinting: boolean;
+  sprintLocked: boolean;
   health: number;
   walkDistance: number;
   moving: boolean;
@@ -83,6 +87,9 @@ export function create(seed = 1, config = { ...defaults }): State {
     x: 3.5,
     y: 18.5,
     stamina: 100,
+    heading: 0,
+    sprinting: false,
+    sprintLocked: false,
     health: 100,
     walkDistance: 0,
     moving: false,
@@ -110,6 +117,9 @@ export function loadDistrict(s: State) {
   s.x = 3.5;
   s.y = 18.5;
   s.stamina = 100;
+  s.heading = 0;
+  s.sprinting = false;
+  s.sprintLocked = false;
   s.health = 100;
   s.walkDistance = 0;
   s.moving = false;
@@ -202,35 +212,10 @@ export function solid(s: State, x: number, y: number) {
 }
 export function sight(s: State, ax: number, ay: number, bx: number, by: number) {
   if (solid(s, ax, ay) || solid(s, bx, by)) return false;
-  const dx = bx - ax,
-    dy = by - ay;
   for (let x = Math.floor(Math.min(ax, bx)); x <= Math.floor(Math.max(ax, bx)); x++)
     for (let y = Math.floor(Math.min(ay, by)); y <= Math.floor(Math.max(ay, by)); y++) {
       if (!s.walls.has(key(x, y))) continue;
-      let enter = 0,
-        exit = 1,
-        intersects = true;
-      for (const [origin, direction, min, max] of [
-        [ax, dx, x, x + 1],
-        [ay, dy, y, y + 1],
-      ]) {
-        if (Math.abs(direction) < 1e-12) {
-          if (origin < min || origin > max) {
-            intersects = false;
-            break;
-          }
-        } else {
-          const a = (min - origin) / direction,
-            b = (max - origin) / direction;
-          enter = Math.max(enter, Math.min(a, b));
-          exit = Math.min(exit, Math.max(a, b));
-          if (enter > exit) {
-            intersects = false;
-            break;
-          }
-        }
-      }
-      if (intersects && exit >= 0 && enter <= 1) return false;
+      if (wallEntry(ax, ay, bx, by, x, y) <= 1) return false;
     }
   return true;
 }
@@ -314,7 +299,7 @@ export function sees(s: State, e: Actor, target: { x: number; y: number }): bool
   return (
     Math.hypot(dx, dy) < s.config.vision &&
     Math.abs(Math.atan2(Math.sin(angle - heading), Math.cos(angle - heading))) <=
-      (35 * Math.PI) / 180 &&
+      VISION_HALF_ANGLE &&
     sight(s, e.x, e.y, target.x, target.y)
   );
 }
@@ -363,14 +348,16 @@ export function interact(s: State) {
       s.message = 'Supplies collected for the intake desk.';
     }
 }
+export function canDistract(s: State, x: number, y: number) {
+  return (
+    s.phase === 'running' &&
+    s.tokens > 0 &&
+    !solid(s, x, y) &&
+    Math.hypot(x - s.x, y - s.y) <= DISTRACTION_RANGE
+  );
+}
 export function distract(s: State, x: number, y: number) {
-  if (
-    s.phase !== 'running' ||
-    s.tokens <= 0 ||
-    solid(s, x, y) ||
-    Math.hypot(x - s.x, y - s.y) > 4.01
-  )
-    return false;
+  if (!canDistract(s, x, y)) return false;
   s.tokens--;
   s.beacon = { x, y, time: 4 };
   for (const e of s.enemies) {
@@ -404,17 +391,29 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
   s.grace = Math.max(0, s.grace - dt);
   s.moving = false;
   const length = Math.hypot(input.x, input.y);
-  const run = input.sprint && s.stamina > 0;
+  if (!input.sprint) s.sprintLocked = false;
+  const run = input.sprint && !s.sprintLocked && s.stamina > 1e-8;
+  const sprintSeconds = run && length ? Math.min(dt, s.stamina / 25) : 0;
   if (length) {
-    const v = (run ? s.config.run : s.config.walk) * dt;
-    move(s, s, (input.x / length) * v, (input.y / length) * v);
+    s.heading = Math.atan2(input.y, input.x);
+    const distance = s.config.run * sprintSeconds + s.config.walk * (dt - sprintSeconds);
+    move(s, s, (input.x / length) * distance, (input.y / length) * distance);
   }
-  s.stamina = Math.max(
-    0,
-    Math.min(100, s.stamina + (run && length && !s.config.story ? -20 : 15) * dt),
-  );
+  s.sprinting = sprintSeconds > 0 && s.moving;
+  if (s.sprinting) {
+    s.stamina = Math.max(0, s.stamina - sprintSeconds * 25);
+    if (s.stamina < 1e-8) {
+      s.stamina = 0;
+      s.sprintLocked = true;
+    }
+  } else s.stamina = Math.min(100, s.stamina + 25 * dt);
   for (const item of s.items)
-    if (!item.taken && item.type !== 'supply' && Math.hypot(s.x - item.x, s.y - item.y) < 0.7) {
+    if (
+      !item.taken &&
+      item.type !== 'supply' &&
+      !(item.type === 'water' && s.sprinting) &&
+      Math.hypot(s.x - item.x, s.y - item.y) < 0.7
+    ) {
       item.taken = true;
       if (item.type === 'water') s.stamina = Math.min(100, s.stamina + 30);
       else s.tokens = Math.min(2, s.tokens + 1);

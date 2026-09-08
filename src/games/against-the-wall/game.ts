@@ -15,7 +15,7 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
     overlayKey = '',
     muted = host.dataset.muted !== 'false';
   const root = document.createElement('section');
-  root.innerHTML = `<style>.aw{font:14px system-ui;color:#f7e7bd;max-width:1440px;margin:auto}.aw-head{display:flex;flex-wrap:wrap;gap:16px;padding:14px;background:#24273e}.aw-stage{position:relative}.aw-overlay{position:absolute;inset:15% 10%;background:#18213bf5;border:2px solid #8cf1d2;padding:20px;text-align:center;align-content:center}.aw-controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.aw button{min-width:48px;min-height:46px;padding:10px;background:#263951;color:#f6ecc7;border:1px solid #82bba9;font:inherit;touch-action:none}.aw-note{line-height:1.6}.aw-status{min-height:40px}</style><div class="aw-head"><strong>AGAINST THE WALL</strong><span data-hud></span></div><div class="aw-stage"><canvas aria-label="Isometric fictional districts with cover, pursuers and an asylum intake office"></canvas><div class="aw-overlay"></div></div><div class="aw-controls"><button data-dir="up" aria-label="Move up">↑</button><button data-dir="left" aria-label="Move left">←</button><button data-dir="down" aria-label="Move down">↓</button><button data-dir="right" aria-label="Move right">→</button><button data-sprint>Sprint: off</button><button data-help>Help / Collect · E</button><button data-aim>Distraction · Space</button><button data-confirm>Confirm · Enter</button><button data-step>Step time</button><button data-sound>Sound · M</button></div><p class="aw-status" role="status" aria-live="polite"></p><p class="aw-note">WASD / arrows move on screen · Shift runs · E helps nearby adults and collects supplies · Space aims a noise beacon, click a location within four tiles, Enter confirms. Draw hostile factions together: they can exchange fire while you escape. ICE and Border Patrol are allied; same-faction pursuers never shoot one another. Losing health returns Alex safely to the district checkpoint. Mint office marker is your destination. Fictional geography and political cartoon dialogue; reaching intake does not mean asylum approval.</p>`;
+  root.innerHTML = `<style>.aw{font:14px system-ui;color:#f7e7bd;max-width:1440px;margin:auto}.aw-head{display:flex;flex-wrap:wrap;gap:16px;padding:14px;background:#24273e}.aw-stamina{display:flex;align-items:center;gap:8px}.aw-stamina progress{width:120px;accent-color:#8cf1d2}.aw-stage{position:relative}.aw-overlay{position:absolute;inset:15% 10%;background:#18213bf5;border:2px solid #8cf1d2;padding:20px;text-align:center;align-content:center}.aw-controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.aw button{min-width:48px;min-height:46px;padding:10px;background:#263951;color:#f6ecc7;border:1px solid #82bba9;font:inherit;touch-action:none}.aw-note{line-height:1.6}.aw-status{min-height:40px}</style><div class="aw-head"><strong>AGAINST THE WALL</strong><span data-hud></span><label class="aw-stamina">Sprint <progress data-stamina max="4" value="4" aria-label="Sprint time remaining"></progress> <span data-stamina-label>4.0s / 4s</span></label></div><div class="aw-stage"><canvas aria-label="Isometric fictional districts with cover, pursuers and an asylum intake office"></canvas><div class="aw-overlay"></div></div><div class="aw-controls"><button data-dir="up" aria-label="Move up">↑</button><button data-dir="left" aria-label="Move left">←</button><button data-dir="down" aria-label="Move down">↓</button><button data-dir="right" aria-label="Move right">→</button><button data-sprint>Sprint: off</button><button data-help>Help / Collect · E</button><button data-aim>Distraction · Space</button><button data-confirm>Confirm · Enter</button><button data-step>Step time</button><button data-sound>Sound · M</button></div><p class="aw-status" role="status" aria-live="polite"></p><p class="aw-note">WASD / arrows move on screen · Shift runs for up to 4 seconds; release to recharge · E helps nearby adults and collects supplies · Space aims a noise beacon, click a location within four tiles, Enter confirms. Draw hostile factions together: they can exchange fire while you escape. ICE and Border Patrol are allied; same-faction pursuers never shoot one another. Losing health returns Alex safely to the district checkpoint. Mint office marker is your destination. Fictional geography and political cartoon dialogue; reaching intake does not mean asylum approval.</p>`;
   root.className = 'aw';
   host.append(root);
   const canvas = root.querySelector('canvas')!,
@@ -51,7 +51,12 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
       host.dataset.reducedMotion === 'true',
     );
     root.querySelector('[data-hud]')!.textContent =
-      `District ${s.district}/3 · Health ${s.health} · Stamina ${Math.ceil(s.stamina)} · Tokens ${s.tokens} · Score ${s.score} · Follow mint office marker`;
+      `District ${s.district}/3 · Health ${s.health} · Tokens ${s.tokens} · Score ${s.score} · Follow mint office marker`;
+    const meter = root.querySelector<HTMLProgressElement>('[data-stamina]')!;
+    meter.value = s.stamina / 25;
+    meter.setAttribute('aria-valuetext', `${(s.stamina / 25).toFixed(1)} seconds remaining`);
+    root.querySelector('[data-stamina-label]')!.textContent =
+      `${(s.stamina / 25).toFixed(1)}s / 4s${s.sprintLocked ? ' · release sprint' : ''}`;
     if (s.message !== lastMessage) {
       lastMessage = s.message;
       status.textContent = s.message;
@@ -105,6 +110,8 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
   }
   function pause() {
     held.clear();
+    sprint = false;
+    root.querySelector('[data-sprint]')!.textContent = 'Sprint: off';
     services.input.clear();
     if (s.phase === 'running' || s.phase === 'checkpoint') {
       previous = s.phase;
@@ -122,6 +129,8 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
     seed = nextSeed >>> 0;
     config = { ...pending };
     s = M.create(seed, settings());
+    sprint = false;
+    root.querySelector('[data-sprint]')!.textContent = 'Sprint: off';
     services.random.seed(seed);
     services.clock.reset();
     aim = null;
