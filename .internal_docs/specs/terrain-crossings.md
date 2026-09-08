@@ -19,3 +19,9 @@ A continuous barrier spans row 10, from one outside boundary to the other, separ
 Start within 1.6 tiles of a closed segment and press B. Stay still while construction proceeds; moving or pressing B again cancels. Threats remain active. Completion opens a physical route through the barrier. Temporary ladder expiration waits for player/enemy collision circles to clear before closing. Checkpoints reset construction and crossings. Four-second sprint and wall-clipped vision remain supported.
 
 The renderer targets a richer console-era perspective presentation, with material-specific structures and visible routes, while retaining the tested simulation. Pointer aiming uses the inverse of that renderer's ground projection. The destination remains labeled ASYLUM OFFICE.
+
+### Day/night and actor status
+
+Day lasts 60 seconds of simulation time, followed by 60 seconds of night, repeating. Pause freezes the cycle; turn-assisted mode advances it when the simulation advances. The HUD shows the current phase and countdown. At night, living enemies carry flashlights whose visible cones use the same wall-clipped range and direction as detection. Nighttime targeting includes other members of the same faction and federal allies. Daylight restores ordinary alliances and clears now-allied targets.
+
+Alex and living enemies have readable green health meters; each living enemy also has an amber attention meter. Meters and nameplates remain bright at night. Alex's health is additionally available as an accessible progress bar in the HUD.

@@ -1,4 +1,4 @@
-import { canDistract, type State, type Actor } from './model';
+import { isNight, canDistract, type State, type Actor } from './model';
 import { visionBoundary, DISTRACTION_RANGE } from './visibility';
 
 type V = { x: number; y: number; z: number };
@@ -24,6 +24,7 @@ export function drawScene(
   reducedMotion: boolean,
 ) {
   c.save();
+  const night = isNight(s);
   const depth = (p: V) => distance - (p.y - s.y) * 0.68 - p.z * 0.73;
   const project = (p: V) => projectScene(s, p.x, p.y, p.z);
   const v = (x: number, y: number, z = 0): V => ({ x, y, z });
@@ -243,16 +244,11 @@ export function drawScene(
   for (const e of s.enemies) {
     if (e.state === 'dead') continue;
     const boundary = visionBoundary(s, e);
-    for (let i = 0; i < boundary.length - 1; i++)
-      face(
-        [
-          v(e.x, e.y, 0.025),
-          v(boundary[i].x, boundary[i].y, 0.025),
-          v(boundary[i + 1].x, boundary[i + 1].y, 0.025),
-        ],
-        e.meter > 0 ? '#e8b26750' : '#b7d8a630',
-        true,
-      );
+    face(
+      [v(e.x, e.y, 0.025), ...boundary.map((p) => v(p.x, p.y, 0.025))],
+      night ? '#f4edaa85' : e.meter > 0 ? '#e8b26750' : '#b7d8a630',
+      true,
+    );
   }
   // Welcoming office sits on its real model destination, with a portico and lit glazing.
   const ox = s.office.x,
@@ -462,26 +458,14 @@ export function drawScene(
         color: player ? '#cdf4dc' : '#e5e4cc',
       });
     if (e && e.state !== 'dead') {
-      // Meter geometry remains directly over the actor, sorting naturally with nearby cover.
-      const fill = Math.max(0, Math.min(1, e.meter));
-      face(
-        [
-          v(e.x - 0.23, e.y, 1.21),
-          v(e.x + 0.23, e.y, 1.21),
-          v(e.x + 0.23, e.y, 1.26),
-          v(e.x - 0.23, e.y, 1.26),
-        ],
-        '#34483e',
-      );
-      face(
-        [
-          v(e.x - 0.23, e.y - 0.002, 1.212),
-          v(e.x - 0.23 + 0.46 * fill, e.y - 0.002, 1.212),
-          v(e.x - 0.23 + 0.46 * fill, e.y - 0.002, 1.258),
-          v(e.x - 0.23, e.y - 0.002, 1.258),
-        ],
-        '#ebbe65',
-      );
+      if (night) {
+        const dx = Math.cos(heading),
+          dy = Math.sin(heading);
+        const hand = v(e.x + 0.12 * dx - 0.22 * dy, e.y + 0.12 * dy + 0.22 * dx, 0.47);
+        const lens = v(hand.x + 0.22 * dx, hand.y + 0.22 * dy, 0.47);
+        beam(hand, lens, 0.045, '#768d99');
+        beam(v(lens.x - 0.02 * dx, lens.y - 0.02 * dy, 0.47), lens, 0.052, '#f4edaa85');
+      }
       if (e.state === 'combat')
         beam(
           v(e.x + 0.1 * Math.cos(heading), e.y + 0.1 * Math.sin(heading), 0.67),
@@ -567,10 +551,23 @@ export function drawScene(
     c.beginPath();
     points.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
     c.closePath();
-    c.fillStyle = mesh.color;
+    const luminous = ['#f4edaa85', '#ffe5a0', '#eadca1', '#93f5d0', '#ff7790', '#ffe59b'].includes(
+      mesh.color,
+    );
+    if (night && !luminous && /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(mesh.color)) {
+      const rgb = Number.parseInt(mesh.color.slice(1, 7), 16);
+      const r = Math.round(((rgb >> 16) & 255) * 0.27),
+        g = Math.round(((rgb >> 8) & 255) * 0.34),
+        b = Math.round((rgb & 255) * 0.47);
+      c.fillStyle = `rgba(${r},${g},${b},${mesh.color.length === 9 ? Number.parseInt(mesh.color.slice(7), 16) / 255 : 1})`;
+    } else c.fillStyle = mesh.color;
     c.fill();
   };
   // Ground is its own pass; foreground raised meshes then occlude bodies by physical depth.
+  if (night) {
+    c.fillStyle = '#071529ce';
+    c.fillRect(0, 0, 960, 640);
+  }
   floor.forEach(paint);
   meshes.sort((a, b) => b.depth - a.depth).forEach(paint);
   c.textAlign = 'center';
@@ -584,6 +581,47 @@ export function drawScene(
     c.fillStyle = label.color;
     c.fillText(label.text, p.x, p.y);
   }
+  const meters = [
+    { x: s.x, y: s.y, health: s.health, attention: null as number | null },
+    ...s.enemies
+      .filter((e) => e.state !== 'dead')
+      .map((e) => ({ x: e.x, y: e.y, health: e.health ?? 100, attention: e.meter })),
+  ];
+  c.font = 'bold 9px monospace';
+  for (const actor of meters) {
+    const p = project(v(actor.x, actor.y, 1.32));
+    if (p.x < 48 || p.x > 912 || p.y < 30 || p.y > 580) continue;
+    const x = Math.round(p.x - 43),
+      y = Math.round(p.y - (actor.attention === null ? 30 : 44)),
+      health = Math.max(0, Math.min(100, actor.health));
+    c.fillStyle = '#07151fee';
+    c.fillRect(x - 2, y - 2, 90, actor.attention === null ? 17 : 31);
+    c.textAlign = 'left';
+    c.fillStyle = '#e7f5e7';
+    c.fillText('HP', x + 2, y + 8);
+    c.fillStyle = '#314a49';
+    c.fillRect(x + 20, y + 1, 44, 7);
+    c.fillStyle = health < 30 ? '#fa9d83' : '#7ee2ad';
+    c.fillRect(x + 20, y + 1, (44 * health) / 100, 7);
+    c.textAlign = 'right';
+    c.fillStyle = '#edf8dc';
+    c.fillText(String(Math.round(health)), x + 85, y + 8);
+    if (actor.attention !== null) {
+      const attention = Math.max(0, Math.min(1, actor.attention));
+      c.textAlign = 'left';
+      c.fillStyle = '#efddb4';
+      c.fillText('!', x + 8, y + 21);
+      c.fillStyle = '#454338';
+      c.fillRect(x + 20, y + 14, 44, 7);
+      c.fillStyle = '#f3c466';
+      c.fillRect(x + 20, y + 14, 44 * attention, 7);
+      c.textAlign = 'right';
+      c.fillStyle = '#fff0c4';
+      c.fillText(`${Math.round(attention * 100)}%`, x + 85, y + 21);
+    }
+  }
+  c.textAlign = 'center';
+  c.font = 'bold 11px monospace';
   if (s.construction) {
     const b = s.barriers.find((b) => b.x === s.construction!.x && b.y === s.construction!.y);
     const action =

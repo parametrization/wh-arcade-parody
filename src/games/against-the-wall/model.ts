@@ -307,6 +307,16 @@ export function hostile(a: Faction, b: Faction): boolean {
   if (['ICE', 'Border Patrol'].includes(a) && ['ICE', 'Border Patrol'].includes(b)) return false;
   return true;
 }
+/** Two equal simulation-time phases; pause therefore freezes lighting. */
+export function isNight(s: Pick<State, 'time'>): boolean {
+  return Math.floor(s.time / 60) % 2 === 1;
+}
+export function secondsToLightChange(s: Pick<State, 'time'>): number {
+  return 60 - (s.time % 60);
+}
+export function combatHostile(s: Pick<State, 'time'>, a: Faction, b: Faction): boolean {
+  return isNight(s) || hostile(a, b);
+}
 export function sees(s: State, e: Actor, target: { x: number; y: number }): boolean {
   const dx = target.x - e.x,
     dy = target.y - e.y,
@@ -452,6 +462,10 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
     e.shot = Math.max(0, (e.shot ?? 0) - dt);
     e.moving = false;
     if (e.state === 'dead') continue;
+    // Revalidate on every frame, particularly the first daylight frame.
+    const existingRival =
+      typeof e.target === 'number' ? s.enemies.find((a) => a.id === e.target) : null;
+    if (existingRival && !combatHostile(s, e.faction, existingRival.faction)) clearTarget(e);
     e.cooldown = Math.max(0, e.cooldown - dt);
     if (e.state === 'clash' || e.state === 'recover') {
       e.timer -= dt;
@@ -477,7 +491,9 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
           ...s.enemies
             .filter(
               (other) =>
-                other.id !== e.id && other.state !== 'dead' && hostile(e.faction, other.faction),
+                other.id !== e.id &&
+                other.state !== 'dead' &&
+                combatHostile(s, e.faction, other.faction),
             )
             .map((other) => [other.id, other] as [number, Actor]),
         ];
@@ -567,7 +583,7 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
     if (shot.target === 'player') damage(s, 'player', 20);
     else {
       const rival = s.enemies.find((e) => e.id === shot.target);
-      if (rival && hostile(shot.from.faction, rival.faction)) {
+      if (rival && combatHostile(s, shot.from.faction, rival.faction)) {
         damage(s, rival.id, 25);
         if (rival.state !== 'dead') {
           rival.target = shot.from.id;
@@ -589,7 +605,7 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
     for (let i = 0; i + 1 < arrived.length; i += 2) {
       const a = arrived[i],
         b = arrived[i + 1];
-      if (hostile(a.faction, b.faction)) {
+      if (combatHostile(s, a.faction, b.faction)) {
         for (const [actor, target] of [
           [a, b],
           [b, a],
