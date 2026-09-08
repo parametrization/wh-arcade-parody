@@ -1,0 +1,12 @@
+{
+  "author": "wh-arcade-parody contributors",
+  "rights": "Original procedural Canvas artwork",
+  "assets": [
+    "neighbor sprites",
+    "welcome center",
+    "river tiles",
+    "supplies",
+    "political hazard signs"
+  ],
+  "source": "game.ts drawing routines; no third-party runtime assets"
+}

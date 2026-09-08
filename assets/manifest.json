@@ -1,3 +1,90 @@
 [
- {"id":"arcade-card-art","path":"src/site/art.ts","author":"wh-arcade-parody contributors","rights":"Original project illustration","source":"Created for this project; visual reference https://www.whitehouse.gov/arcade/","modified":"Five original SVG compositions: eagle/files, isometric refuge, rescue chain, conveyor, community safety net"}
+  {
+    "id": "arcade-card-art",
+    "path": "src/site/art.ts",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project illustration",
+    "source": "Created for this project; visual reference https://www.whitehouse.gov/arcade/",
+    "modified": "Five original SVG compositions: eagle/files, isometric refuge, rescue chain, conveyor, community safety net"
+  },
+  {
+    "id": "flappy-files-renderer",
+    "path": "src/games/flappy-files/render.ts",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Procedural Canvas pixel-art renderer"
+  },
+  {
+    "id": "flappy-files-concepts",
+    "path": "assets/concepts/flappy-files.svg",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Three concept options per major asset family; not final animation atlas"
+  },
+  {
+    "id": "against-the-wall-renderer",
+    "path": "src/games/against-the-wall/render.ts",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Procedural Canvas pixel-art renderer"
+  },
+  {
+    "id": "against-the-wall-concepts",
+    "path": "assets/concepts/against-the-wall.svg",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Three concept options per major asset family; not final animation atlas"
+  },
+  {
+    "id": "rio-rescue-renderer",
+    "path": "src/games/rio-rescue/game.ts",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Procedural Canvas pixel-art renderer"
+  },
+  {
+    "id": "rio-rescue-concepts",
+    "path": "assets/concepts/rio-rescue.svg",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Three concept options per major asset family; not final animation atlas"
+  },
+  {
+    "id": "supply-the-people-renderer",
+    "path": "src/games/supply-the-people/render.ts",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Procedural Canvas pixel-art renderer"
+  },
+  {
+    "id": "supply-the-people-concepts",
+    "path": "assets/concepts/supply-the-people.svg",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Three concept options per major asset family; not final animation atlas"
+  },
+  {
+    "id": "trickle-down-tycoon-renderer",
+    "path": "src/games/trickle-down-tycoon/render.ts",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Procedural Canvas pixel-art renderer"
+  },
+  {
+    "id": "trickle-down-tycoon-concepts",
+    "path": "assets/concepts/trickle-down-tycoon.svg",
+    "author": "wh-arcade-parody contributors",
+    "rights": "Original project artwork",
+    "source": "Created for this project",
+    "modified": "Three concept options per major asset family; not final animation atlas"
+  }
 ]

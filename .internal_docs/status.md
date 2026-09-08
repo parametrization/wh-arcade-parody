@@ -1,64 +1,43 @@
-# Delivery plan and status
+# Delivery status
 
-Updated 2026-09-07. P-01..03 complete. INF-01..05 implemented and FOUNDATION-READY verified on 2026-09-08. Game implementation is now unblocked.
+Updated 2026-09-08. All five plans and the common foundation passed their implementation gate before game coding began. Five playable game modules are now integrated. The coordinator reports 64 unit/model tests and 38 desktop/mobile browser cases passing, plus successful TypeScript and production-build checks. The final production rebuild also passed after checkbox synchronization; bundle inspection found no workbench/debug UI.
 
-## Evidence and completed work
+## Implemented
 
-- Browser automation verified with installed Chrome: JavaScript button click, arcade HTTP 200, all five links and full-page screenshot.
-- Source pages for all five games captured locally and SHA-256 hashed; direct source inspection informed the game plans. Full original playthroughs remain pending.
-- Five separate game designs include core loop, narrative, controls, tuning proposals, asset variants, implementation tasks and acceptance criteria.
-- Shared runtime/folder/HMR/server plan and provenance/editorial contract written.
-- Repository initialized on main, .gitignore and README created. Public publication status is reported by the actual Git remote, not assumed here.
-- Foundation is running at localhost:8643; 13 runtime and 14 browser checks pass. Game implementation begins after this checkpoint; game-specific tests and final artwork remain outstanding.
+- Common no-argument `./dev` launcher, localhost:8643, responsive arcade shell, five routes and one noninteractive placeholder.
+- Shared fixed-step clock, scoped/remappable input, seeded randomness, storage fallback, audio, asset loading and cleanup. Settings and game data use separate namespaces.
+- Generic Start/Pause/Resume/Restart/Exit host and development-only module workbench with staged tuning, seed controls, JSON export and HMR disposal.
+- **Flappy Files:** eagle flight, named obstacle columns, file delivery, hamburger inventory, alternating distraction entrances, timed obstruction and story/endless progression.
+- **Against the Wall:** three authored isometric districts, visibility/cover, faction encounters, optional assistance, checkpoints, gates and intake completion.
+- **Rio Rescue:** three rescue-chain districts, supplies/Share, welcome-center deliveries, warning/active hazards, retry checkpoints, story rewind and single-step rules.
+- **Supply the People:** food routing, sleeve removal, recovery, balanced delivery goals, upgrades and campaign/endless rules.
+- **Trump Trickle-Down Tycoon:** catch windows, resource ledger, audits, investments, exchanges and five-round completion.
+- Original procedural game artwork, five concept sheets, provenance manifest and game-local art notes.
 
-## Parallel teams and delivery order
+## Verification state
 
-There are four simultaneous agent slots including the coordinator. Six dedicated simultaneous teams would exceed that capacity; schedule independent work in waves.
+The original foundation checkpoint recorded 13 runtime checks and 14 browser cases passing. The current source inventory contains 64 unit/model tests and 15 browser test definitions, expanded to 38 desktop/mobile cases by Playwright. The coordinator reports the current 64 unit/model and 38 browser cases passing.
 
-| Wave | Coordinator / slot 1 | Slot 2 | Slot 3 | Slot 4 | Exit evidence |
-|---|---|---|---|---|---|
-| Parallel planning | Common infrastructure plan/spec | Finalize Flappy plan/spec | Bounded research/art concepts | Contract/acceptance review | Common specs ready; Flappy reference complete |
-| Parallel foundation + game planning | Implement INF-01..05 | Finalize Wall + Rio using Flappy reference | Finalize Supply + Tycoon using Flappy reference | Foundation tests and planning review | Common foundation implemented and verified; all five plans/specs complete |
-| Game-start gate | Check foundation and planning evidence | Review per-game dependencies | Review assets/work packages | Review acceptance coverage | Both P-03 and FOUNDATION-READY satisfied |
-| Concurrent game implementation | Rolling host integration | Eligible game task | Eligible task from another game | Eligible task from a third game | All five build on the finished common foundation |
-| Rolling refinement | Integrate feedback and update specs | Per-game fixes/art | Per-game fixes/art | Browser/accessibility checks | Each game independently reaches its acceptance criteria |
-| Release | Cross-game integration and documentation | Remaining game work | Remaining art/accessibility | Regression/browser coverage | All five run under the same shell and pass checks |
+Game model coverage includes successful campaign strategies for all five titles. Browser coverage exercises each integrated route and workbench, plus shared storage, coordinate mapping, input remapping and repeated cleanup. A separate mobile review started and paused all five routes without overflow or page errors, and exercised Rio's directional touch button and single-step action. See [game verification](specs/game-verification.md) for exact coverage and limits.
 
-Authoritative sequence: plan/spec the common infrastructure alongside Flappy planning. Once Flappy's reference plan/spec is complete, finalize the other four modeled on it. Once common specs are ready, implement and verify the common foundation while game planning continues. Start game implementation only when both the foundation is finished and all five game plans/specs are complete. Existing other-game drafts remain preliminary until that pass is complete.
+## Remaining refinement and release work
 
-Four slots limit simultaneous tasks, not game eligibility. During foundation work reserve capacity for infrastructure and its verification while planning workers finish the game specs. After the game-start gate, rotate bounded tasks among all five games, prioritizing dependency-unblocking work. Root owns registry/package-lock/shared types and contract changes. No game waits for Flappy implementation or playtest completion.
+| Area | Current state | Next work |
+| --- | --- | --- |
+| Final integrated checks | 64 unit/model + 38 browser cases pass; typecheck/build pass | Final rebuild and production bundle inspection passed; retain results in release history. |
+| Art selection | Original procedural baseline plus concept alternatives available | Review each asset family with the user; choose direction and prepare final animation sheets where useful. |
+| Audio and characterization | Functional cues and authored cartoon labels | Refine sound, writing, companion biographies and visual personality. |
+| Human playtesting | Automated models and browser smoke coverage exist | Play complete runs on desktop and touch devices; tune difficulty, readability, tutorial pacing and enjoyment. |
+| Accessibility | DOM controls/status, remapping and assist rules implemented | Player-facing options, saved pause bindings and global sound/reduced-motion propagation have been corrected; continue human keyboard/touch review. Do not claim full nonvisual action-game equivalence. |
+| Source research | Five source pages archived/hashed and inspected | Full original-game playthrough observations and any externally sourced final-asset provenance remain distinct research work. |
+| Publication | Repository publication is tracked by coordinator and Git remote | Report the actual public remote and latest pushed state, not an inferred release status. |
 
-## Dependency gates
+No game remains at planning-only stage. Implementation does not mean every aspirational art or usability acceptance item is complete. Test fixtures that place entities directly establish rule behavior; only explicit full-run fixtures establish the modeled route/strategy they exercise.
 
-0. Game planning follows P-01 (Flappy reference) → P-02 (other four at that standard) → P-03 (all five complete). Common planning runs alongside it.
-1. Common-spec readiness allows INF-01..05 implementation immediately; it does not wait for P-03. FOUNDATION-READY means INF-01..05 implemented and verified with a diagnostic module. All game coding/grayboxes require both P-03 and FOUNDATION-READY.
-2. ART-01 and cast verification precede shipping externally sourced art or factual role labels; grayboxes can use original placeholders.
-3. FF-03/04 precede FF-05. Chosen event art can be prepared independently after pose and anchor contracts are fixed.
-4. FF-07/08 verify and refine Flappy only. They do not gate AW, RR, SL, ST or other games’ art production. Each game has its own playtest and acceptance checks.
-5. Wall's AI, projection and confusion rules are game-local. Rio's occupancy/delivery rules, Supply's resource arithmetic and Tycoon's ledger get independent tests.
-6. INF-08 is a release criterion, not a reason to call an unfinished graybox complete.
+## Sequence and ownership record
 
-## Backlog status
+P-01 established the Flappy planning reference; P-02 brought the other four plans to that standard; P-03 and FOUNDATION-READY together cleared game implementation on 2026-09-08. The foundation checkpoint was recorded before concurrent game tasks began. No game depended on finishing Flappy gameplay first.
 
-| Group | State | Next eligible action |
-|---|---|---|
-| INF-01..05 | Verified | Foundation complete; see foundation-verification.md |
-| INF-06..08 | Planned | Game integration/release after P-03 and FOUNDATION-READY |
-| ART-01..06 | Planned; initial source URLs recorded | Inventory sprite/font/audio rights, produce first Flappy concept sheet |
-| FF-01..08 | Planned; inline source inspected | Browser play observations/cast records, then model only after P-03 and FOUNDATION-READY |
-| AW-01..06 | Planned; inline source inspected | Author isometric graybox map specification |
-| RR-01..06 | Planned; inline source inspected | Confirm original board/timing and specify pure reducer; implement only after P-03 and FOUNDATION-READY |
-| SL-01..06 | Planned; inline source inspected | Observe complete original run and validate remake resource schedule |
-| ST-01..06 | Planned; inline source inspected | Observe complete original round and validate catch/upgrade arithmetic |
+Four active slots were used for coordinator integration and bounded independent game tasks. Runtime and site ownership were separate during foundation implementation. Game ownership then rotated across all five; Against the Wall was handed off without overlapping edits when the Flappy worker became available. Rolling QA findings and fixes are integrated before the final regression run.
 
-No package is blocked on absent system software. Install Vite/TypeScript/test tools locally during INF-01 and use a lockfile. The cached Playwright library works with installed Chrome, but its default expected browser binary is missing; reproduce browser setup explicitly instead of depending on that cache.
-
-## Review record
-
-Initial review checked Flappy/common lifecycle compatibility and local documentation links. Clarified that obstruction ceases at exactly seven seconds (a decorative exit may follow) and Escape pauses while an explicit Exit control leaves the game. Asset variants are written briefs; actual graphics remain the next art deliverable.
-
-User clarification (2026-09-07): common planning/specification runs alongside game planning. Complete common implementation before starting games. Flappy planning comes first within the game-planning track; finalize the other four from that standard. The game-start gate requires all five plans/specs plus the verified common foundation. The shared tuning panel remains accepted.
-
-## Execution checkpoint — 2026-09-08
-
-All five plans meet game-planning-standard.md. Shared foundation passes the recorded checks in specs/foundation-verification.md. Root clears both P-03 and FOUNDATION-READY. Next work: concurrent game implementations on the established contracts; integration owns registry/site/workbench.
+The design baselines remain in `games/*.md`; implementation details live in game-local code. Future changes to plot, rules or asset direction should update the applicable baseline and acceptance coverage together.

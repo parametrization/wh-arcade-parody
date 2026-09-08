@@ -12,13 +12,22 @@ export function createRandom(seed = 1) {
     next,
     float: next,
     int(min: number, max: number) {
-      if (!Number.isInteger(min) || !Number.isInteger(max) || max < min) throw new RangeError('Invalid random integer bounds');
+      if (!Number.isInteger(min) || !Number.isInteger(max) || max < min)
+        throw new RangeError('Invalid random integer bounds');
       return min + Math.floor(next() * (max - min + 1));
     },
-    seed(value: number) { state = value >>> 0; },
-    get state() { return state; },
-    reset(value: number) { state = value >>> 0; },
+    seed(value: number) {
+      state = value >>> 0;
+    },
+    get state() {
+      return state;
+    },
+    reset(value: number) {
+      state = value >>> 0;
+    },
     getState: () => state,
-    setState(value: number) { state = value >>> 0; },
+    setState(value: number) {
+      state = value >>> 0;
+    },
   };
 }

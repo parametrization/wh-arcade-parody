@@ -22,7 +22,8 @@ export function createLoop(
   const tick = (timestamp: number) => {
     frame = null;
     if (!running || disposed) return;
-    if (previous !== null) accumulator += Math.max(0, Math.min((timestamp - previous) / 1000, step * 5));
+    if (previous !== null)
+      accumulator += Math.max(0, Math.min((timestamp - previous) / 1000, step * 5));
     previous = timestamp;
     while (accumulator + Number.EPSILON >= step && running && !disposed) {
       accumulator -= step;
@@ -51,9 +52,20 @@ export function createLoop(
     resume: start,
     pause,
     stop: pause,
-    reset() { previous = null; accumulator = 0; elapsed = 0; },
-    destroy() { pause(); disposed = true; },
-    get running() { return running; },
-    get time() { return elapsed; },
+    reset() {
+      previous = null;
+      accumulator = 0;
+      elapsed = 0;
+    },
+    destroy() {
+      pause();
+      disposed = true;
+    },
+    get running() {
+      return running;
+    },
+    get time() {
+      return elapsed;
+    },
   };
 }
