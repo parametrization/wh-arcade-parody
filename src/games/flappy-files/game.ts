@@ -21,7 +21,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     saved = false;
   const root = document.createElement('section');
   root.className = 'flappy-files';
-  root.innerHTML = `<style>.flappy-files{max-width:1100px;margin:auto;color:#f4eaca;font:15px system-ui}.ff-hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;padding:12px;background:#132640;border:1px solid #a19268}.ff-stage{position:relative;background:#12223b;max-width:768px;margin:auto}.ff-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none}.ff-plaque{position:absolute;color:#fff5cf;background:#172b45ee;border:1px solid #b4a470;font:bold 10px/1.15 monospace;padding:2px;text-align:center;transform:translateX(-50%);width:100px}.ff-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}.ff-controls button,.ff-controls select,.ff-overlay button{min-height:44px;padding:10px 14px;font:inherit;background:#203c57;color:#fff4c6;border:1px solid #d4b46b}.ff-overlay{position:absolute;inset:10% 8%;align-content:center;text-align:center;background:#10203bf2;border:2px solid #e6cc87;padding:18px}.ff-overlay h2{font:900 27px monospace;color:#f5d779}.ff-overlay p{line-height:1.5}.ff-note{font-size:13px;line-height:1.5}.ff-status{min-height:40px}.ff-controls label{align-content:center}@media(max-width:500px){.ff-plaque{font-size:8px;width:74px}.ff-overlay{inset:4%;padding:12px}.ff-overlay h2{font-size:21px}.ff-overlay p{font-size:13px}}</style><div class="ff-hud"><strong>FLAPPY FILES</strong><span data-score></span><span data-burgers></span></div><div class="ff-stage"><canvas aria-label="Eagle carrying files through named cartoon columns"></canvas><div class="ff-labels"></div><div class="ff-overlay"></div></div><div class="ff-controls"><button data-flap>Flap · Space</button><button data-burger>Burger · H</button><button data-pause>Pause · P</button><button data-mute>Sound off · M</button><label>Mode <select data-mode><option value="story">Story · 60 columns</option><option value="endless">Endless</option></select></label><label><input type="checkbox" data-assist> Assist</label></div><div class="ff-status" role="status" aria-live="polite"></div><p class="ff-note">Space / ↑ / W: flap · H: hamburger · P / Escape: pause · R: restart. Burgers dismiss the seven-second distraction immediately. Named characters are fictional political satire, not allegations of involvement in Epstein’s crimes.</p>`;
+  root.innerHTML = `<style>.flappy-files{max-width:1100px;margin:auto;color:#f4eaca;font:15px system-ui}.ff-hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;padding:12px;background:#132640;border:1px solid #a19268}.ff-stage{position:relative;background:#12223b;max-width:768px;margin:auto}.ff-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none}.ff-plaque{position:absolute;color:#fff6d9;background:#10243e;border:2px solid #eed49b;border-radius:3px;font:800 15px/1.2 system-ui,sans-serif;letter-spacing:.15px;padding:4px 8px;text-align:center;transform:translateX(-50%);width:max-content;max-width:170px;white-space:nowrap;box-shadow:0 2px 0 #071425, inset 0 0 0 1px #4d6177}.ff-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}.ff-controls button,.ff-controls select,.ff-overlay button{min-height:44px;padding:10px 14px;font:inherit;background:#203c57;color:#fff4c6;border:1px solid #d4b46b}.ff-overlay{position:absolute;inset:10% 8%;align-content:center;text-align:center;background:#10203bf2;border:2px solid #e6cc87;padding:18px}.ff-overlay h2{font:900 27px monospace;color:#f5d779}.ff-overlay p{line-height:1.5}.ff-note{font-size:13px;line-height:1.5}.ff-status{min-height:40px}.ff-controls label{align-content:center}@media(max-width:500px){.ff-plaque{font-size:11px;max-width:122px;padding:3px 5px;border-width:1px}.ff-overlay{inset:4%;padding:12px}.ff-overlay h2{font-size:21px}.ff-overlay p{font-size:13px}}</style><div class="ff-hud"><strong>FLAPPY FILES</strong><span data-score></span><span data-burgers></span></div><div class="ff-stage"><canvas aria-label="Eagle carrying files through named cartoon columns"></canvas><div class="ff-labels"></div><div class="ff-overlay"></div></div><div class="ff-controls"><button data-flap>Flap · Space</button><button data-burger>Burger · H</button><button data-pause>Pause · P</button><button data-mute>Sound off · M</button><label>Mode <select data-mode><option value="story">Story · 60 columns</option><option value="endless">Endless</option></select></label><label><input type="checkbox" data-assist> Assist</label></div><div class="ff-status" role="status" aria-live="polite"></div><p class="ff-note">Space / ↑ / W: flap · H: hamburger · P / Escape: pause · R: restart. Burgers dismiss the seven-second distraction immediately. Named characters are fictional political satire, not allegations of involvement in Epstein’s crimes.</p>`;
   host.append(root);
   const canvas = root.querySelector('canvas')!,
     ctx = fitCanvas(canvas, 512, 448).ctx;
@@ -29,6 +29,28 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     labels = root.querySelector<HTMLElement>('.ff-labels')!,
     status = root.querySelector<HTMLElement>('[role=status]')!;
   const abort = new AbortController();
+  let portraitAtlas: HTMLImageElement | undefined;
+  let background: HTMLImageElement | undefined;
+  const backgroundImage = new Image();
+  backgroundImage.onload = () => {
+    if (!destroyed) {
+      background = backgroundImage;
+      draw();
+    }
+  };
+  backgroundImage.onerror = () => {};
+  backgroundImage.src = '/assets/generated/flappy-national-mall-v1.png';
+  const portraitImage = new Image();
+  portraitImage.onload = () => {
+    if (!destroyed) {
+      portraitAtlas = portraitImage;
+      draw();
+    }
+  };
+  portraitImage.onerror = () => {
+    /* Individual procedural portraits remain available offline. */
+  };
+  portraitImage.src = '/assets/generated/flappy-portraits-v1.png';
   let muted = host.dataset.muted !== 'false',
     overlayKey = '';
   function publicState(): GameState {
@@ -38,7 +60,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     if (destroyed) return;
     // Reflect applied configuration; staged restart settings remain unapplied.
     root.querySelector<HTMLInputElement>('[data-assist]')!.checked = !!config['assist.enabled'];
-    render(ctx, m);
+    render(ctx, m, portraitAtlas, background);
     root.querySelector('[data-score]')!.textContent =
       `${m.deliveries} deliveries · ${m.clearances} cleared`;
     root.querySelector('[data-burgers]')!.textContent =
@@ -46,14 +68,23 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     labels.replaceChildren();
     for (const c of m.columns) {
       for (const [name, y] of [
-        [c.topName, Math.max(5, c.gapY - 74)],
-        [c.name, Math.min(372, c.gapY + c.gap + 60)],
+        [c.topName, Math.max(4, c.gapY - 100)],
+        [c.name, Math.min(416, c.gapY + c.gap + 60)],
       ] as [string, number][]) {
         const el = document.createElement('span');
         el.className = 'ff-plaque';
         el.textContent = name;
         el.style.left = `${((c.x + Number(config['columns.width']) / 2) / 512) * 100}%`;
         el.style.top = `${(y / 448) * 100}%`;
+        if (name === c.topName && c.gapY < 100) {
+          // Short upper columns cannot stack a readable label above a full face.
+          // Move the plaque beside the portrait, entirely inside the upper obstacle band.
+          const center = c.x + Number(config['columns.width']) / 2;
+          el.style.left = `${((center - 34) / 512) * 100}%`;
+          el.style.transform = 'translateX(-100%)';
+          el.style.top = `${(4 / 448) * 100}%`;
+        }
+
         labels.append(el);
       }
     }
@@ -256,6 +287,10 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      backgroundImage.onload = null;
+      backgroundImage.onerror = null;
+      portraitImage.onload = null;
+      portraitImage.onerror = null;
       abort.abort();
       unbind.forEach((fn) => fn());
       s.clock.pause();
@@ -286,6 +321,8 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
       event: { ...m.event },
       config: { ...config },
       pendingConfig: { ...pending },
+      portraitAtlasLoaded: !!portraitAtlas,
+      backgroundLoaded: !!background,
     }),
   };
 }

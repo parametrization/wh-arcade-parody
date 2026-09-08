@@ -21,7 +21,7 @@ export async function mountGame(
   signal?: AbortSignal,
 ): Promise<() => void> {
   const abort = new AbortController();
-  main.innerHTML = `<section class="page-section game-page"><a class="back-link" href="#/">← BACK TO THE ARCADE</a><div class="game-page-heading"><p class="eyebrow">THE PEOPLE'S ARCADE</p><h1></h1><p class="game-description"></p></div><div class="game-toolbar" aria-label="Game controls"><button class="button-link" data-testid="game-start">START</button><button class="button-link secondary-button" data-testid="game-pause" disabled>PAUSE</button><button class="button-link secondary-button" data-testid="game-restart">RESTART</button><a class="button-link secondary-button" href="#/">EXIT</a></div><div class="game-surface" tabindex="0" data-testid="game-surface"></div><p class="game-host-status" role="status" aria-live="polite"></p><details class="game-instructions"><summary>Controls & instructions</summary><ul></ul></details><p class="satire-caption">Unofficial political satire. Cartoon encounters are fictional; appearing as a character is not a factual allegation.</p></section>`;
+  main.innerHTML = `<section class="page-section game-page"><a class="back-link" href="#/">← BACK TO THE ARCADE</a><div class="game-page-heading"><p class="eyebrow">THE PEOPLE'S HOUSE ARCADE</p><h1></h1><p class="game-description"></p></div><div class="game-toolbar" aria-label="Game controls"><button class="button-link" data-testid="game-start">START</button><button class="button-link secondary-button" data-testid="game-pause" disabled>PAUSE</button><button class="button-link secondary-button" data-testid="game-restart">RESTART</button><a class="button-link secondary-button" href="#/">EXIT</a></div><div class="game-surface" tabindex="0" data-testid="game-surface"></div><p class="game-host-status" role="status" aria-live="polite"></p><details class="game-instructions"><summary>Controls & instructions</summary><ul></ul></details><p class="satire-caption">Unofficial political satire. Cartoon encounters are fictional; appearing as a character is not a factual allegation.</p></section>`;
   main.querySelector('h1')!.textContent = module.manifest.title;
   main.querySelector('.game-description')!.textContent = module.manifest.description;
   const instructions = main.querySelector('.game-instructions ul')!;
@@ -296,7 +296,7 @@ export async function mountGame(
   if (document.hidden) pause();
   const timer = window.setInterval(refresh, 100);
   refresh();
-  document.title = `${module.manifest.title} · The People's Arcade`;
+  document.title = `${module.manifest.title} · The People's House Arcade`;
   return () => {
     if (disposed) return;
     disposed = true;

@@ -1,0 +1,369 @@
+/* The reference arcade's navy masthead, neon cards and perspective grid. */
+.house-announcement {
+  background: #faf9f5;
+  color: #252936;
+  padding: 9px 16px;
+  text-align: center;
+  font:
+    600 10px/1.5 Arial,
+    sans-serif;
+  letter-spacing: 2px;
+}
+.house-header {
+  background: #0e132b;
+  color: #fff;
+  padding: 0 40px;
+}
+.house-header a {
+  color: inherit;
+  text-decoration: none;
+}
+.house-header-top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 100px;
+  border-bottom: 1px solid #9195a5;
+  gap: 20px;
+}
+.house-brand {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 3px;
+  font:
+    16px Georgia,
+    serif;
+  letter-spacing: 1px;
+  text-align: center;
+}
+.house-brand img {
+  width: 54px;
+  height: 46px;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 3px;
+}
+.house-menu,
+.house-settings {
+  font:
+    11px Arial,
+    sans-serif;
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.house-settings {
+  justify-self: end;
+}
+.house-header nav {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+}
+.house-header nav a {
+  font:
+    600 11px/1.4 Arial,
+    sans-serif;
+  letter-spacing: 1.7px;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+}
+.house-header a:hover {
+  color: #2de2ff;
+}
+.house-arcade {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 0, #21103d88, transparent 58%),
+    radial-gradient(ellipse at 50% 105%, #460e3880, transparent 45%), #060610;
+  color: #fff;
+  padding: 80px 40px 64px;
+}
+.house-arcade::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: repeating-linear-gradient(
+    transparent 0 2px,
+    rgba(0, 0, 0, var(--scanlines, 0.12)) 2px 3px
+  );
+}
+.house-arcade::after {
+  content: '';
+  position: absolute;
+  bottom: -110px;
+  left: -25%;
+  width: 150%;
+  height: 240px;
+  background:
+    linear-gradient(#ee226740 1px, transparent 1px),
+    linear-gradient(90deg, #2de2ff40 1px, transparent 1px);
+  background-size: 60px 35px;
+  transform: perspective(190px) rotateX(58deg);
+  z-index: -1;
+  mask-image: linear-gradient(transparent, #000);
+}
+.house-arcade-inner {
+  max-width: 1440px;
+  margin: auto;
+}
+.house-hero {
+  text-align: center;
+  margin-bottom: 60px;
+}
+.house-eyebrow {
+  font: 700 11px monospace;
+  letter-spacing: 4px;
+  color: #2de2ff;
+  text-shadow: 0 0 9px #2de2ff;
+  margin: 8px 0 28px;
+}
+.house-hero h1 {
+  font:
+    500 clamp(21px, 3vw, 40px)/1.25 'Courier New',
+    monospace;
+  letter-spacing: 2px;
+  margin: 0;
+  text-shadow:
+    0 0 8px #fff9,
+    0 0 20px #ff2d7599;
+}
+.house-hero h1 strong {
+  display: inline-block;
+  font-size: clamp(42px, 5vw, 64px);
+  font-weight: 500;
+  letter-spacing: 1px;
+  margin-top: 8px;
+}
+.house-hero hr {
+  height: 2px;
+  border: 0;
+  max-width: 350px;
+  margin: 22px auto;
+  background: linear-gradient(90deg, transparent, #ff2d75, #2de2ff, transparent);
+  box-shadow: 0 0 9px #ff2d7570;
+}
+.house-hero > p:last-child {
+  font:
+    20px 'Courier New',
+    monospace;
+  color: #8fa7cb;
+  margin: 0;
+}
+.house-game-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 26px;
+}
+.house-game-card {
+  min-width: 0;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  background:
+    linear-gradient(#0a1020, #0a1020) padding-box,
+    linear-gradient(135deg, #ff2d75, #ff2d75 20%, #c8cfdb 55%, #2de2ff) border-box;
+  box-shadow: 0 0 12px #ff2d751a;
+  overflow: hidden;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.house-game-card > a {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+.house-game-card:has(a):hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0 20px #2de2ff44;
+}
+.house-game-card h2 {
+  font:
+    500 12px/1.4 'Courier New',
+    monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  min-height: 49px;
+  padding: 12px 8px;
+  margin: 0;
+  text-align: center;
+  background: linear-gradient(110deg, #44172a88, #343b4d88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 0 7px #ff2d75;
+}
+.house-game-frame {
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  background: #10152b;
+}
+.house-game-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+.house-game-body {
+  padding: 17px 20px 21px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-height: 140px;
+  background: linear-gradient(115deg, #2a202788, #00293480);
+  text-align: center;
+}
+.house-game-body p {
+  font:
+    16px/1.4 'Courier New',
+    monospace;
+  color: #99accb;
+  margin: 0 0 24px;
+}
+.house-play {
+  margin-top: auto;
+  color: #2de2ff;
+  font: 10px monospace;
+  letter-spacing: 3px;
+  text-shadow: 0 0 9px #2de2ff;
+}
+.house-coming-soon {
+  border-color: #414b64;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+}
+.house-coming-soon h2 {
+  color: #8896b4;
+  text-shadow: none;
+  background: #252636;
+}
+.house-mystery {
+  aspect-ratio: 16/9;
+  display: grid;
+  place-items: center;
+  font: 44px monospace;
+  color: #fff3;
+  background:
+    linear-gradient(#ee226718 1px, transparent 1px),
+    linear-gradient(90deg, #2de2ff18 1px, transparent 1px), #090e1f;
+  background-size: 16px 16px;
+}
+.house-coming-soon .house-play {
+  color: #7d8494;
+  text-shadow: none;
+}
+.house-attribution {
+  text-align: center;
+  color: #9aa4bc;
+  font: 11px/1.9 monospace;
+  margin: 38px 0 0;
+}
+.house-attribution a {
+  color: #b8dfef;
+}
+@media (min-width: 1700px) {
+  .house-arcade {
+    padding-inline: 5vw;
+  }
+}
+@media (max-width: 1100px) {
+  .house-game-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .house-header nav {
+    gap: 12px;
+  }
+  .house-header nav a {
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+}
+@media (max-width: 780px) {
+  .house-game-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .house-header {
+    padding: 0 20px;
+  }
+  .house-header-top {
+    min-height: 95px;
+  }
+  .house-header nav {
+    gap: 8px 18px;
+  }
+  .house-arcade {
+    padding: 50px 22px;
+  }
+  .house-brand {
+    font-size: 12px;
+  }
+  .house-menu span {
+    display: none;
+  }
+  .house-settings {
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+  .house-announcement {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+  .house-hero {
+    margin-bottom: 38px;
+  }
+  .house-game-body {
+    padding: 15px 12px;
+  }
+  .house-game-body p {
+    font-size: 14px;
+  }
+}
+@media (max-width: 480px) {
+  .house-game-grid {
+    grid-template-columns: 1fr;
+  }
+  .house-header-top {
+    gap: 10px;
+  }
+  .house-brand {
+    font-size: 11px;
+  }
+  .house-header nav a {
+    font-size: 9px;
+  }
+  .house-hero h1 {
+    font-size: 22px;
+    letter-spacing: 0;
+  }
+  .house-arcade {
+    padding-inline: 22px;
+  }
+  .house-game-body {
+    min-height: 140px;
+  }
+  .house-game-body p {
+    font-size: 16px;
+  }
+}
+.reduced-motion .house-game-card {
+  transition: none;
+}
+.reduced-motion .house-game-card:hover {
+  transform: none;
+}

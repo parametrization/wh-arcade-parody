@@ -94,18 +94,46 @@ export const game: GameModule = {
     });
     const colors = ['#ffd4ae', '#ce946e', '#a36b49', '#78482f', '#edbd91'];
     function person(x: number, y: number, i: number, leader = false) {
-      ctx.fillStyle = colors[i % colors.length];
-      ctx.fillRect(x + 7, y + 3, 10, 9);
-      ctx.fillStyle = leader
-        ? '#65f4ed'
-        : i < 3
-          ? '#d4ff76'
-          : ['#ef89e8', '#ffba78', '#b9a3ff'][i % 3];
-      ctx.fillRect(x + 5, y + 12, 14, 9);
-      ctx.fillStyle = '#18223d';
-      ctx.fillRect(x + 6, y + 21, 5, 3);
-      ctx.fillRect(x + 14, y + 21, 5, 3);
-      ctx.fillRect(x + 9, y + 6, 2, 2);
+      const r = (dx: number, dy: number, w: number, h: number, color: string) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(x + dx), Math.round(y + dy), w, h);
+      };
+      const skin = colors[i % colors.length],
+        coat = leader ? '#4fdac3' : ['#bf78a8', '#dfaa50', '#759bd0', '#a1b977'][i % 4];
+      r(3, 22, 19, 2, '#253d3b');
+      r(5, 21, 16, 2, '#456055');
+      r(5, 11, 14, 11, '#202c39');
+      r(7, 10, 10, 3, '#202c39');
+      r(6, 13, 12, 7, coat);
+      r(7, 13, 3, 7, leader ? '#a4ffda' : '#f1d0a0');
+      r(15, 14, 3, 7, '#456573');
+      r(3, 14, 3, 6, '#202c39');
+      r(4, 15, 3, 4, skin);
+      r(18, 14, 3, 6, '#202c39');
+      r(18, 15, 2, 4, skin);
+      r(7, 19, 5, 4, '#30435a');
+      r(13, 19, 5, 4, '#26364c');
+      r(6, 22, 6, 2, '#152639');
+      r(13, 22, 6, 2, '#152639');
+      r(6, 2, 12, 10, '#222432');
+      r(7, 4, 10, 8, skin);
+      r(8, 5, 3, 5, '#efc39c');
+      r(15, 5, 2, 7, '#9e684f');
+      r(7, 1, 10, 3, i % 3 === 0 ? '#473429' : i % 3 === 1 ? '#28242a' : '#795331');
+      r(5, 3, 4, 3, '#302931');
+      r(10, 6, 2, 2, '#202630');
+      r(15, 6, 1, 2, '#202630');
+      r(12, 9, 3, 1, '#774b48');
+      r(8, 11, 7, 2, skin);
+      if (leader) {
+        r(2, 11, 5, 10, '#183e48');
+        r(3, 12, 3, 7, '#d6ac5b');
+        r(8, 15, 9, 2, '#d9ffc9');
+        r(12, 13, 1, 7, '#164f51');
+      } else if (i % 3 === 0) {
+        r(10, 11, 3, 5, '#ede1b1');
+        r(10, 15, 7, 2, '#9b4b61');
+      }
     }
     function draw() {
       if (destroyed) return;
@@ -118,30 +146,98 @@ export const game: GameModule = {
       ctx.fillRect(0, 0, 640, 520);
       for (let y = 0; y < 18; y++)
         for (let x = 0; x < 24; x++) {
-          ctx.fillStyle = (x + y) % 2 ? '#233d45' : '#29444a';
-          ctx.fillRect(32 + x * 24, 32 + y * 24, 23, 23);
+          const px = 32 + x * 24,
+            py = 32 + y * 24;
+          ctx.fillStyle = ['#b3a477', '#ae9e73', '#b8a67a'][(x * 3 + y * 7) % 3];
+          ctx.fillRect(px, py, 24, 24);
+          ctx.fillStyle = '#9a916a';
+          ctx.fillRect(px, py + 23, 24, 1);
+          ctx.fillRect(px + 23, py, 1, 24);
+          for (let k = 0; k < 4; k++) {
+            ctx.fillStyle = k % 2 ? '#d0c295' : '#96875f';
+            ctx.fillRect(
+              px + ((x * 7 + y * 3 + k * 11) % 21) + 1,
+              py + ((x * 11 + y * 5 + k * 7) % 21) + 1,
+              2,
+              1,
+            );
+          }
+          if ((x + y * 3) % 23 === 0) {
+            ctx.fillStyle = '#6f8454';
+            ctx.fillRect(px + 16, py + 18, 2, 4);
+            ctx.fillRect(px + 14, py + 20, 6, 1);
+          }
         }
       for (const c of walls(model.district)) {
-        ctx.fillStyle = '#477986';
-        ctx.fillRect(32 + c.x * 24, 32 + c.y * 24, 24, 24);
-        ctx.fillStyle = '#74b6c4';
-        ctx.fillRect(35 + c.x * 24, 39 + c.y * 24, 12, 2);
+        const px = 32 + c.x * 24,
+          py = 32 + c.y * 24;
+        const edge = c.x === 0 || c.y === 0 || c.x === 23 || c.y === 17;
+        if (edge) {
+          ctx.fillStyle = '#254e67';
+          ctx.fillRect(px, py, 24, 24);
+          ctx.fillStyle = '#376f80';
+          ctx.fillRect(px, py + 3, 24, 6);
+          ctx.fillStyle = '#5b98a0';
+          ctx.fillRect(px + (c.y % 3) * 3, py + 5, 12, 1);
+          ctx.fillRect(px + 9, py + 16, 11, 1);
+          ctx.fillStyle = '#93b5ad';
+          ctx.fillRect(px + 4, py + 6, 5, 1);
+        } else {
+          ctx.fillStyle = '#29383d';
+          ctx.fillRect(px, py, 24, 24);
+          ctx.fillStyle = '#63716a';
+          ctx.fillRect(px + 1, py + 1, 22, 19);
+          ctx.fillStyle = '#92927a';
+          ctx.fillRect(px + 2, py + 2, 20, 4);
+          ctx.fillStyle = '#424f4d';
+          ctx.fillRect(px + 1, py + 10, 22, 2);
+          ctx.fillRect(px + 11, py + 2, 2, 8);
+          ctx.fillRect(px + 5, py + 12, 2, 8);
+        }
       }
-      ctx.fillStyle = model.dockOpen ? '#76ffc7' : '#618b77';
-      ctx.fillRect(32 + dock.x * 24, 32 + dock.y * 24, 24, 24);
-      ctx.fillStyle = '#102b2b';
-      ctx.font = 'bold 18px monospace';
-      ctx.fillText('⌂', 34 + dock.x * 24, 52 + dock.y * 24);
+      const dx = 32 + dock.x * 24,
+        dy = 32 + dock.y * 24;
+      ctx.fillStyle = '#173c38';
+      ctx.fillRect(dx, dy, 24, 24);
+      ctx.fillStyle = '#d7d0a0';
+      ctx.fillRect(dx + 2, dy + 6, 20, 17);
+      ctx.fillStyle = model.dockOpen ? '#92e5bc' : '#668e82';
+      ctx.fillRect(dx, dy + 2, 24, 6);
+      ctx.fillStyle = '#e5e7be';
+      for (let n = 0; n < 4; n++) ctx.fillRect(dx + 2 + n * 6, dy + 2, 3, 6);
+      ctx.fillStyle = model.dockOpen ? '#fff2bc' : '#284c49';
+      ctx.fillRect(dx + 8, dy + 11, 9, 12);
+      ctx.fillStyle = '#376258';
+      ctx.fillRect(dx + 3, dy + 11, 3, 6);
+      ctx.fillRect(dx + 19, dy + 11, 3, 6);
+      ctx.fillStyle = '#6c7659';
+      ctx.fillRect(dx + 6, dy + 22, 14, 2);
       if (model.pickup) {
         person(32 + model.pickup.x * 24, 32 + model.pickup.y * 24, model.rescued + 3);
         ctx.strokeStyle = '#d4ff76';
         ctx.strokeRect(32 + model.pickup.x * 24, 32 + model.pickup.y * 24, 23, 23);
       }
       if (model.supply) {
-        ctx.fillStyle = '#ffe39b';
-        ctx.fillRect(37 + model.supply.x * 24, 39 + model.supply.y * 24, 14, 14);
-        ctx.fillStyle = '#365e62';
-        ctx.fillRect(42 + model.supply.x * 24, 36 + model.supply.y * 24, 4, 12);
+        const px = 32 + model.supply.x * 24,
+          py = 32 + model.supply.y * 24;
+        ctx.fillStyle = '#354538';
+        ctx.fillRect(px + 3, py + 9, 19, 14);
+        ctx.fillStyle = '#bd965b';
+        ctx.fillRect(px + 4, py + 11, 17, 10);
+        ctx.fillStyle = '#edc680';
+        ctx.fillRect(px + 4, py + 10, 17, 3);
+        ctx.fillStyle = '#795d42';
+        ctx.fillRect(px + 5, py + 17, 15, 2);
+        ctx.fillStyle = '#326687';
+        ctx.fillRect(px + 6, py + 4, 5, 10);
+        ctx.fillStyle = '#ace5dc';
+        ctx.fillRect(px + 7, py + 5, 2, 7);
+        ctx.fillStyle = '#ddebbd';
+        ctx.fillRect(px + 7, py + 2, 3, 2);
+        ctx.fillStyle = '#e49656';
+        ctx.fillRect(px + 13, py + 7, 5, 8);
+        ctx.fillStyle = '#75985b';
+        ctx.fillRect(px + 14, py + 4, 2, 4);
       }
       if (model.hazard) {
         for (const c of model.hazard.cells) {
