@@ -9,11 +9,12 @@ export function fitCanvas(canvas: HTMLCanvasElement, width: number, height: numb
   canvas.style.maxWidth = `min(100%, ${width * 1.5}px)`;
   canvas.style.height = 'auto';
   canvas.style.aspectRatio = `${width} / ${height}`;
-  canvas.style.imageRendering = 'pixelated';
+  canvas.style.imageRendering = 'auto';
   canvas.style.marginInline = 'auto';
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D is unavailable');
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   return {
     ctx,
     width,

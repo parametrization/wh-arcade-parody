@@ -3,6 +3,7 @@ import { fitCanvas } from '../../shared/canvas';
 import { defaults, tuning, validate, type Config } from './config';
 import * as model from './model';
 import { render } from './render';
+import { rigHeight } from './characters';
 export function createGame(host: HTMLElement, s: GameServices): GameInstance {
   let config: Config = {
       ...defaults,
@@ -21,7 +22,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     saved = false;
   const root = document.createElement('section');
   root.className = 'flappy-files';
-  root.innerHTML = `<style>.flappy-files{max-width:1100px;margin:auto;color:#f4eaca;font:15px system-ui}.ff-hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;padding:12px;background:#132640;border:1px solid #a19268}.ff-stage{position:relative;background:#12223b;max-width:768px;margin:auto}.ff-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none}.ff-plaque{position:absolute;color:#fff6d9;background:#10243e;border:2px solid #eed49b;border-radius:3px;font:800 15px/1.2 system-ui,sans-serif;letter-spacing:.15px;padding:4px 8px;text-align:center;transform:translateX(-50%);width:max-content;max-width:170px;white-space:nowrap;box-shadow:0 2px 0 #071425, inset 0 0 0 1px #4d6177}.ff-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}.ff-controls button,.ff-controls select,.ff-overlay button{min-height:44px;padding:10px 14px;font:inherit;background:#203c57;color:#fff4c6;border:1px solid #d4b46b}.ff-overlay{position:absolute;inset:10% 8%;align-content:center;text-align:center;background:#10203bf2;border:2px solid #e6cc87;padding:18px}.ff-overlay h2{font:900 27px monospace;color:#f5d779}.ff-overlay p{line-height:1.5}.ff-note{font-size:13px;line-height:1.5}.ff-status{min-height:40px}.ff-controls label{align-content:center}@media(max-width:500px){.ff-plaque{font-size:11px;max-width:122px;padding:3px 5px;border-width:1px}.ff-overlay{inset:4%;padding:12px}.ff-overlay h2{font-size:21px}.ff-overlay p{font-size:13px}}</style><div class="ff-hud"><strong>FLAPPY FILES</strong><span data-score></span><span data-burgers></span></div><div class="ff-stage"><canvas aria-label="Eagle carrying files through named cartoon columns"></canvas><div class="ff-labels"></div><div class="ff-overlay"></div></div><div class="ff-controls"><button data-flap>Flap · Space</button><button data-burger>Burger · H</button><button data-pause>Pause · P</button><button data-mute>Sound off · M</button><label>Mode <select data-mode><option value="story">Story · 60 columns</option><option value="endless">Endless</option></select></label><label><input type="checkbox" data-assist> Assist</label></div><div class="ff-status" role="status" aria-live="polite"></div><p class="ff-note">Space / ↑ / W: flap · H: hamburger · P / Escape: pause · R: restart. Burgers dismiss the seven-second distraction immediately. Named characters are fictional political satire, not allegations of involvement in Epstein’s crimes.</p>`;
+  root.innerHTML = `<style>.flappy-files{max-width:1100px;margin:auto;color:#f4eaca;font:15px system-ui}.ff-hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;padding:12px;background:#132640;border:1px solid #a19268}.ff-stage{position:relative;background:#12223b;max-width:768px;margin:auto}.ff-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none}.ff-plaque{position:absolute;color:#fff6d9;background:linear-gradient(#233951,#10243e);border:2px solid #eed49b;border-radius:3px;font:800 14px/1.15 system-ui,sans-serif;letter-spacing:.1px;padding:4px 9px;text-align:center;transform:translate(-50%,-50%);width:112px;white-space:normal;box-shadow:0 2px 0 #071425,inset 0 0 0 1px #4d6177}.ff-plaque::before,.ff-plaque::after{content:"";position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:#e2c483;box-shadow:0 1px 0 #78623d;transform:translateY(-50%)}.ff-plaque::before{left:3px}.ff-plaque::after{right:3px}.ff-plaque--bracket::after{right:calc(-1 * var(--bracket-span));width:var(--bracket-span);height:5px;border-radius:0;background:#acb6bd;border:1px solid #304052;box-shadow:0 2px 0 #142136}.ff-plaque--bracket-right::after{right:auto;left:calc(-1 * var(--bracket-span))}.ff-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}.ff-controls button,.ff-controls select,.ff-overlay button{min-height:44px;padding:10px 14px;font:inherit;background:#203c57;color:#fff4c6;border:1px solid #d4b46b}.ff-overlay{position:absolute;inset:10% 8%;align-content:center;text-align:center;background:#10203bf2;border:2px solid #e6cc87;padding:18px}.ff-overlay h2{font:900 27px monospace;color:#f5d779}.ff-overlay p{line-height:1.5}.ff-note{font-size:13px;line-height:1.5}.ff-status{min-height:40px}.ff-controls label{align-content:center}@media(max-width:500px){.ff-plaque{font-size:11px;width:104px;padding:3px 7px;border-width:1px}.ff-plaque::before,.ff-plaque::after{width:3px;height:3px}.ff-overlay{inset:4%;padding:12px}.ff-overlay h2{font-size:21px}.ff-overlay p{font-size:13px}}</style><div class="ff-hud"><strong>FLAPPY FILES</strong><span data-score></span><span data-burgers></span></div><div class="ff-stage"><canvas aria-label="Eagle carrying files through named cartoon columns"></canvas><div class="ff-labels"></div><div class="ff-overlay"></div></div><div class="ff-controls"><button data-flap>Flap · Space</button><button data-burger>Burger · H</button><button data-pause>Pause · P</button><button data-mute>Sound off · M</button><label>Mode <select data-mode><option value="story">Story · 60 columns</option><option value="endless">Endless</option></select></label><label><input type="checkbox" data-assist> Assist</label></div><div class="ff-status" role="status" aria-live="polite"></div><p class="ff-note">Space / ↑ / W: flap · H: hamburger · P / Escape: pause · R: restart. Burgers dismiss the seven-second distraction immediately. Named characters are fictional political satire, not allegations of involvement in Epstein’s crimes.</p>`;
   host.append(root);
   const canvas = root.querySelector('canvas')!,
     ctx = fitCanvas(canvas, 512, 448).ctx;
@@ -67,24 +68,33 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
       `Burgers ${m.burgers} / ${config['burger.capacity']}`;
     labels.replaceChildren();
     for (const c of m.columns) {
-      for (const [name, y] of [
-        [c.topName, Math.max(4, c.gapY - 100)],
-        [c.name, Math.min(416, c.gapY + c.gap + 60)],
-      ] as [string, number][]) {
+      const bottom = c.gapY + c.gap;
+      const topMount = c.gapY - rigHeight(c.gapY, true);
+      const lowerMount = bottom + rigHeight(388 - bottom);
+      for (const [name, y, side] of [
+        [c.topName, Math.max(11, topMount / 2), 'upper'],
+        [c.name, Math.min(377, lowerMount + (388 - lowerMount) / 2), 'lower'],
+      ] as [string, number, string][]) {
         const el = document.createElement('span');
         el.className = 'ff-plaque';
+        el.dataset.column = String(c.id);
+        el.dataset.side = side;
         el.textContent = name;
         el.style.left = `${((c.x + Number(config['columns.width']) / 2) / 512) * 100}%`;
-        el.style.top = `${(y / 448) * 100}%`;
-        if (name === c.topName && c.gapY < 100) {
-          // Short upper columns cannot stack a readable label above a full face.
-          // Move the plaque beside the portrait, entirely inside the upper obstacle band.
+        el.style.top = `clamp(20px, ${(y / 448) * 100}%, calc(100% - 20px))`;
+        if (side === 'upper' && topMount < 32) {
+          el.classList.add('ff-plaque--bracket');
           const center = c.x + Number(config['columns.width']) / 2;
           el.style.left = `${((center - 34) / 512) * 100}%`;
-          el.style.transform = 'translateX(-100%)';
-          el.style.top = `${(4 / 448) * 100}%`;
+          el.style.transform = 'translate(-100%, -50%)';
+          const plaqueWidth = window.matchMedia('(max-width: 500px)').matches ? 104 : 112;
+          if (((center - 34) * labels.clientWidth) / 512 - plaqueWidth < 4 && center > 0) {
+            el.classList.add('ff-plaque--bracket-right');
+            el.style.left = `${((center + 34) / 512) * 100}%`;
+            el.style.transform = 'translate(0, -50%)';
+          }
+          el.style.setProperty('--bracket-span', `${(18 * labels.clientWidth) / 512}px`);
         }
-
         labels.append(el);
       }
     }

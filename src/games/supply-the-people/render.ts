@@ -31,18 +31,28 @@ function panel(
   light = '#7b969b',
   dark = '#091323',
 ) {
-  rect(c, x + 3, y + 4, w, h, '#070d19');
-  rect(c, x, y, w, h, dark);
-  rect(c, x + 2, y + 2, w - 4, h - 4, base);
-  rect(c, x + 2, y + 2, w - 4, 2, light);
-  rect(c, x + 2, y + 2, 2, h - 4, light);
-  rect(c, x + 2, y + h - 4, w - 4, 2, '#111c2d');
-  rect(c, x + w - 4, y + 3, 2, h - 6, '#111c2d');
-  for (const px of [x + 6, x + w - 8])
-    for (const py of [y + 7, y + h - 9]) {
-      rect(c, px, py, 3, 3, dark);
-      rect(c, px, py, 2, 1, light);
-    }
+  shadow(c, x + w * 0.53, y + h + 3, w * 0.49, 5, 0.22);
+  poly(
+    c,
+    [x, y, x + w, y, x + w + 3, y + h - 3, x + w - 2, y + h + 3, x + 3, y + h + 3, x - 2, y + 3],
+    dark,
+  );
+  const surface = c.createLinearGradient(x, y, x + w * 0.3, y + h);
+  surface.addColorStop(0, light);
+  surface.addColorStop(0.1, base);
+  surface.addColorStop(1, dark);
+  c.fillStyle = surface;
+  c.fillRect(x + 2, y + 2, w - 4, h - 4);
+  poly(c, [x, y, x + w, y, x + w - 5, y + 4, x + 5, y + 4], light);
+  poly(c, [x, y, x + 5, y + 4, x + 5, y + h - 5, x, y + h], base);
+  poly(c, [x + w, y, x + w, y + h, x + w - 5, y + h - 5, x + w - 5, y + 4], dark);
+  poly(c, [x, y + h, x + w, y + h, x + w - 5, y + h - 5, x + 5, y + h - 5], '#0a192b');
+  for (const px of [x + 8, x + w - 10]) {
+    c.fillStyle = light;
+    c.beginPath();
+    c.arc(px, y + 8, 1.5, 0, Math.PI * 2);
+    c.fill();
+  }
 }
 function label(
   c: CanvasRenderingContext2D,
@@ -61,131 +71,155 @@ function label(
   c.fillText(text, x, y);
   c.textAlign = 'left';
 }
+function tone(color: string, amount: number) {
+  const value = Number.parseInt(color.slice(1), 16);
+  const channel = (shift: number) => Math.max(0, Math.min(255, ((value >> shift) & 255) + amount));
+  return `rgb(${channel(16)} ${channel(8)} ${channel(0)})`;
+}
+function block(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  depth: number,
+  color: string,
+) {
+  poly(c, [x, y, x + w, y, x + w, y + h, x, y + h], color);
+  poly(
+    c,
+    [x, y, x + depth, y - depth * 0.55, x + w + depth, y - depth * 0.55, x + w, y],
+    tone(color, 36),
+  );
+  poly(
+    c,
+    [x + w, y, x + w + depth, y - depth * 0.55, x + w + depth, y + h - depth * 0.55, x + w, y + h],
+    tone(color, -34),
+  );
+  poly(c, [x, y, x + w, y, x + w * 0.72, y + h * 0.45, x, y + h * 0.75], tone(color, 8));
+}
+function shadow(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  alpha = 0.25,
+) {
+  c.fillStyle = `rgba(3,12,22,${alpha})`;
+  c.beginPath();
+  c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  c.fill();
+}
 export function portrait(c: CanvasRenderingContext2D, person: number, x: number, y: number) {
   c.save();
   c.translate(x, y);
-  panel(c, 0, 0, 100, 76, '#162940', '#8b866c');
-  for (let row = 0; row < 8; row++)
-    rect(
-      c,
-      5,
-      5 + row * 7,
-      90,
-      7,
-      ['#344760', '#30425c', '#2c3d56', '#283850', '#243249', '#202d42', '#1b283d', '#182237'][row],
-    );
-  rect(c, 7, 6, 4, 53, '#697a80');
-  rect(c, 87, 6, 5, 53, '#101b30');
-  rect(c, 9, 8, 2, 47, '#97a09a');
-  poly(c, [19, 63, 22, 48, 31, 42, 40, 38, 59, 38, 75, 45, 81, 63], '#080f20');
-  poly(c, [22, 62, 25, 48, 39, 41, 59, 41, 72, 47, 77, 63], person === 0 ? '#315b87' : '#3d526a');
-  poly(c, [22, 61, 27, 48, 31, 46, 29, 61], '#607b98');
-  poly(c, [66, 44, 72, 48, 77, 62, 65, 61], '#203550');
-  poly(c, [36, 41, 50, 47, 62, 40, 58, 57, 41, 58], '#cad0cb');
-  poly(c, [39, 42, 49, 49, 43, 51, 34, 43], '#f0eee1');
-  poly(c, [60, 41, 49, 49, 54, 52, 65, 43], '#f0eee1');
-  poly(c, [47, 46, 53, 46, 55, 51, 52, 54, 55, 65, 47, 65, 48, 54, 45, 51], '#882c47');
-  rect(c, 49, 48, 3, 14, '#e06b69');
-  poly(c, [31, 45, 42, 53, 38, 61, 30, 51], '#213650');
-  poly(c, [63, 44, 56, 53, 60, 61, 70, 51], '#223a56');
-  const skin =
-    person === 0
-      ? ['#db9057', '#f3b478', '#b56441', '#ffd19a']
-      : person === 1
-        ? ['#c69880', '#e8bba0', '#936650', '#f4cfb3']
-        : ['#d5b395', '#efcfaf', '#a67b62', '#ffdfbd'];
-  poly(c, [31, 15, 37, 8, 59, 8, 67, 16, 67, 31, 61, 40, 48, 44, 37, 39, 31, 31], '#151829');
-  poly(c, [33, 16, 38, 10, 57, 10, 65, 17, 64, 31, 59, 38, 48, 41, 38, 36, 33, 29], skin[0]);
-  poly(c, [37, 13, 56, 11, 61, 17, 58, 24, 59, 34, 50, 39, 39, 34, 36, 26], skin[1]);
-  poly(c, [58, 18, 63, 17, 63, 30, 58, 36, 55, 35, 58, 28], skin[2]);
-  rect(c, 30, 22, 5, 9, skin[0]);
-  rect(c, 63, 22, 5, 8, skin[0]);
-  rect(c, 31, 23, 2, 5, skin[2]);
-  rect(c, 65, 23, 2, 4, skin[2]);
-  rect(c, 39, 23, 7, 3, '#f1e6cf');
-  rect(c, 53, 23, 7, 3, '#f1e6cf');
-  rect(c, 42, 23, 3, 3, '#252638');
-  rect(c, 54, 23, 3, 3, '#252638');
-  rect(c, 42, 23, 1, 1, '#eef5e1');
-  rect(c, 54, 23, 1, 1, '#eef5e1');
-  poly(c, [49, 22, 48, 30, 53, 31, 54, 28], skin[2]);
-  rect(c, 49, 24, 2, 6, skin[3]);
-  rect(c, 41, 32, 6, 2, skin[0]);
-  rect(c, 55, 31, 4, 2, skin[0]);
+  const backdrop = c.createLinearGradient(0, 0, 100, 70);
+  backdrop.addColorStop(0, '#788b94');
+  backdrop.addColorStop(0.35, '#3a566b');
+  backdrop.addColorStop(1, '#102439');
+  c.fillStyle = backdrop;
+  c.fillRect(0, 0, 100, 76);
+  poly(c, [0, 0, 26, 0, 77, 64, 42, 64], '#97afbd25');
+  poly(c, [100, 0, 82, 0, 58, 64, 86, 64], '#d9e4d515');
+  shadow(c, 51, 63, 34, 9, 0.5);
+  const jacket = ['#305b8c', '#3b526c', '#47516c'][person];
+  poly(c, [15, 62, 22, 47, 36, 40, 61, 40, 77, 47, 87, 63], tone(jacket, -26));
+  poly(c, [22, 47, 38, 41, 48, 51, 42, 64, 17, 64], tone(jacket, 22));
+  poly(c, [38, 41, 48, 49, 59, 41, 71, 46, 64, 64, 41, 64], jacket);
+  poly(c, [71, 46, 79, 48, 86, 64, 64, 64], tone(jacket, -20));
+  poly(c, [26, 47, 38, 44, 33, 61, 21, 63], tone(jacket, 35));
+  poly(c, [38, 41, 49, 48, 59, 40, 56, 58, 43, 58], '#ced9d5');
+  poly(c, [39, 42, 48, 47, 42, 52, 34, 45], '#f4f1df');
+  poly(c, [58, 41, 49, 47, 54, 53, 64, 43], '#f2ecdd');
+  poly(c, [47, 47, 52, 47, 54, 51, 51, 55, 54, 66, 47, 66, 47, 55, 45, 51], '#a83d53');
+  poly(c, [48, 49, 51, 49, 49, 62, 47, 65], '#e57377');
+  poly(c, [33, 44, 43, 54, 38, 60, 27, 48], tone(jacket, -5));
+  poly(c, [64, 43, 55, 54, 60, 61, 72, 47], tone(jacket, -10));
+  const skin = ['#e2a273', '#d1ad92', '#dbbba0'][person];
+  // Faceted forehead, temples, cheekbones and jaw form one sculpted low-poly mesh.
+  poly(c, [29, 17, 37, 7, 56, 6, 68, 16, 70, 31, 62, 42, 50, 46, 37, 42, 29, 32], tone(skin, -54));
+  poly(c, [31, 17, 38, 9, 54, 8, 64, 14, 66, 23, 57, 22, 44, 21], tone(skin, 20));
+  poly(c, [31, 17, 44, 21, 39, 28, 32, 30], tone(skin, 4));
+  poly(c, [44, 21, 57, 22, 58, 31, 48, 34, 39, 28], tone(skin, 10));
+  poly(c, [64, 14, 67, 20, 67, 31, 58, 31, 57, 22], tone(skin, -29));
+  poly(c, [32, 30, 39, 28, 48, 34, 44, 40, 37, 39], tone(skin, -8));
+  poly(c, [48, 34, 58, 31, 64, 34, 58, 40, 50, 44, 44, 40], tone(skin, -21));
+  poly(c, [37, 39, 44, 40, 50, 44, 43, 43], tone(skin, -35));
+  poly(c, [29, 23, 33, 22, 33, 32, 29, 29], tone(skin, -5));
+  poly(c, [67, 23, 71, 22, 70, 30, 66, 32], tone(skin, -33));
+  poly(c, [39, 21, 46, 21, 47, 25, 40, 25], '#f0e5d7');
+  poly(c, [53, 22, 60, 21, 63, 24, 54, 25], '#f0e5d7');
+  rect(c, 42, 22, 3, 3, '#26354a');
+  rect(c, 55, 22, 3, 3, '#26354a');
+  poly(c, [49, 22, 46, 32, 50, 34, 54, 31], tone(skin, -44));
+  poly(c, [49, 22, 49, 31, 52, 31], tone(skin, 34));
+  poly(c, [42, 35, 49, 36, 57, 34, 54, 38, 45, 38], tone(skin, -48));
+  poly(c, [45, 36, 54, 35, 53, 37, 46, 37], '#e9ceb8');
   if (person === 0) {
     poly(
       c,
-      [30, 15, 29, 8, 36, 8, 38, 4, 62, 5, 68, 9, 64, 15, 55, 15, 46, 12, 38, 16, 35, 22, 31, 20],
-      '#b48037',
+      [28, 18, 28, 9, 36, 5, 56, 4, 68, 8, 70, 13, 59, 17, 45, 13, 35, 19, 32, 26],
+      '#b38a44',
     );
-    poly(c, [30, 9, 36, 8, 39, 5, 61, 6, 65, 9, 56, 12, 45, 10, 37, 13, 32, 17], '#e6c064');
-    rect(c, 38, 7, 22, 2, '#ffe497');
-    rect(c, 34, 11, 13, 2, '#f6d57b');
-    rect(c, 56, 11, 8, 2, '#d19b43');
-    poly(c, [38, 20, 45, 19, 47, 22, 38, 22], '#b17d3d');
-    poly(c, [52, 20, 59, 19, 62, 22, 53, 22], '#b17d3d');
-    rect(c, 45, 35, 10, 2, '#a95b48');
-    rect(c, 47, 34, 7, 1, '#f5c195');
-    rect(c, 45, 38, 10, 1, skin[2]);
-    // Gold monogram stamp, an oversized branding prop.
-    rect(c, 76, 30, 10, 8, '#82552e');
-    rect(c, 78, 28, 6, 4, '#e7c66a');
-    rect(c, 73, 38, 15, 7, '#ebc367');
-    rect(c, 74, 39, 13, 2, '#fff0a0');
-    rect(c, 74, 43, 13, 2, '#875632');
+    poly(c, [28, 10, 37, 5, 57, 5, 67, 8, 58, 11, 41, 10, 32, 16], '#edcc7a');
+    poly(c, [37, 5, 57, 5, 64, 7, 48, 8], '#ffe4a1');
+    poly(c, [32, 16, 42, 10, 53, 12, 44, 15, 35, 20], '#d9b46d');
+    poly(c, [59, 11, 69, 10, 65, 16, 58, 18, 51, 14], '#bd914e');
+    poly(c, [37, 19, 45, 18, 47, 21, 39, 22], '#b78f56');
+    poly(c, [54, 19, 61, 18, 64, 21, 54, 22], '#af8049');
+    block(c, 76, 35, 11, 8, 3, '#d4af58');
+    block(c, 79, 29, 5, 6, 2, '#a6874c');
+    rect(c, 77, 35, 10, 2, '#ffe4a0');
   } else if (person === 1) {
     poly(
       c,
-      [30, 19, 31, 11, 36, 6, 59, 5, 65, 10, 66, 20, 61, 16, 57, 11, 43, 11, 35, 17],
-      '#29232c',
+      [29, 24, 29, 13, 35, 7, 48, 3, 62, 7, 67, 14, 67, 22, 60, 16, 53, 12, 39, 14, 34, 22],
+      '#342c2d',
     );
-    poly(c, [32, 12, 38, 7, 58, 7, 63, 10, 47, 9, 39, 13, 33, 18], '#594137');
-    rect(c, 39, 8, 18, 2, '#795946');
+    poly(c, [30, 14, 36, 8, 49, 5, 61, 8, 53, 10, 40, 12], '#705443');
+    poly(c, [33, 15, 42, 11, 54, 10, 46, 15, 36, 19], '#584539');
     poly(
       c,
-      [33, 28, 39, 30, 43, 33, 54, 33, 59, 29, 64, 28, 61, 37, 53, 42, 43, 41, 36, 36],
-      '#49322e',
+      [32, 28, 40, 31, 45, 33, 54, 33, 61, 29, 65, 29, 62, 40, 51, 45, 40, 42, 34, 36],
+      '#584237',
     );
-    poly(c, [38, 33, 43, 35, 53, 35, 58, 32, 56, 38, 50, 40, 43, 38], '#74503b');
-    rect(c, 43, 33, 11, 2, '#bd8b72');
-    rect(c, 45, 34, 8, 1, '#efe0c7');
-    rect(c, 38, 19, 9, 2, '#49332b');
-    rect(c, 52, 19, 10, 2, '#49332b');
-    rect(c, 37, 26, 10, 1, '#725765');
-    rect(c, 52, 26, 10, 1, '#725765');
-    rect(c, 76, 36, 3, 24, '#e4bf65');
-    rect(c, 73, 33, 9, 4, '#ffe3a0');
-    rect(c, 74, 57, 8, 3, '#a9884d');
-    poly(c, [70, 40, 74, 39, 77, 43, 85, 44, 85, 47, 77, 47, 73, 43, 70, 44], '#c3586d');
+    poly(c, [39, 34, 48, 37, 59, 33, 57, 39, 50, 42, 43, 39], '#87654b');
+    poly(c, [44, 33, 55, 33, 53, 35, 46, 35], '#e1b693');
+    rect(c, 38, 18, 9, 2, '#574032');
+    rect(c, 53, 18, 9, 2, '#574032');
+    block(c, 79, 33, 3, 23, 2, '#b69a64');
+    shadow(c, 80, 57, 7, 2);
+    poly(c, [73, 37, 79, 37, 85, 42, 91, 43, 91, 47, 83, 46, 77, 41, 73, 41], '#ba5a72');
   } else {
     poly(
       c,
-      [31, 20, 30, 12, 36, 6, 60, 6, 66, 13, 65, 22, 61, 18, 60, 12, 42, 11, 35, 17, 35, 24],
-      '#352a2a',
+      [29, 23, 29, 14, 35, 7, 48, 5, 60, 7, 67, 15, 66, 25, 62, 20, 59, 13, 45, 12, 36, 17, 34, 26],
+      '#45372e',
     );
-    poly(c, [33, 13, 39, 8, 58, 8, 62, 11, 46, 10, 38, 14, 34, 20], '#69533b');
-    rect(c, 40, 9, 15, 2, '#a48660');
-    rect(c, 36, 20, 13, 9, '#292d38');
-    rect(c, 51, 20, 13, 9, '#292d38');
-    rect(c, 38, 22, 9, 5, skin[1]);
-    rect(c, 53, 22, 9, 5, skin[1]);
-    rect(c, 41, 23, 3, 3, '#1d2e37');
-    rect(c, 54, 23, 3, 3, '#1d2e37');
-    rect(c, 48, 22, 4, 2, '#292d38');
-    rect(c, 38, 21, 8, 1, '#9babae');
-    rect(c, 53, 21, 8, 1, '#9babae');
-    rect(c, 43, 34, 13, 2, '#8c6252');
-    rect(c, 45, 34, 9, 1, '#eee1c9');
-    rect(c, 73, 30, 16, 22, '#26364c');
-    rect(c, 74, 31, 14, 19, '#dfd3ad');
-    rect(c, 78, 29, 6, 4, '#9e8157');
-    for (let row = 0; row < 3; row++) rect(c, 77, 36 + row * 4, 8, 1, '#776f63');
+    poly(c, [31, 14, 36, 8, 49, 7, 59, 9, 48, 10, 40, 14, 33, 18], '#8e7353');
+    poly(c, [40, 8, 53, 7, 60, 9, 50, 10], '#b29771');
+    c.strokeStyle = '#283342';
+    c.lineWidth = 2;
+    c.strokeRect(36, 20, 13, 9);
+    c.strokeRect(51, 20, 13, 9);
+    c.beginPath();
+    c.moveTo(49, 23);
+    c.lineTo(51, 23);
+    c.stroke();
+    poly(c, [37, 21, 47, 21, 40, 26, 37, 26], '#cbe2dc55');
+    poly(c, [52, 21, 62, 21, 56, 26, 52, 26], '#cbe2dc44');
+    block(c, 76, 31, 14, 21, 2, '#a49678');
+    poly(c, [77, 32, 88, 32, 88, 49, 77, 49], '#e0d6b9');
+    rect(c, 80, 29, 6, 4, '#7c7464');
+    for (let row = 0; row < 3; row++) rect(c, 79, 36 + row * 4, 7, 1, '#8c887a');
   }
-  rect(c, 3, 62, 94, 12, '#111f32');
-  rect(c, 5, 63, 90, 1, '#907c4c');
-  label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 72, '#f7d58c', 9, true);
+  poly(c, [0, 62, 100, 62, 96, 76, 4, 76], '#132a3d');
+  poly(c, [0, 62, 100, 62, 97, 64, 3, 64], '#a79c78');
+  label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 73, '#efe1ba', 9, true);
   c.restore();
 }
+
 function destinationIcon(c: CanvasRenderingContext2D, d: number, x: number, y: number) {
   if (d === 0) {
     poly(c, [x, y - 9, x + 10, y + 8, x - 10, y + 8], '#122b35');
@@ -245,16 +279,21 @@ function destinationIcon(c: CanvasRenderingContext2D, d: number, x: number, y: n
   }
 }
 function building(c: CanvasRenderingContext2D, d: number, x: number, y: number) {
-  rect(c, x + 3, y + 17, 36, 20, ['#aaa56d', '#8ea4a0', '#ad8866'][d]);
-  rect(c, x + 3, y + 18, 36, 3, ['#d3cc91', '#c9d9cb', '#d8b78e'][d]);
-  poly(c, [x, y + 17, x + 20, y + 4, x + 42, y + 17], ['#5d6d6c', '#8d6673', '#497d77'][d]);
-  poly(c, [x + 5, y + 15, x + 20, y + 7, x + 35, y + 15], ['#8ba091', '#bb8e98', '#76b6a4'][d]);
-  rect(c, x + 18, y + 24, 8, 13, '#243e4e');
-  rect(c, x + 8, y + 23, 6, 7, '#354d57');
-  rect(c, x + 30, y + 23, 6, 7, '#354d57');
-  rect(c, x + 8, y + 23, 6, 2, '#d1e8cd');
-  rect(c, x + 30, y + 23, 6, 2, '#d1e8cd');
-  rect(c, x, y + 36, 42, 3, '#263c49');
+  shadow(c, x + 24, y + 37, 22, 4, 0.24);
+  block(c, x + 5, y + 17, 30, 19, 7, ['#baa97c', '#b5c6bc', '#c5a17e'][d]);
+  poly(c, [x, y + 18, x + 18, y + 6, x + 39, y + 17], ['#607d78', '#9e7e8a', '#4f8584'][d]);
+  poly(
+    c,
+    [x + 18, y + 6, x + 25, y + 2, x + 46, y + 13, x + 39, y + 17],
+    ['#8da996', '#c4a8ae', '#89b5a6'][d],
+  );
+  poly(c, [x + 39, y + 17, x + 46, y + 13, x + 40, y + 21], '#374f5e');
+  for (const wx of [x + 10, x + 27]) {
+    rect(c, wx, y + 23, 5, 7, '#314e61');
+    poly(c, [wx, y + 23, wx + 5, y + 23, wx, y + 28], '#c8e1d2');
+  }
+  rect(c, x + 18, y + 23, 7, 13, '#345468');
+  rect(c, x + 19, y + 24, 5, 2, '#c8d9cb');
 }
 export function render(
   c: CanvasRenderingContext2D,
@@ -267,19 +306,50 @@ export function render(
   c.lineWidth = 1;
   c.setLineDash([]);
   rect(c, 0, 0, 640, 390, '#172333');
-  // A tiled warehouse with lit clerestory windows and a steel inspection gantry.
-  for (let row = 0; row < 15; row++) {
-    rect(c, 0, 89 + row * 18, 640, 18, row % 2 ? '#30404c' : '#354751');
-    for (let x = (row % 2) * 32; x < 640; x += 64) {
-      rect(c, x, 89 + row * 18, 1, 18, '#22333f');
-      rect(c, x + 2, 90 + row * 18, 58, 1, '#455965');
-    }
+  // Fixed camera 2.5D warehouse: atmospheric depth and broad lit surfaces.
+  const room = c.createLinearGradient(0, 86, 0, 345);
+  room.addColorStop(0, '#9eafb4');
+  room.addColorStop(0.45, '#607681');
+  room.addColorStop(1, '#334958');
+  c.fillStyle = room;
+  c.fillRect(0, 86, 640, 260);
+  poly(c, [0, 86, 640, 86, 575, 112, 68, 112], '#3c5264');
+  poly(c, [0, 86, 68, 112, 68, 345, 0, 345], '#506573');
+  poly(c, [640, 86, 575, 112, 575, 345, 640, 345], '#253e50');
+  for (let beam = 0; beam < 8; beam++) {
+    const x = beam * 92;
+    poly(
+      c,
+      [x, 86, x + 11, 86, 320 + (x - 320) * 0.78, 112, 311 + (x - 320) * 0.78, 112],
+      '#83959b',
+    );
   }
-  for (let x = 18; x < 630; x += 80) {
-    rect(c, x, 88, 62, 17, '#111f32');
-    rect(c, x + 2, 90, 58, 12, '#436b79');
-    rect(c, x + 3, 91, 56, 3, '#77a5a4');
-    rect(c, x + 29, 90, 3, 13, '#253c4b');
+  const floor = c.createLinearGradient(0, 95, 0, 345);
+  floor.addColorStop(0, '#a7b8b0');
+  floor.addColorStop(1, '#5a7376');
+  c.fillStyle = floor;
+  c.fillRect(63, 96, 518, 250);
+  for (let i = -5; i <= 8; i++) {
+    const x = 320 + i * 72;
+    c.strokeStyle = '#bed0c229';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(320 + (x - 320) * 0.3, 95);
+    c.lineTo(x, 345);
+    c.stroke();
+  }
+  for (let row = 0; row < 9; row++) {
+    const y = 102 + row * row * 4;
+    c.strokeStyle = '#304b5a30';
+    c.beginPath();
+    c.moveTo(60, y);
+    c.lineTo(582, y);
+    c.stroke();
+  }
+  for (let x = 30; x < 625; x += 120) {
+    block(c, x, 90, 67, 15, 6, '#576e7b');
+    poly(c, [x + 4, 92, x + 62, 92, x + 58, 98, x + 7, 98], '#dbeacb');
+    poly(c, [x + 9, 99, x + 60, 99, x + 92, 152, x - 15, 152], '#e5f2c619');
   }
   panel(c, 7, 4, 630, 82, '#263548', '#64747c');
   for (let i = 0; i < 3; i++) portrait(c, i, 16 + i * 111, 6);
@@ -297,40 +367,73 @@ export function render(
   // Conveyor beds retain exactly the original interaction coordinates.
   for (let row = 0; row < 3; row++) {
     const y = 109 + row * 79;
-    rect(c, 18, y + 57, 496, 8, '#152637');
-    rect(c, 28, y + 60, 11, 16, '#1d2d3b');
-    rect(c, 468, y + 60, 11, 16, '#1d2d3b');
-    rect(c, 30, y + 60, 3, 14, '#607079');
-    rect(c, 470, y + 60, 3, 14, '#607079');
-    panel(
+    shadow(c, 264, y + 63, 249, 10, 0.27);
+    for (const leg of [31, 461]) {
+      block(c, leg, y + 49, 12, 26, 8, '#687d85');
+      poly(c, [leg, y + 50, leg + 12, y + 50, leg + 12, y + 56, leg, y + 64], '#354b5e');
+    }
+    // Extruded chassis, recessed slats and faceted steel rollers.
+    poly(
       c,
-      12,
-      y - 2,
-      505,
-      61,
-      row === lane ? '#78918e' : '#566d75',
-      row === lane ? '#c4e4c0' : '#9baeb0',
+      [13, y + 6, 26, y - 3, 510, y - 3, 519, y + 8, 508, y + 55, 21, y + 58, 12, y + 46],
+      '#182c3e',
     );
-    rect(c, 20, y + 7, 489, 43, '#101e2d');
-    for (let tile = 0; tile < 24; tile++) {
-      const x = 20 + tile * 21;
-      rect(c, x, y + 10, 19, 36, '#283e4b');
-      rect(c, x + 1, y + 10, 17, 2, '#486273');
-      rect(c, x + 1, y + 43, 17, 3, '#162a38');
-      rect(c, x + 17, y + 12, 2, 30, '#1c303e');
-      for (let notch = 0; notch < 4; notch++) rect(c, x + 5, y + 15 + notch * 7, 7, 1, '#334c59');
+    poly(c, [20, y + 3, 507, y + 3, 513, y + 9, 17, y + 9], row === lane ? '#c3dacf' : '#a2b7b8');
+    const belt = c.createLinearGradient(0, y + 8, 0, y + 51);
+    belt.addColorStop(0, '#294454');
+    belt.addColorStop(0.42, '#46616c');
+    belt.addColorStop(1, '#1b3546');
+    c.fillStyle = belt;
+    c.fillRect(21, y + 8, 487, 42);
+    for (let tile = 0; tile < 22; tile++) {
+      const x = 23 + tile * 22;
+      c.strokeStyle = '#142c3c';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(x, y + 9);
+      c.lineTo(x - 6, y + 49);
+      c.stroke();
+      c.strokeStyle = '#6b858544';
+      c.beginPath();
+      c.moveTo(x + 1, y + 10);
+      c.lineTo(x - 5, y + 47);
+      c.stroke();
+      for (let n = 0; n < 4; n++) rect(c, x + 4, y + 16 + n * 7, 9, 1, '#93aa9a0d');
     }
-    rect(c, 20, y + 3, 488, 3, '#adbcb3');
-    rect(c, 20, y + 50, 488, 3, '#778e91');
-    rect(c, 22, y + 53, 484, 2, '#243b4b');
-    for (let x = 29; x < 510; x += 41) {
-      rect(c, x, y + 4, 3, 2, '#394c59');
-      rect(c, x, y + 51, 3, 2, '#354e5c');
+    poly(c, [14, y + 48, 518, y + 48, 508, y + 60, 23, y + 60], '#6d8690');
+    poly(c, [23, y + 54, 512, y + 54, 508, y + 60, 23, y + 60], '#314c60');
+    poly(c, [14, y + 48, 518, y + 48, 516, y + 51, 18, y + 51], '#b9cecc');
+    for (const cx of [22, 507]) {
+      poly(
+        c,
+        [
+          cx - 8,
+          y + 13,
+          cx - 3,
+          y + 7,
+          cx + 3,
+          y + 7,
+          cx + 8,
+          y + 14,
+          cx + 8,
+          y + 43,
+          cx + 3,
+          y + 49,
+          cx - 3,
+          y + 49,
+          cx - 8,
+          y + 42,
+        ],
+        '#617d88',
+      );
+      poly(c, [cx - 3, y + 8, cx + 2, y + 8, cx + 3, y + 48, cx - 2, y + 48], '#bfd1cb');
+      poly(c, [cx + 3, y + 10, cx + 7, y + 15, cx + 7, y + 42, cx + 3, y + 46], '#314e62');
     }
-    if (row === lane) {
-      poly(c, [3, y + 21, 11, y + 27, 3, y + 33], '#b7f6ce');
-      rect(c, 21, y + 4, 12, 2, '#d5f6d4');
+    for (let x = 49; x < 489; x += 64) {
+      shadow(c, x, y + 56, 2, 1, 0.6);
+      rect(c, x, y + 53, 2, 2, '#b6c9c6');
     }
+    if (row === lane) poly(c, [2, y + 20, 12, y + 28, 2, y + 36], '#d8f2bc');
     // Color-coded storefront gate with depth and a shared, unambiguous icon.
     const d = m.gates[row];
     panel(
@@ -359,34 +462,22 @@ export function render(
     const x = Math.round(crate.x),
       y = 119 + crate.lane * 79,
       market = config.variant === 'market';
-    rect(c, x - 18, y + 32, 42, 5, '#081524');
-    rect(c, x - 12, y + 37, 32, 2, '#112536');
-    poly(
-      c,
-      [x - 18, y + 2, x - 10, y - 5, x + 20, y - 5, x + 20, y + 27, x + 14, y + 35, x - 18, y + 35],
-      '#2a2625',
-    );
-    rect(c, x - 16, y + 3, 31, 30, market ? '#936877' : '#a47649');
-    poly(
-      c,
-      [x - 16, y + 2, x - 9, y - 3, x + 18, y - 3, x + 12, y + 3],
-      market ? '#c896a1' : '#d8b17a',
-    );
-    poly(
-      c,
-      [x + 15, y + 3, x + 19, y - 2, x + 19, y + 27, x + 15, y + 32],
-      market ? '#5b3f56' : '#694c35',
-    );
+    shadow(c, x + 3, y + 34, 24, 6, 0.4);
+    const wood = market ? '#a88192' : '#ae8756';
+    block(c, x - 17, y + 3, 31, 30, 6, wood);
+    poly(c, [x - 16, y + 3, x - 11, y - 2, x + 19, y - 2, x + 13, y + 3], tone(wood, 43));
+    poly(c, [x - 17, y + 3, x - 12, y + 3, x - 12, y + 33, x - 17, y + 33], tone(wood, 24));
+    poly(c, [x + 9, y + 3, x + 14, y + 3, x + 14, y + 33, x + 9, y + 33], tone(wood, 17));
     for (let n = 0; n < 3; n++) {
-      rect(c, x - 15, y + 4 + n * 10, 28, 2, market ? '#bb8997' : '#c39a62');
-      rect(c, x - 15, y + 11 + n * 10, 28, 1, market ? '#684a5d' : '#725035');
+      rect(c, x - 12, y + 10 + n * 8, 22, 1, tone(wood, -26));
+      rect(c, x - 10, y + 9 + n * 8, 17, 1, tone(wood, 18));
     }
-    rect(c, x - 14, y + 3, 4, 30, market ? '#d8abba' : '#e1bc85');
-    rect(c, x + 8, y + 3, 4, 30, market ? '#c79daa' : '#d0ab75');
-    for (const px of [x - 13, x + 9])
-      for (const py of [y + 5, y + 28]) rect(c, px, py, 2, 2, '#514941');
-    rect(c, x - 10, y + 7, 19, 22, '#243b3f');
-    rect(c, x - 9, y + 8, 17, 20, ['#8bba9e', '#c393a7', '#82bab4'][crate.destination]);
+    poly(c, [x - 10, y + 8, x + 9, y + 8, x + 8, y + 29, x - 9, y + 29], '#243d48');
+    poly(
+      c,
+      [x - 9, y + 9, x + 8, y + 9, x + 7, y + 28, x - 8, y + 28],
+      ['#aac6aa', '#cfabb8', '#9bc8c0'][crate.destination],
+    );
     destinationIcon(c, crate.destination, x, y + 18);
     if (crate.sleeve) {
       panel(c, x - 24, y - 11, 49, 15, '#c99b45', '#fff0aa', '#563d2d');

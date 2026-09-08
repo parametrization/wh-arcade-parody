@@ -1,6 +1,7 @@
 import { drawBurger } from '../../shared/sprites/burger';
 import { CAST, type Model } from './model';
 import { value } from './config';
+import { drawColumnCharacter, rigHeight } from './characters';
 export function render(
   ctx: CanvasRenderingContext2D,
   m: Model,
@@ -17,7 +18,14 @@ export function render(
     ctx.fillStyle = color;
     ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
   };
-  // Stepped sixteen-bit sky bands and sparse checker dithering, without smooth gradients.
+  const facet = (points: number[][], color: string) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fill();
+  };
+  // Preserve the painted Mall scene as a low-resolution texture behind lit geometry.
   const bands =
     variant === 'C'
       ? ['#183759', '#214867', '#2e5b77', '#3c7188', '#568d9c']
@@ -68,7 +76,9 @@ export function render(
     rect(x + 7, 335, 20, 18, '#548670');
     rect(x + 11, 334, 10, 5, '#739d7b');
   }
-  if (background)
+  if (background) {
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(
       background,
       0,
@@ -80,15 +90,67 @@ export function render(
       512,
       388,
     );
+    ctx.restore();
+  }
+  // Distance haze and directional sun give the backdrop depth without moving the playfield.
+  const haze = ctx.createLinearGradient(0, 150, 0, 388);
+  haze.addColorStop(0, 'rgba(193,222,239,0)');
+  haze.addColorStop(0.65, 'rgba(197,219,222,.17)');
+  haze.addColorStop(1, 'rgba(128,166,162,.04)');
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, 150, 512, 238);
+  const sun = ctx.createRadialGradient(86, 38, 3, 86, 38, 240);
+  sun.addColorStop(0, 'rgba(255,239,185,.15)');
+  sun.addColorStop(1, 'rgba(255,239,185,0)');
+  ctx.fillStyle = sun;
+  ctx.fillRect(0, 0, 512, 388);
   for (const col of m.columns) {
     const w = value(m.config, 'columns.width'),
       bottom = col.gapY + col.gap;
+    const upperMount = col.gapY - rigHeight(col.gapY, true),
+      lowerMount = bottom + rigHeight(388 - bottom);
     for (const [y, h] of [
-      [0, col.gapY],
-      [bottom, 388 - bottom],
+      [0, Math.max(0, upperMount)],
+      [lowerMount, Math.max(0, 388 - lowerMount)],
     ]) {
       rect(col.x, y, w, h, '#554c59');
-      rect(col.x + 4, y, w - 8, h, '#d2c5a5');
+      // A six-sided stone shaft: broad lit face, beveled edges, cool shadow face.
+      facet(
+        [
+          [col.x, y],
+          [col.x + w * 0.14, y],
+          [col.x + w * 0.14, y + h],
+          [col.x, y + h],
+        ],
+        '#b7ae99',
+      );
+      facet(
+        [
+          [col.x + w * 0.14, y],
+          [col.x + w * 0.44, y],
+          [col.x + w * 0.44, y + h],
+          [col.x + w * 0.14, y + h],
+        ],
+        '#eee1bf',
+      );
+      facet(
+        [
+          [col.x + w * 0.44, y],
+          [col.x + w * 0.74, y],
+          [col.x + w * 0.74, y + h],
+          [col.x + w * 0.44, y + h],
+        ],
+        '#d5c6a6',
+      );
+      facet(
+        [
+          [col.x + w * 0.74, y],
+          [col.x + w, y],
+          [col.x + w, y + h],
+          [col.x + w * 0.74, y + h],
+        ],
+        '#938d7e',
+      );
       for (let j = 8; j < w - 4; j += 10) {
         rect(col.x + j, y, 5, h, '#a4977c');
         rect(col.x + j, y, 1, h, '#f2e6be');
@@ -101,12 +163,68 @@ export function render(
         rect(col.x + 4, y + band + 2, w - 8, 1, '#eee0b8');
       }
     }
-    rect(col.x - 4, col.gapY - 12, w + 8, 12, '#eee1be');
-    rect(col.x - 4, bottom, w + 8, 12, '#eee1be');
-    rect(col.x - 6, col.gapY - 14, w + 12, 3, '#fff3d2');
-    rect(col.x - 6, bottom, w + 12, 3, '#fff3d2');
-    person(col.x + w / 2, bottom + 7, col.name, false);
-    person(col.x + w / 2, col.gapY - 3, col.topName, true);
+    // Stone supports end at the rig mount: figures hang beneath the upper capital
+    // and plant their feet (or couch) on the lower capital, never pasted on a shaft.
+    rect(col.x - 5, upperMount - 6, w + 10, 6, '#d7c39a');
+    rect(col.x - 7, upperMount - 8, w + 14, 3, '#fff3d2');
+    rect(col.x - 5, lowerMount, w + 10, 7, '#d7c39a');
+    rect(col.x - 7, lowerMount, w + 14, 3, '#fff3d2');
+    facet(
+      [
+        [col.x - 7, lowerMount],
+        [col.x + 2, lowerMount - 5],
+        [col.x + w + 5, lowerMount - 5],
+        [col.x + w + 7, lowerMount],
+        [col.x - 7, lowerMount],
+      ],
+      '#f4e7c6',
+    );
+    facet(
+      [
+        [col.x + w - 1, lowerMount + 3],
+        [col.x + w + 7, lowerMount],
+        [col.x + w + 7, lowerMount + 6],
+        [col.x + w - 1, lowerMount + 9],
+      ],
+      '#8c8a7a',
+    );
+    facet(
+      [
+        [col.x - 7, upperMount - 8],
+        [col.x + w + 7, upperMount - 8],
+        [col.x + w + 3, upperMount - 3],
+        [col.x - 3, upperMount - 3],
+      ],
+      '#eadbb8',
+    );
+    ctx.fillStyle = 'rgba(20,30,42,.28)';
+    ctx.beginPath();
+    ctx.ellipse(col.x + w / 2 + 4, lowerMount - 1, w * 0.42, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    drawColumnCharacter(ctx, {
+      name: col.name,
+      x: col.x + w / 2,
+      edge: bottom,
+      upper: false,
+      available: 388 - bottom,
+      time: m.time,
+      eagleX: 154,
+      eagleY: m.y + 20,
+      reducedMotion: reduced,
+      atlas: portraits,
+    });
+    drawColumnCharacter(ctx, {
+      name: col.topName,
+      x: col.x + w / 2,
+      edge: col.gapY,
+      upper: true,
+      available: col.gapY,
+      time: m.time,
+      eagleX: 154,
+      eagleY: m.y + 20,
+      reducedMotion: reduced,
+      atlas: portraits,
+    });
     if (col.burger && !col.collected) hamburger(col.x + w / 2, col.gapY + col.gap / 2);
     if (m.config['presentation.showColliders']) {
       ctx.strokeStyle = '#ff00ff';
@@ -135,6 +253,11 @@ export function render(
     rect(xx, 392, 1, 5, '#968f76');
     rect(xx + 15, 394, 3, 1, '#d5cbaa');
   }
+  // Soft projected shadow supplies a ground reference while the eagle remains freely airborne.
+  ctx.fillStyle = 'rgba(14,35,38,.19)';
+  ctx.beginPath();
+  ctx.ellipse(159, 402, 12 + (352 - m.y) * 0.025, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
   const wing = reduced ? 1 : Math.floor(m.time * 12) % 3;
   const y = m.y;
   eagle(125, y - 5, wing);
@@ -195,7 +318,7 @@ export function render(
       ctx.fill();
     };
     // Layered flight feathers, with three distinct wing silhouettes.
-    const lift = [-7, 0, 9][frame];
+    const lift = reduced ? 0 : Math.sin(m.time * 12) * 8;
     shape(
       [
         [22, 18],
@@ -410,6 +533,109 @@ export function render(
       ],
       '#f3bf57',
     );
+    // Broad triangular feathers and lit head planes read as a small low-polygon model.
+    shape(
+      [
+        [8, 23],
+        [23, 17],
+        [31, 21],
+        [16, 29],
+      ],
+      '#a88a58',
+    );
+    shape(
+      [
+        [16, 29],
+        [31, 21],
+        [35, 28],
+        [26, 34],
+      ],
+      '#6d5940',
+    );
+    shape(
+      [
+        [24, 17],
+        [30, 13],
+        [34, 20],
+        [31, 21],
+      ],
+      '#c4b07c',
+    );
+    shape(
+      [
+        [30, 7],
+        [39, 5],
+        [44, 8],
+        [36, 12],
+      ],
+      '#fffdf0',
+    );
+    shape(
+      [
+        [29, 13],
+        [36, 12],
+        [34, 20],
+        [29, 21],
+      ],
+      '#ccd9d4',
+    );
+    shape(
+      [
+        [44, 13],
+        [52, 14],
+        [57, 18],
+        [49, 16],
+      ],
+      '#ffda71',
+    );
+    shape(
+      [
+        [49, 16],
+        [57, 18],
+        [55, 22],
+        [54, 18],
+      ],
+      '#b17b36',
+    );
+    shape(
+      [
+        [0, 9 + lift],
+        [8, 14 + lift],
+        [21, 22],
+        [11, 22],
+      ],
+      '#b89a68',
+    );
+    shape(
+      [
+        [11, 22],
+        [21, 22],
+        [17, 29],
+        [3, 24],
+      ],
+      '#6d5b40',
+    );
+    // Preserve the recognizable eye and the exact files text over the lit mesh.
+    rect(41, 12, 3, 3, '#162c32');
+    rect(42, 12, 1, 1, '#fff6d2');
+    shape(
+      [
+        [49, 43],
+        [53, 40],
+        [53, 57],
+        [49, 61],
+      ],
+      '#9d8e68',
+    );
+    shape(
+      [
+        [17, 42],
+        [22, 39],
+        [53, 40],
+        [49, 44],
+      ],
+      '#fff0bd',
+    );
     rect(16, 41, 34, 20, '#483d31');
     rect(17, 42, 32, 18, '#c9ac74');
     rect(19, 39, 13, 5, '#ebcd8d');
@@ -422,7 +648,24 @@ export function render(
     ctx.restore();
   }
   function hamburger(x: number, y: number) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(40,28,22,.22)';
+    ctx.beginPath();
+    ctx.ellipse(x + 2, y + 15, 16, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
     drawBurger(ctx, x, y);
+    facet(
+      [
+        [x - 11, y - 6],
+        [x - 4, y - 9],
+        [x + 6, y - 8],
+        [x + 12, y - 4],
+        [x + 4, y - 5],
+        [x - 4, y - 3],
+      ],
+      'rgba(255,225,157,.24)',
+    );
+    ctx.restore();
   }
 
   function portrait(name: string, x: number, y: number, size: number) {
@@ -436,64 +679,6 @@ export function render(
       ey = Math.round((Math.floor(index / 4) + 1) * cellH);
     ctx.drawImage(portraits, sx, sy, ex - sx, ey - sy, x, y, size, size);
     return true;
-  }
-  function person(x: number, y: number, name: string, up: boolean) {
-    const id = CAST.indexOf(name);
-    ctx.save();
-    const size = up ? Math.min(52, Math.max(40, y - 3)) : 52;
-    ctx.translate(Math.round(x), Math.round(up ? y - size : y));
-    if (portraits) {
-      rect(-size / 2 - 3, -3, size + 6, size + 6, '#302436');
-      rect(-size / 2 - 2, -2, size + 4, size + 4, '#e5c486');
-      portrait(name, -size / 2, 0, size);
-      rect(size / 2 - 11, size - 12, 10, 10, '#af334b');
-      rect(size / 2 - 9, size - 10, 6, 3, '#fff0cd');
-      rect(size / 2 - 5, size - 8, 2, 4, '#fff0cd');
-      ctx.restore();
-      return;
-    }
-    // Body, medals and party insignia remain distinct from the fixed collision rectangle.
-    rect(-23, 30, 46, 29, '#571d36');
-    rect(-20, 30, 39, 25, '#ae344b');
-    rect(-16, 31, 10, 22, '#d05b64');
-    rect(12, 32, 6, 21, '#832a42');
-    rect(-7, 31, 14, 16, '#fff0d5');
-    rect(-2, 35, 5, 20, '#243b62');
-    // Ivory elephant shoulder pin: party symbolism, not an interchangeable face.
-    rect(12, 38, 9, 5, '#eedbb1');
-    rect(18, 41, 3, 7, '#eedbb1');
-    rect(11, 43, 2, 4, '#eedbb1');
-    if (!portrait(name, -26, -1, 52)) {
-      const skin =
-        ['#e99761', '#c79976', '#d2a180', '#c79878', '#dfb296', '#e2b69b', '#d0a084'][id] ??
-        '#d5a480';
-      const hair =
-        ['#efcb57', '#594238', '#51413b', '#8b8377', '#dbd4c4', '#c3b49f', '#a39f94'][id] ??
-        '#766358';
-      rect(-18, 1, 36, 32, '#433541');
-      rect(-16, 3, 32, 28, skin);
-      rect(-19, 1, 37, 8, hair);
-      rect(-17, 8, 4, 9, hair);
-      rect(14, 7, 4, 11, hair);
-      rect(-12, 12, 8, 3, '#4c3a38');
-      rect(5, 12, 8, 3, '#4c3a38');
-      rect(-10, 15, 3, 3, '#202b3f');
-      rect(8, 15, 3, 3, '#202b3f');
-      rect(-2, 17, 5, 7, '#b87959');
-      rect(-6, 26, 14, 2, '#834d48');
-      if (id === 1) {
-        rect(-15, 23, 29, 9, '#634a40');
-        rect(-7, 25, 13, 3, '#e0b093');
-      }
-      if (id === 2 || id === 4) {
-        ctx.strokeStyle = '#283d4b';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(-14, 12, 12, 8);
-        ctx.strokeRect(3, 12, 12, 8);
-        rect(-2, 15, 5, 2, '#283d4b');
-      }
-    }
-    ctx.restore();
   }
   function trump(x: number, y: number, exit: boolean) {
     rect(x + 16, y + 77, 134, 127, '#132c59');
@@ -532,6 +717,43 @@ export function render(
     rect(x + 80, y + 117, 4, 90, '#ed5b55');
     rect(x + 89, y + 115, 4, 94, '#8b1e39');
     rect(x + 49, y + 110, 5, 5, '#d8b966');
+    facet(
+      [
+        [x + 20, y + 86],
+        [x + 43, y + 80],
+        [x + 65, y + 145],
+        [x + 39, y + 130],
+      ],
+      '#38547b',
+    );
+    facet(
+      [
+        [x + 43, y + 80],
+        [x + 66, y + 96],
+        [x + 72, y + 146],
+        [x + 65, y + 145],
+      ],
+      '#142d50',
+    );
+    facet(
+      [
+        [x + 106, y + 93],
+        [x + 134, y + 84],
+        [x + 145, y + 191],
+        [x + 120, y + 169],
+      ],
+      '#102747',
+    );
+    facet(
+      [
+        [x + 35, y + 150],
+        [x + 85, y + 140],
+        [x + 125, y + 153],
+        [x + 102, y + 175],
+        [x + 46, y + 178],
+      ],
+      '#335275',
+    );
     if (exit && m.event.cause === 'burger') hamburger(x + 87, y + 72);
     if (!exit) {
       const coverage = Math.min(

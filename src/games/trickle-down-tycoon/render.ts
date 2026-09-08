@@ -31,18 +31,28 @@ function panel(
   light = '#7b969b',
   dark = '#091323',
 ) {
-  rect(c, x + 3, y + 4, w, h, '#070d19');
-  rect(c, x, y, w, h, dark);
-  rect(c, x + 2, y + 2, w - 4, h - 4, base);
-  rect(c, x + 2, y + 2, w - 4, 2, light);
-  rect(c, x + 2, y + 2, 2, h - 4, light);
-  rect(c, x + 2, y + h - 4, w - 4, 2, '#111c2d');
-  rect(c, x + w - 4, y + 3, 2, h - 6, '#111c2d');
-  for (const px of [x + 6, x + w - 8])
-    for (const py of [y + 7, y + h - 9]) {
-      rect(c, px, py, 3, 3, dark);
-      rect(c, px, py, 2, 1, light);
-    }
+  shadow(c, x + w * 0.53, y + h + 3, w * 0.49, 5, 0.22);
+  poly(
+    c,
+    [x, y, x + w, y, x + w + 3, y + h - 3, x + w - 2, y + h + 3, x + 3, y + h + 3, x - 2, y + 3],
+    dark,
+  );
+  const surface = c.createLinearGradient(x, y, x + w * 0.3, y + h);
+  surface.addColorStop(0, light);
+  surface.addColorStop(0.1, base);
+  surface.addColorStop(1, dark);
+  c.fillStyle = surface;
+  c.fillRect(x + 2, y + 2, w - 4, h - 4);
+  poly(c, [x, y, x + w, y, x + w - 5, y + 4, x + 5, y + 4], light);
+  poly(c, [x, y, x + 5, y + 4, x + 5, y + h - 5, x, y + h], base);
+  poly(c, [x + w, y, x + w, y + h, x + w - 5, y + h - 5, x + w - 5, y + 4], dark);
+  poly(c, [x, y + h, x + w, y + h, x + w - 5, y + h - 5, x + 5, y + h - 5], '#0a192b');
+  for (const px of [x + 8, x + w - 10]) {
+    c.fillStyle = light;
+    c.beginPath();
+    c.arc(px, y + 8, 1.5, 0, Math.PI * 2);
+    c.fill();
+  }
 }
 function label(
   c: CanvasRenderingContext2D,
@@ -61,207 +71,231 @@ function label(
   c.fillText(text, x, y);
   c.textAlign = 'left';
 }
+function tone(color: string, amount: number) {
+  const value = Number.parseInt(color.slice(1), 16);
+  const channel = (shift: number) => Math.max(0, Math.min(255, ((value >> shift) & 255) + amount));
+  return `rgb(${channel(16)} ${channel(8)} ${channel(0)})`;
+}
+function block(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  depth: number,
+  color: string,
+) {
+  poly(c, [x, y, x + w, y, x + w, y + h, x, y + h], color);
+  poly(
+    c,
+    [x, y, x + depth, y - depth * 0.55, x + w + depth, y - depth * 0.55, x + w, y],
+    tone(color, 36),
+  );
+  poly(
+    c,
+    [x + w, y, x + w + depth, y - depth * 0.55, x + w + depth, y + h - depth * 0.55, x + w, y + h],
+    tone(color, -34),
+  );
+  poly(c, [x, y, x + w, y, x + w * 0.72, y + h * 0.45, x, y + h * 0.75], tone(color, 8));
+}
+function shadow(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  alpha = 0.25,
+) {
+  c.fillStyle = `rgba(3,12,22,${alpha})`;
+  c.beginPath();
+  c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  c.fill();
+}
 export function portrait(c: CanvasRenderingContext2D, person: number, x: number, y: number) {
   c.save();
   c.translate(x, y);
-  panel(c, 0, 0, 100, 76, '#162940', '#8b866c');
-  for (let row = 0; row < 8; row++)
-    rect(
-      c,
-      5,
-      5 + row * 7,
-      90,
-      7,
-      ['#344760', '#30425c', '#2c3d56', '#283850', '#243249', '#202d42', '#1b283d', '#182237'][row],
-    );
-  rect(c, 7, 6, 4, 53, '#697a80');
-  rect(c, 87, 6, 5, 53, '#101b30');
-  rect(c, 9, 8, 2, 47, '#97a09a');
-  poly(c, [19, 63, 22, 48, 31, 42, 40, 38, 59, 38, 75, 45, 81, 63], '#080f20');
-  poly(c, [22, 62, 25, 48, 39, 41, 59, 41, 72, 47, 77, 63], person === 0 ? '#315b87' : '#3d526a');
-  poly(c, [22, 61, 27, 48, 31, 46, 29, 61], '#607b98');
-  poly(c, [66, 44, 72, 48, 77, 62, 65, 61], '#203550');
-  poly(c, [36, 41, 50, 47, 62, 40, 58, 57, 41, 58], '#cad0cb');
-  poly(c, [39, 42, 49, 49, 43, 51, 34, 43], '#f0eee1');
-  poly(c, [60, 41, 49, 49, 54, 52, 65, 43], '#f0eee1');
-  poly(c, [47, 46, 53, 46, 55, 51, 52, 54, 55, 65, 47, 65, 48, 54, 45, 51], '#882c47');
-  rect(c, 49, 48, 3, 14, '#e06b69');
-  poly(c, [31, 45, 42, 53, 38, 61, 30, 51], '#213650');
-  poly(c, [63, 44, 56, 53, 60, 61, 70, 51], '#223a56');
-  const skin =
-    person === 0
-      ? ['#db9057', '#f3b478', '#b56441', '#ffd19a']
-      : person === 1
-        ? ['#c69880', '#e8bba0', '#936650', '#f4cfb3']
-        : ['#d5b395', '#efcfaf', '#a67b62', '#ffdfbd'];
-  poly(c, [31, 15, 37, 8, 59, 8, 67, 16, 67, 31, 61, 40, 48, 44, 37, 39, 31, 31], '#151829');
-  poly(c, [33, 16, 38, 10, 57, 10, 65, 17, 64, 31, 59, 38, 48, 41, 38, 36, 33, 29], skin[0]);
-  poly(c, [37, 13, 56, 11, 61, 17, 58, 24, 59, 34, 50, 39, 39, 34, 36, 26], skin[1]);
-  poly(c, [58, 18, 63, 17, 63, 30, 58, 36, 55, 35, 58, 28], skin[2]);
-  rect(c, 30, 22, 5, 9, skin[0]);
-  rect(c, 63, 22, 5, 8, skin[0]);
-  rect(c, 31, 23, 2, 5, skin[2]);
-  rect(c, 65, 23, 2, 4, skin[2]);
-  rect(c, 39, 23, 7, 3, '#f1e6cf');
-  rect(c, 53, 23, 7, 3, '#f1e6cf');
-  rect(c, 42, 23, 3, 3, '#252638');
-  rect(c, 54, 23, 3, 3, '#252638');
-  rect(c, 42, 23, 1, 1, '#eef5e1');
-  rect(c, 54, 23, 1, 1, '#eef5e1');
-  poly(c, [49, 22, 48, 30, 53, 31, 54, 28], skin[2]);
-  rect(c, 49, 24, 2, 6, skin[3]);
-  rect(c, 41, 32, 6, 2, skin[0]);
-  rect(c, 55, 31, 4, 2, skin[0]);
+  const backdrop = c.createLinearGradient(0, 0, 100, 70);
+  backdrop.addColorStop(0, '#788b94');
+  backdrop.addColorStop(0.35, '#3a566b');
+  backdrop.addColorStop(1, '#102439');
+  c.fillStyle = backdrop;
+  c.fillRect(0, 0, 100, 76);
+  poly(c, [0, 0, 26, 0, 77, 64, 42, 64], '#97afbd25');
+  poly(c, [100, 0, 82, 0, 58, 64, 86, 64], '#d9e4d515');
+  shadow(c, 51, 63, 34, 9, 0.5);
+  const jacket = ['#305b8c', '#3b526c', '#47516c'][person];
+  poly(c, [15, 62, 22, 47, 36, 40, 61, 40, 77, 47, 87, 63], tone(jacket, -26));
+  poly(c, [22, 47, 38, 41, 48, 51, 42, 64, 17, 64], tone(jacket, 22));
+  poly(c, [38, 41, 48, 49, 59, 41, 71, 46, 64, 64, 41, 64], jacket);
+  poly(c, [71, 46, 79, 48, 86, 64, 64, 64], tone(jacket, -20));
+  poly(c, [26, 47, 38, 44, 33, 61, 21, 63], tone(jacket, 35));
+  poly(c, [38, 41, 49, 48, 59, 40, 56, 58, 43, 58], '#ced9d5');
+  poly(c, [39, 42, 48, 47, 42, 52, 34, 45], '#f4f1df');
+  poly(c, [58, 41, 49, 47, 54, 53, 64, 43], '#f2ecdd');
+  poly(c, [47, 47, 52, 47, 54, 51, 51, 55, 54, 66, 47, 66, 47, 55, 45, 51], '#a83d53');
+  poly(c, [48, 49, 51, 49, 49, 62, 47, 65], '#e57377');
+  poly(c, [33, 44, 43, 54, 38, 60, 27, 48], tone(jacket, -5));
+  poly(c, [64, 43, 55, 54, 60, 61, 72, 47], tone(jacket, -10));
+  const skin = ['#e2a273', '#d1ad92', '#dbbba0'][person];
+  // Faceted forehead, temples, cheekbones and jaw form one sculpted low-poly mesh.
+  poly(c, [29, 17, 37, 7, 56, 6, 68, 16, 70, 31, 62, 42, 50, 46, 37, 42, 29, 32], tone(skin, -54));
+  poly(c, [31, 17, 38, 9, 54, 8, 64, 14, 66, 23, 57, 22, 44, 21], tone(skin, 20));
+  poly(c, [31, 17, 44, 21, 39, 28, 32, 30], tone(skin, 4));
+  poly(c, [44, 21, 57, 22, 58, 31, 48, 34, 39, 28], tone(skin, 10));
+  poly(c, [64, 14, 67, 20, 67, 31, 58, 31, 57, 22], tone(skin, -29));
+  poly(c, [32, 30, 39, 28, 48, 34, 44, 40, 37, 39], tone(skin, -8));
+  poly(c, [48, 34, 58, 31, 64, 34, 58, 40, 50, 44, 44, 40], tone(skin, -21));
+  poly(c, [37, 39, 44, 40, 50, 44, 43, 43], tone(skin, -35));
+  poly(c, [29, 23, 33, 22, 33, 32, 29, 29], tone(skin, -5));
+  poly(c, [67, 23, 71, 22, 70, 30, 66, 32], tone(skin, -33));
+  poly(c, [39, 21, 46, 21, 47, 25, 40, 25], '#f0e5d7');
+  poly(c, [53, 22, 60, 21, 63, 24, 54, 25], '#f0e5d7');
+  rect(c, 42, 22, 3, 3, '#26354a');
+  rect(c, 55, 22, 3, 3, '#26354a');
+  poly(c, [49, 22, 46, 32, 50, 34, 54, 31], tone(skin, -44));
+  poly(c, [49, 22, 49, 31, 52, 31], tone(skin, 34));
+  poly(c, [42, 35, 49, 36, 57, 34, 54, 38, 45, 38], tone(skin, -48));
+  poly(c, [45, 36, 54, 35, 53, 37, 46, 37], '#e9ceb8');
   if (person === 0) {
     poly(
       c,
-      [30, 15, 29, 8, 36, 8, 38, 4, 62, 5, 68, 9, 64, 15, 55, 15, 46, 12, 38, 16, 35, 22, 31, 20],
-      '#b48037',
+      [28, 18, 28, 9, 36, 5, 56, 4, 68, 8, 70, 13, 59, 17, 45, 13, 35, 19, 32, 26],
+      '#b38a44',
     );
-    poly(c, [30, 9, 36, 8, 39, 5, 61, 6, 65, 9, 56, 12, 45, 10, 37, 13, 32, 17], '#e6c064');
-    rect(c, 38, 7, 22, 2, '#ffe497');
-    rect(c, 34, 11, 13, 2, '#f6d57b');
-    rect(c, 56, 11, 8, 2, '#d19b43');
-    poly(c, [38, 20, 45, 19, 47, 22, 38, 22], '#b17d3d');
-    poly(c, [52, 20, 59, 19, 62, 22, 53, 22], '#b17d3d');
-    rect(c, 45, 35, 10, 2, '#a95b48');
-    rect(c, 47, 34, 7, 1, '#f5c195');
-    rect(c, 45, 38, 10, 1, skin[2]);
-    // Gold monogram stamp, an oversized branding prop.
-    rect(c, 76, 30, 10, 8, '#82552e');
-    rect(c, 78, 28, 6, 4, '#e7c66a');
-    rect(c, 73, 38, 15, 7, '#ebc367');
-    rect(c, 74, 39, 13, 2, '#fff0a0');
-    rect(c, 74, 43, 13, 2, '#875632');
+    poly(c, [28, 10, 37, 5, 57, 5, 67, 8, 58, 11, 41, 10, 32, 16], '#edcc7a');
+    poly(c, [37, 5, 57, 5, 64, 7, 48, 8], '#ffe4a1');
+    poly(c, [32, 16, 42, 10, 53, 12, 44, 15, 35, 20], '#d9b46d');
+    poly(c, [59, 11, 69, 10, 65, 16, 58, 18, 51, 14], '#bd914e');
+    poly(c, [37, 19, 45, 18, 47, 21, 39, 22], '#b78f56');
+    poly(c, [54, 19, 61, 18, 64, 21, 54, 22], '#af8049');
+    block(c, 76, 35, 11, 8, 3, '#d4af58');
+    block(c, 79, 29, 5, 6, 2, '#a6874c');
+    rect(c, 77, 35, 10, 2, '#ffe4a0');
   } else if (person === 1) {
     poly(
       c,
-      [30, 19, 31, 11, 36, 6, 59, 5, 65, 10, 66, 20, 61, 16, 57, 11, 43, 11, 35, 17],
-      '#29232c',
+      [29, 24, 29, 13, 35, 7, 48, 3, 62, 7, 67, 14, 67, 22, 60, 16, 53, 12, 39, 14, 34, 22],
+      '#342c2d',
     );
-    poly(c, [32, 12, 38, 7, 58, 7, 63, 10, 47, 9, 39, 13, 33, 18], '#594137');
-    rect(c, 39, 8, 18, 2, '#795946');
+    poly(c, [30, 14, 36, 8, 49, 5, 61, 8, 53, 10, 40, 12], '#705443');
+    poly(c, [33, 15, 42, 11, 54, 10, 46, 15, 36, 19], '#584539');
     poly(
       c,
-      [33, 28, 39, 30, 43, 33, 54, 33, 59, 29, 64, 28, 61, 37, 53, 42, 43, 41, 36, 36],
-      '#49322e',
+      [32, 28, 40, 31, 45, 33, 54, 33, 61, 29, 65, 29, 62, 40, 51, 45, 40, 42, 34, 36],
+      '#584237',
     );
-    poly(c, [38, 33, 43, 35, 53, 35, 58, 32, 56, 38, 50, 40, 43, 38], '#74503b');
-    rect(c, 43, 33, 11, 2, '#bd8b72');
-    rect(c, 45, 34, 8, 1, '#efe0c7');
-    rect(c, 38, 19, 9, 2, '#49332b');
-    rect(c, 52, 19, 10, 2, '#49332b');
-    rect(c, 37, 26, 10, 1, '#725765');
-    rect(c, 52, 26, 10, 1, '#725765');
-    rect(c, 76, 36, 3, 24, '#e4bf65');
-    rect(c, 73, 33, 9, 4, '#ffe3a0');
-    rect(c, 74, 57, 8, 3, '#a9884d');
-    poly(c, [70, 40, 74, 39, 77, 43, 85, 44, 85, 47, 77, 47, 73, 43, 70, 44], '#c3586d');
+    poly(c, [39, 34, 48, 37, 59, 33, 57, 39, 50, 42, 43, 39], '#87654b');
+    poly(c, [44, 33, 55, 33, 53, 35, 46, 35], '#e1b693');
+    rect(c, 38, 18, 9, 2, '#574032');
+    rect(c, 53, 18, 9, 2, '#574032');
+    block(c, 79, 33, 3, 23, 2, '#b69a64');
+    shadow(c, 80, 57, 7, 2);
+    poly(c, [73, 37, 79, 37, 85, 42, 91, 43, 91, 47, 83, 46, 77, 41, 73, 41], '#ba5a72');
   } else {
     poly(
       c,
-      [31, 20, 30, 12, 36, 6, 60, 6, 66, 13, 65, 22, 61, 18, 60, 12, 42, 11, 35, 17, 35, 24],
-      '#352a2a',
+      [29, 23, 29, 14, 35, 7, 48, 5, 60, 7, 67, 15, 66, 25, 62, 20, 59, 13, 45, 12, 36, 17, 34, 26],
+      '#45372e',
     );
-    poly(c, [33, 13, 39, 8, 58, 8, 62, 11, 46, 10, 38, 14, 34, 20], '#69533b');
-    rect(c, 40, 9, 15, 2, '#a48660');
-    rect(c, 36, 20, 13, 9, '#292d38');
-    rect(c, 51, 20, 13, 9, '#292d38');
-    rect(c, 38, 22, 9, 5, skin[1]);
-    rect(c, 53, 22, 9, 5, skin[1]);
-    rect(c, 41, 23, 3, 3, '#1d2e37');
-    rect(c, 54, 23, 3, 3, '#1d2e37');
-    rect(c, 48, 22, 4, 2, '#292d38');
-    rect(c, 38, 21, 8, 1, '#9babae');
-    rect(c, 53, 21, 8, 1, '#9babae');
-    rect(c, 43, 34, 13, 2, '#8c6252');
-    rect(c, 45, 34, 9, 1, '#eee1c9');
-    rect(c, 73, 30, 16, 22, '#26364c');
-    rect(c, 74, 31, 14, 19, '#dfd3ad');
-    rect(c, 78, 29, 6, 4, '#9e8157');
-    for (let row = 0; row < 3; row++) rect(c, 77, 36 + row * 4, 8, 1, '#776f63');
+    poly(c, [31, 14, 36, 8, 49, 7, 59, 9, 48, 10, 40, 14, 33, 18], '#8e7353');
+    poly(c, [40, 8, 53, 7, 60, 9, 50, 10], '#b29771');
+    c.strokeStyle = '#283342';
+    c.lineWidth = 2;
+    c.strokeRect(36, 20, 13, 9);
+    c.strokeRect(51, 20, 13, 9);
+    c.beginPath();
+    c.moveTo(49, 23);
+    c.lineTo(51, 23);
+    c.stroke();
+    poly(c, [37, 21, 47, 21, 40, 26, 37, 26], '#cbe2dc55');
+    poly(c, [52, 21, 62, 21, 56, 26, 52, 26], '#cbe2dc44');
+    block(c, 76, 31, 14, 21, 2, '#a49678');
+    poly(c, [77, 32, 88, 32, 88, 49, 77, 49], '#e0d6b9');
+    rect(c, 80, 29, 6, 4, '#7c7464');
+    for (let row = 0; row < 3; row++) rect(c, 79, 36 + row * 4, 7, 1, '#8c887a');
   }
-  rect(c, 3, 62, 94, 12, '#111f32');
-  rect(c, 5, 63, 90, 1, '#907c4c');
-  label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 72, '#f7d58c', 9, true);
+  poly(c, [0, 62, 100, 62, 96, 76, 4, 76], '#132a3d');
+  poly(c, [0, 62, 100, 62, 97, 64, 3, 64], '#a79c78');
+  label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 73, '#efe1ba', 9, true);
   c.restore();
 }
+
 function resource(c: CanvasRenderingContext2D, type: number, x: number, y: number) {
   c.save();
-  c.translate(Math.round(x), Math.round(y));
+  c.translate(x, y);
   if (type === 0) {
-    poly(c, [-15, -13, 7, -16, 16, -11, 16, 14, -6, 17, -15, 12], '#172438');
-    rect(c, -12, -12, 22, 26, '#9f5369');
-    rect(c, -10, -11, 18, 23, '#cf8493');
-    rect(c, -10, -11, 18, 3, '#e7a5aa');
-    rect(c, -12, -12, 4, 26, '#673e59');
-    poly(c, [10, -11, 14, -9, 14, 12, 10, 14], '#e4d9b5');
-    rect(c, 11, -6, 2, 16, '#aaac9a');
-    rect(c, -4, -3, 10, 2, '#f3dcaf');
-    rect(c, -4, 2, 8, 2, '#efd3a4');
-    rect(c, -5, 10, 5, 7, '#d4b66f');
+    shadow(c, 3, 17, 17, 3, 0.22);
+    poly(c, [-16, -11, 7, -16, 17, -9, 16, 14, -6, 18, -16, 12], '#523f54');
+    poly(c, [-14, -10, 7, -14, 8, 12, -6, 15, -14, 11], '#bb6b87');
+    poly(c, [-14, -10, -9, -11, -8, 14, -13, 12], '#794d6d');
+    poly(c, [-9, -11, 7, -14, 8, -9, -8, -6], '#de9ca6');
+    poly(c, [8, -13, 15, -8, 14, 12, 8, 14], '#ddd6bd');
+    poly(c, [9, -8, 13, -5, 12, 11, 9, 12], '#adafa6');
+    poly(c, [-8, -6, 7, -9, 8, 11, -7, 14], '#aa5f80');
+    poly(c, [-4, -2, 4, -4, 4, -1, -4, 1], '#efdbad');
+    poly(c, [-4, 4, 3, 2, 3, 4, -4, 6], '#eed2a5');
+    poly(c, [-3, 12, 1, 11, 1, 18, -2, 16, -4, 18], '#d4b77f');
   } else if (type === 1) {
-    rect(c, -8, -17, 16, 6, '#122c3a');
-    rect(c, -5, -15, 10, 3, '#8ab6b3');
-    rect(c, -17, -11, 34, 27, '#102636');
-    rect(c, -15, -9, 30, 23, '#6ea59e');
-    rect(c, -15, -9, 30, 4, '#d2e5cd');
-    rect(c, -15, 10, 30, 4, '#426e78');
-    rect(c, 11, -4, 4, 14, '#527e86');
-    rect(c, -11, -5, 3, 14, '#9dd1bf');
-    rect(c, -3, -7, 6, 19, '#eef0d1');
-    rect(c, -9, -1, 18, 6, '#eef0d1');
-    rect(c, -2, -6, 3, 16, '#fffbe4');
+    block(c, -15, -9, 25, 23, 6, '#75aaa8');
+    poly(c, [-15, -9, -10, -14, 16, -14, 10, -9], '#c0d8c7');
+    poly(c, [10, -9, 16, -14, 16, 9, 10, 14], '#3e6d82');
+    poly(c, [-8, -14, -8, -19, 4, -19, 8, -15, 4, -14, 2, -17, -5, -17, -5, -14], '#3c606e');
+    poly(
+      c,
+      [-4, -7, 2, -7, 2, -1, 8, -1, 8, 5, 2, 5, 2, 11, -4, 11, -4, 5, -10, 5, -10, -1, -4, -1],
+      '#eff1d8',
+    );
+    poly(c, [-3, -6, 0, -6, 0, 10, -3, 10], '#fff8e5');
   } else if (type === 2) {
     poly(
       c,
       [
-        -13, -15, -3, -17, 6, -11, 7, -2, 2, 5, 8, 11, 14, 7, 18, 12, 12, 18, 5, 18, -5, 7, -13, 4,
-        -17, -4,
+        -12, -15, -3, -17, 5, -12, 8, -5, 4, 3, 0, 6, 12, 16, 16, 11, 19, 15, 13, 20, 8, 20, -6, 8,
+        -14, 3, -18, -5,
       ],
-      '#3f342d',
+      '#866b46',
     );
-    poly(c, [-12, -12, -3, -14, 3, -10, 4, -3, 0, 2, -6, 3, -12, 0, -14, -5], '#efcb73');
-    poly(c, [-9, -9, -4, -10, -1, -7, -2, -3, -6, -2, -10, -5], '#3c5158');
-    poly(c, [-1, 2, 3, 0, 15, 12, 11, 15, 7, 11, 4, 13, -2, 7], '#ddb66b');
-    rect(c, 10, 8, 5, 3, '#ffdda0');
-    rect(c, -11, -12, 6, 2, '#fff0bc');
-  } else if (type === 3) {
-    poly(
-      c,
-      [-8, -17, 7, -17, 15, -10, 18, -2, 16, 9, 8, 16, -7, 17, -15, 10, -18, -1, -14, -11],
-      '#725332',
-    );
-    poly(
-      c,
-      [-7, -15, 6, -15, 13, -9, 15, -1, 13, 8, 6, 13, -6, 14, -13, 8, -15, -1, -11, -10],
-      '#d8a74f',
-    );
-    poly(c, [-6, -12, 5, -12, 11, -7, 12, 2, 8, 10, -5, 11, -11, 6, -12, -2, -8, -9], '#f1d082');
-    rect(c, -9, -11, 12, 2, '#fff1bc');
-    rect(c, -1, -10, 3, 21, '#916439');
-    rect(c, -6, -6, 11, 3, '#9d6f3c');
-    rect(c, -6, -3, 4, 5, '#9d6f3c');
-    rect(c, -5, 1, 10, 3, '#9d6f3c');
-    rect(c, 2, 3, 4, 5, '#9d6f3c');
-    rect(c, -6, 7, 11, 3, '#9d6f3c');
+    poly(c, [-11, -13, -3, -15, 4, -10, 5, -3, 0, 3, -8, 3, -14, -3, -14, -8], '#e9c986');
+    poly(c, [-11, -13, -3, -15, 4, -10, -3, -9, -9, -7], '#ffe5ac');
+    poly(c, [-3, -9, 4, -10, 5, -3, 0, 3, -2, -2], '#c5a16b');
+    poly(c, [-8, -8, -3, -10, 0, -7, -1, -2, -6, -1, -10, -4], '#344f62');
+    poly(c, [-2, 3, 2, 2, 13, 13, 9, 17, 4, 12, 1, 14, -5, 7], '#dfbd7b');
+    poly(c, [1, 4, 4, 5, 12, 13, 10, 14], '#fff0b5');
   } else {
-    poly(
-      c,
-      [
-        -10, -17, 8, -17, 16, -9, 17, 3, 10, 14, 3, 17, 5, 20, -3, 20, -1, 17, -11, 13, -17, 3, -16,
-        -9,
-      ],
-      '#826237',
-    );
-    poly(c, [-9, -15, 7, -15, 14, -8, 15, 3, 9, 12, 2, 15, -8, 12, -14, 3, -13, -8], '#c49a56');
-    poly(c, [-7, -12, 5, -12, 10, -7, 12, 2, 7, 9, -6, 9, -10, 2, -10, -6], '#384355');
-    rect(c, -11, -10, 3, 6, '#ffe1a0');
-    label(c, 'EMPTY', 0, 3, '#efdca5', 8, true);
-    poly(c, [-1, 20, 1, 20, -1, 26, 2, 29, 0, 30, -3, 26], '#bcb68f');
+    const sides = type === 3 ? 10 : 9,
+      radius = type === 3 ? 17 : 18;
+    const points: number[] = [];
+    for (let i = 0; i < sides; i++) {
+      const angle = -Math.PI / 2 + (i * Math.PI * 2) / sides;
+      points.push(Math.cos(angle) * radius, Math.sin(angle) * radius);
+    }
+    const rim = points.map((v, i) => v + (i % 2 ? 2 : 3));
+    poly(c, rim, type === 3 ? '#997848' : '#806b52');
+    for (let i = 0; i < sides; i++) {
+      const n = (i + 1) % sides;
+      poly(
+        c,
+        [0, -1, points[i * 2], points[i * 2 + 1], points[n * 2], points[n * 2 + 1]],
+        tone(
+          type === 3 ? '#dfbf75' : '#bca474',
+          Math.round(Math.cos((i * Math.PI * 2) / sides + 1) * 32),
+        ),
+      );
+    }
+    if (type === 3) {
+      const inner = points.map((v) => v * 0.69);
+      poly(c, inner, '#e3c486');
+      poly(c, [-6, -10, 2, -12, 9, -7, 2, -6, -6, -3], '#f4dfaa');
+      label(c, '$', 0, 8, '#8b6b43', 20, true);
+    } else {
+      poly(c, [-11, -6, -4, -11, 5, -10, 12, -3, 9, 8, 0, 12, -10, 6], '#344d61');
+      label(c, 'EMPTY', 0, 4, '#efdfbd', 8, true);
+      poly(c, [-2, 18, 3, 18, 1, 22, 3, 26, 0, 28, -2, 23], '#c5b992');
+    }
   }
   c.restore();
 }
+
 function neighborhood(
   c: CanvasRenderingContext2D,
   track: number,
@@ -270,7 +304,8 @@ function neighborhood(
   y: number,
 ) {
   // Small dimensional streetscape evolves from a plot to a two-story service.
-  rect(c, x, y + 45, 191, 7, '#142637');
+  shadow(c, x + 47, y + 47, 40, 5, 0.25);
+  poly(c, [x, y + 45, x + 184, y + 45, x + 191, y + 49, x + 7, y + 53], '#243e53');
   rect(c, x + 2, y + 45, 187, 2, '#78908a');
   if (!level) {
     rect(c, x + 5, y + 27, 61, 18, '#455b61');
@@ -320,42 +355,91 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
   c.textAlign = 'left';
   c.setLineDash([]);
   rect(c, 0, 0, 640, 410, '#112438');
-  // Dusk sky, distant rooftops and the theatrical gilded facade.
-  const sky = ['#323452', '#3b405e', '#49546d', '#63767e', '#86988d'];
-  for (let band = 0; band < 5; band++) rect(c, 0, 85 + band * 50, 640, 50, sky[band]);
-  for (let i = 0; i < 22; i++) {
-    const x = i * 31,
-      h = 18 + ((i * 19) % 61);
-    rect(c, x, 274 - h, 26, h, '#354f64');
-    rect(c, x + 3, 279 - h, 21, 3, '#5d7783');
-    for (let win = 0; win < 3; win++) rect(c, x + 5 + win * 6, 286 - h, 3, 4, '#baa780');
+  // Low-poly skyline and receding architectural wings under warm evening light.
+  const sky = c.createLinearGradient(0, 80, 0, 340);
+  sky.addColorStop(0, '#425b82');
+  sky.addColorStop(0.48, '#879ca5');
+  sky.addColorStop(1, '#d3c2a0');
+  c.fillStyle = sky;
+  c.fillRect(0, 80, 640, 260);
+  for (let i = 0; i < 15; i++) {
+    const x = i * 49 - 15,
+      h = 32 + ((i * 31) % 57);
+    block(c, x, 261 - h, 30, h, 13, '#627c8c');
+    for (let j = 0; j < 3; j++) rect(c, x + 7 + j * 7, 273 - h, 3, 4, '#d2c3a075');
   }
-  rect(c, 46, 109, 548, 174, '#344153');
-  rect(c, 54, 109, 532, 7, '#68706d');
+  // Perspective plaza tiles and broad, soft architectural contact shadows.
+  poly(c, [0, 272, 640, 272, 640, 342, 0, 342], '#8c9a91');
+  for (let i = -3; i < 10; i++) {
+    c.strokeStyle = '#d7deba48';
+    c.beginPath();
+    c.moveTo(320 + (i * 96 - 320) * 0.4, 272);
+    c.lineTo(i * 96, 342);
+    c.stroke();
+  }
+  for (const y of [285, 306, 334]) {
+    c.strokeStyle = '#536d7660';
+    c.beginPath();
+    c.moveTo(0, y);
+    c.lineTo(640, y);
+    c.stroke();
+  }
+  shadow(c, 329, 281, 285, 18, 0.25);
+  poly(c, [31, 133, 111, 104, 111, 276, 31, 292], '#314a64');
+  poly(c, [529, 104, 608, 133, 608, 292, 529, 276], '#243d55');
+  block(c, 106, 105, 425, 167, 12, '#526c7d');
+  // Broad recessed glazing and trapezoidal pilasters avoid a flat pixel facade.
   for (let i = 0; i < 6; i++) {
-    const x = 67 + i * 87;
-    rect(c, x, 119, 42, 132, '#243348');
-    rect(c, x + 3, 123, 36, 126, '#455464');
+    const x = 119 + i * 68;
+    poly(c, [x, 124, x + 44, 124, x + 44, 251, x, 251], '#29475f');
+    poly(c, [x + 3, 127, x + 40, 127, x + 40, 248, x + 3, 248], '#416478');
+    poly(c, [x + 3, 127, x + 40, 127, x + 8, 199, x + 3, 231], '#a8c6c321');
     for (let row = 0; row < 4; row++) {
-      rect(c, x + 7, 127 + row * 30, 28, 22, '#203247');
-      rect(c, x + 8, 128 + row * 30, 26, 4, '#6d7d80');
-      rect(c, x + 19, 128 + row * 30, 3, 20, '#57676e');
-      rect(c, x + 8, 140 + row * 30, 26, 2, '#4e626d');
+      rect(c, x + 3, 145 + row * 27, 37, 3, '#829896');
+      rect(c, x + 4, 147 + row * 27, 36, 1, '#2c4960');
     }
-    rect(c, x + 44, 113, 13, 155, '#9c916e');
-    rect(c, x + 45, 115, 3, 151, '#d0ba83');
-    rect(c, x + 54, 115, 3, 151, '#665f56');
+    rect(c, x + 19, 127, 3, 121, '#8da5a0');
+    poly(c, [x + 49, 114, x + 57, 111, x + 62, 114, x + 62, 270, x + 49, 270], '#aa9d75');
+    poly(c, [x + 49, 114, x + 54, 112, x + 54, 270, x + 49, 270], '#e1cca0');
+    poly(c, [x + 58, 113, x + 62, 114, x + 62, 270, x + 58, 270], '#6b756c');
   }
-  rect(c, 39, 99, 562, 11, '#b79c63');
-  rect(c, 39, 100, 562, 3, '#e5c889');
-  rect(c, 44, 110, 552, 3, '#514e4d');
-  poly(c, [32, 100, 320, 73, 608, 100], '#675c52');
-  poly(c, [47, 99, 320, 77, 593, 99], '#b69d6c');
+  poly(c, [27, 133, 108, 100, 543, 100, 612, 133, 535, 118, 106, 118], '#b7a77f');
+  poly(c, [27, 133, 106, 111, 535, 111, 612, 133, 535, 124, 106, 124], '#dbcaa0');
+  poly(c, [103, 100, 320, 72, 546, 100, 535, 109, 107, 109], '#687987');
+  poly(c, [107, 100, 320, 78, 534, 100, 321, 96], '#dac99f');
+  for (let side = 0; side < 2; side++)
+    for (let row = 0; row < 4; row++) {
+      const x = side ? 550 : 43;
+      poly(
+        c,
+        [x, 146 + row * 30, x + 37, 136 + row * 30, x + 37, 153 + row * 30, x, 163 + row * 30],
+        side ? '#4a6370' : '#7a9198',
+      );
+      poly(
+        c,
+        [
+          x + 3,
+          148 + row * 30,
+          x + 33,
+          140 + row * 30,
+          x + 33,
+          145 + row * 30,
+          x + 3,
+          153 + row * 30,
+        ],
+        '#bad0c044',
+      );
+    }
+  const haze = c.createLinearGradient(0, 181, 0, 277);
+  haze.addColorStop(0, '#b5c9bd00');
+  haze.addColorStop(1, '#b5c9bd35');
+  c.fillStyle = haze;
+  c.fillRect(28, 169, 584, 112);
   for (let i = 0; i < 3; i++) {
     const x = laneX[i];
-    panel(c, x - 27, 83, 54, 17, '#4b5558', '#f1dca2');
-    rect(c, x - 20, 93, 40, 8, '#121f31');
-    rect(c, x - 15, 94, 30, 3, '#7f8b82');
+    block(c, x - 27, 87, 54, 13, 5, '#9ca381');
+    poly(c, [x - 20, 92, x + 19, 92, x + 16, 102, x - 17, 102], '#1d394f');
+    rect(c, x - 17, 93, 32, 2, '#d5d3ac');
   }
   panel(c, 7, 4, 630, 77, '#28364a', '#76848b');
   for (let i = 0; i < 3; i++) portrait(c, i, 16 + i * 111, 5);
@@ -426,53 +510,79 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
     }
   }
   c.restore();
-  // Woven net, rim and cloth panels remain centered on the real catch position.
+  // A faceted, scooped net projects forward beneath the exact catch line.
   const width = catchWidth(m),
     x = m.netX;
+  shadow(c, x + 6, 335, width + 15, 7, 0.3);
+  const netColor = m.catchTime > 0 ? '#a5e6c2' : m.cooldown > 0 ? '#6c8993' : '#69acaa';
+  poly(c, [x - width, 302, x + width, 302, x + width - 9, 315, x - width + 9, 315], '#365e71');
   poly(
     c,
-    [x - width - 2, 304, x + width + 2, 304, x + width - 10, 334, x - width + 10, 334],
-    '#102b3d',
+    [x - width + 9, 315, x + width - 9, 315, x + width - 20, 334, x - width + 20, 334],
+    tone(netColor, -25),
   );
   poly(
     c,
-    [x - width, 306, x + width, 306, x + width - 12, 331, x - width + 12, 331],
-    m.catchTime > 0 ? '#8ce4c4' : m.cooldown > 0 ? '#637e87' : '#559e9f',
+    [x - width, 302, x - width + 9, 315, x - width + 20, 334, x - width + 10, 324],
+    tone(netColor, 12),
   );
-  for (let offset = -width + 10; offset < width - 4; offset += 12) {
+  poly(
+    c,
+    [x + width, 302, x + width - 9, 315, x + width - 20, 334, x + width - 10, 324],
+    tone(netColor, -42),
+  );
+  for (let i = 0; i < 8; i++) {
+    const ax = x - width + 12 + (i * (width * 2 - 24)) / 8,
+      bx = x - width + 23 + (i * (width * 2 - 46)) / 8;
     poly(
       c,
-      [x + offset, 307, x + offset + 3, 307, x + offset + 9, 330, x + offset + 6, 330],
-      config.variant === 'basket' ? '#bb9764' : '#254c61',
+      [ax, 309, ax + 2, 309, bx + 2, 331, bx, 331],
+      config.variant === 'basket' ? '#d0ad7c' : '#b0d3c2',
     );
-    rect(c, x + offset + 3, 310, 2, 4, '#a1d9c0');
   }
-  for (let y = 313; y < 329; y += 7)
-    rect(
+  for (const y of [314, 321, 328]) {
+    const inset = (y - 302) * 0.45;
+    poly(
       c,
-      x - width + 8,
-      y,
-      width * 2 - 16,
-      2,
-      config.variant === 'basket' ? '#d8b97a' : '#89c2b3',
+      [
+        x - width + inset,
+        y,
+        x + width - inset,
+        y,
+        x + width - inset - 1,
+        y + 2,
+        x - width + inset + 1,
+        y + 2,
+      ],
+      config.variant === 'basket' ? '#b29169' : '#7eb6ad',
     );
-  rect(c, x - width - 2, 301, width * 2 + 4, 5, '#d0d7ac');
-  rect(c, x - width, 302, width * 2, 2, m.catchTime > 0 ? '#f4ffd1' : '#a4c7b4');
-  if (config.variant === 'patchwork') {
-    rect(c, x - 12, 313, 16, 13, '#cb9976');
-    rect(c, x - 10, 315, 12, 9, '#e8bb85');
-    rect(c, x + 13, 310, 12, 12, '#7da6c1');
-    for (let n = 0; n < 4; n++) rect(c, x - 11 + n * 4, 312, 1, 3, '#534d50');
   }
-  // Outstretched hands and rolled-up sleeves, rather than disembodied bars.
+  poly(
+    c,
+    [x - width - 2, 301, x + width + 2, 301, x + width - 2, 306, x - width + 2, 306],
+    m.catchTime > 0 ? '#edfbd7' : '#c2d4be',
+  );
+  poly(
+    c,
+    [x - width + 2, 306, x + width - 2, 306, x + width - 2, 308, x - width + 2, 308],
+    '#48788a',
+  );
+  if (config.variant === 'patchwork') {
+    poly(c, [x - 15, 317, x, 317, x - 2, 330, x - 12, 330], '#d2a781');
+    poly(c, [x - 15, 317, x, 317, x - 3, 320, x - 13, 320], '#eed1a0');
+    poly(c, [x + 13, 315, x + 27, 315, x + 22, 327, x + 11, 327], '#729bb7');
+  }
   for (const side of [-1, 1]) {
     const hx = x + side * (width + 5);
-    rect(c, hx - 5, 286, 10, 16, '#7f6853');
-    rect(c, hx - 4, 285, 8, 13, '#e5ba8f');
-    rect(c, hx - 3, 286, 6, 4, '#f5d7aa');
-    rect(c, hx - 5, 298, 10, 5, '#dce1c4');
-    rect(c, hx - 6, 303, 12, 12, '#3d7082');
-    rect(c, hx - 5, 304, 3, 10, '#77a0aa');
+    poly(
+      c,
+      [hx - 4, 284, hx + 3, 283, hx + 6, 290, hx + 4, 304, hx - 4, 304, hx - 6, 291],
+      '#b38c6c',
+    );
+    poly(c, [hx - 4, 285, hx + 1, 284, hx + 2, 301, hx - 4, 301], '#e4c29a');
+    poly(c, [hx + 1, 284, hx + 4, 287, hx + 5, 296, hx + 2, 301], '#ccaa87');
+    block(c, hx - 6, 301, 12, 13, 3, '#487a91');
+    poly(c, [hx - 5, 301, hx + 5, 301, hx + 5, 305, hx - 5, 305], '#e2e4cb');
   }
   panel(c, 3, 342, 634, 66, '#1b3244', '#5b7883');
   for (let track = 0; track < 3; track++) {
