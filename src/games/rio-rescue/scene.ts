@@ -1,5 +1,5 @@
 import { dock, getCameraViews, cameraSees, type Model } from './model';
-import { getTerrain } from './terrain';
+import { getTerrain, terrainHeight, riverCurrent, MAP_WIDTH, MAP_HEIGHT } from './terrain';
 
 type V = { x: number; y: number; z: number };
 type Pose = { x: number; y: number; stride: number };
@@ -14,17 +14,30 @@ export function drawScene(
   const lead = poses[0] ?? m.body[0];
   const cx = lead.x + 0.5,
     cy = lead.y + 0.5;
-  const depth = (v: V) => 15 - (v.y - cy) * 0.68 - v.z * 0.73;
+  const heightAt = (x: number, y: number) =>
+    terrainHeight(m.district, Math.floor(x), Math.floor(y), m.seed);
+  const smoothHeight = (x: number, y: number) => {
+    const fx = x - Math.floor(x),
+      fy = y - Math.floor(y);
+    return (
+      heightAt(x, y) * (1 - fx) * (1 - fy) +
+      heightAt(x + 1, y) * fx * (1 - fy) +
+      heightAt(x, y + 1) * (1 - fx) * fy +
+      heightAt(x + 1, y + 1) * fx * fy
+    );
+  };
+  const cameraHeight = smoothHeight(lead.x, lead.y);
+  const depth = (v: V) => 15 - (v.y - cy) * 0.68 - (v.z - cameraHeight) * 0.73;
   const project = (v: V) => {
     const d = Math.max(2, depth(v));
     return {
       x: 480 + ((v.x - cx) * 1000) / d,
-      y: 350 + (((v.y - cy) * 0.73 - v.z * 0.68) * 1000) / d,
+      y: 350 + (((v.y - cy) * 0.73 - (v.z - cameraHeight) * 0.68) * 1000) / d,
     };
   };
   const faces: Face[] = [];
   const v = (x: number, y: number, z = 0): V => ({ x, y, z });
-  const face = (points: V[], color: string, edge?: string) => {
+  const face = (points: V[], color: string, edge?: string, ground = false) => {
     if (points.some((p) => depth(p) < 2)) return;
     faces.push({
       points,
@@ -32,9 +45,7 @@ export function drawScene(
       edge,
       depth:
         points.reduce((n, p) => n + depth(p), 0) / points.length +
-        (points.every((p) => Math.abs(p.z - points[0].z) < 0.0001) && points[0].z <= 0.04
-          ? 10000 - points[0].z * 100
-          : 0),
+        (ground ? 10000 - points[0].z * 100 : 0),
     });
   };
   const box = (
@@ -89,17 +100,20 @@ export function drawScene(
     c.fill();
   }
   const labels: { point: V; text: string; color: string }[] = [];
-  for (let y = 0; y < 18; y++)
-    for (let x = 0; x < 24; x++) {
-      const terrain = getTerrain(m.district, x, y);
-      const center = project(v(x + 0.5, y + 0.5));
+  for (let y = 0; y < MAP_HEIGHT; y++)
+    for (let x = 0; x < MAP_WIDTH; x++) {
+      const terrain = getTerrain(m.district, x, y, m.seed);
+      const center = project(v(x + 0.5, y + 0.5, heightAt(x, y)));
       if (center.x < -160 || center.x > 1120 || center.y < -240 || center.y > 1000) continue;
-      const seed = (x * 31 + y * 17) % 7;
+      const seed = (x * 31 + y * 17 + m.seed) % 7;
+      const elevation = terrainHeight(m.district, x, y, m.seed);
       if (terrain === 'canyon' || terrain === 'river') {
-        const z = terrain === 'canyon' ? -2 : -0.8;
+        const z = elevation;
         face(
           [v(x, y, z), v(x + 1, y, z), v(x + 1, y + 1, z), v(x, y + 1, z)],
           terrain === 'canyon' ? '#655244' : '#497f83',
+          undefined,
+          true,
         );
         for (const [dx, dy] of [
           [-1, 0],
@@ -107,7 +121,7 @@ export function drawScene(
           [0, -1],
           [0, 1],
         ]) {
-          const other = getTerrain(m.district, x + dx, y + dy);
+          const other = getTerrain(m.district, x + dx, y + dy, m.seed);
           if (other === 'canyon' || other === 'river') continue;
           const a =
             dx === -1 ? v(x, y) : dx === 1 ? v(x + 1, y) : dy === -1 ? v(x, y) : v(x, y + 1);
@@ -125,7 +139,9 @@ export function drawScene(
         }
         if (terrain === 'river')
           for (let k = 0; k < 3; k++) {
-            const wave = reducedMotion ? 0 : m.time * 0.18;
+            const wave = reducedMotion
+              ? 0
+              : m.time * (riverCurrent(m.district, x, y, m.seed)?.y ?? 1) * 0.7;
             const yy = y + ((k * 0.31 + wave) % 1);
             line(
               v(x + 0.12, yy, z + 0.018),
@@ -137,8 +153,48 @@ export function drawScene(
         continue;
       }
       const palette = ['#b3a47f', '#b5a581', '#b1a27d', '#b6a782', '#b0a17d', '#b4a580', '#b2a37e'];
-      face([v(x, y), v(x + 1, y), v(x + 1, y + 1)], palette[seed]);
-      face([v(x, y), v(x + 1, y + 1), v(x, y + 1)], palette[(seed + 1) % 7]);
+      const earth =
+        terrain === 'mesa' ? '#b38a61' : terrain === 'plateau' ? '#acaa81' : palette[seed];
+      face(
+        [v(x, y, elevation), v(x + 1, y, elevation), v(x + 1, y + 1, elevation)],
+        earth,
+        undefined,
+        true,
+      );
+      face(
+        [v(x, y, elevation), v(x + 1, y + 1, elevation), v(x, y + 1, elevation)],
+        earth,
+        undefined,
+        true,
+      );
+      if (elevation > 0)
+        for (const [dx, dy] of [
+          [-1, 0],
+          [1, 0],
+          [0, -1],
+          [0, 1],
+        ]) {
+          const low = terrainHeight(m.district, x + dx, y + dy, m.seed);
+          if (low >= elevation) continue;
+          const a =
+            dx === -1 ? v(x, y) : dx === 1 ? v(x + 1, y) : dy === -1 ? v(x, y) : v(x, y + 1);
+          const b = dx !== 0 ? v(a.x, y + 1) : v(x + 1, a.y);
+          for (let k = 0; k < 5; k++) {
+            const top = elevation - ((elevation - low) * k) / 5,
+              bottom = elevation - ((elevation - low) * (k + 1)) / 5;
+            face(
+              [v(a.x, a.y, top), v(b.x, b.y, top), v(b.x, b.y, bottom), v(a.x, a.y, bottom)],
+              ['#bbaa82', '#a58f69', '#937b59', '#aa9068', '#78684e'][(k + seed) % 5],
+            );
+          }
+        }
+      if (terrain === 'mountain') {
+        const peak = v(x + 0.38, y + 0.58, elevation + 1.1 + (seed % 3) * 0.2);
+        face([v(x, y, elevation), v(x + 1, y, elevation), peak], '#a29b80');
+        face([v(x + 1, y, elevation), v(x + 1, y + 1, elevation), peak], '#7e806d');
+        face([v(x + 1, y + 1, elevation), v(x, y + 1, elevation), peak], '#8f876c');
+        face([v(x, y + 1, elevation), v(x, y, elevation), peak], '#c4b693');
+      }
       if (terrain === 'wall') box(x, y, 0, 1, 1, 0.9, '#8c7c62', '#c8b594', '#776b58');
       else if (terrain === 'bridge') {
         box(x, y, -0.16, 1, 1, 0.16, '#695e4c', '#a58d68', '#665c4d');
@@ -156,7 +212,7 @@ export function drawScene(
           );
         // Trusses along the banks, leaving the walking surface visibly open.
         for (const side of [0, 1])
-          if (getTerrain(m.district, x, y + (side ? 1 : -1)) !== 'bridge') {
+          if (getTerrain(m.district, x, y + (side ? 1 : -1), m.seed) !== 'bridge') {
             line(v(x, y + side, 0.38), v(x + 1, y + side, 0.38), '#7d7463', 0.025);
             line(v(x, y + side, 0.05), v(x + 1, y + side, 0.38), '#8b806a', 0.025);
             box(
@@ -208,12 +264,17 @@ export function drawScene(
     index: number,
     heading: number,
     pickup = false,
+    size = 1,
+    style = 0,
   ) => {
     x += 0.5;
     y += 0.5;
-    const climb = getTerrain(m.district, Math.floor(x), Math.floor(y)) === 'climb';
+    const climb = getTerrain(m.district, Math.floor(x), Math.floor(y), m.seed) === 'climb';
     const gait = reducedMotion ? 0 : (stride / 1.4) * 0.095;
-    const z = climb ? Math.sin((x - Math.floor(x)) * Math.PI) * 0.75 : 0;
+    const baseHeight = smoothHeight(x - 0.5, y - 0.5);
+    const swimming = getTerrain(m.district, Math.floor(x), Math.floor(y), m.seed) === 'river';
+    const z =
+      baseHeight + (climb ? Math.sin((x - Math.floor(x)) * Math.PI) * 0.75 : swimming ? -0.25 : 0);
     const skin = ['#d4a27e', '#a47454', '#e2b48c', '#8f634c'][index % 4];
     const coat = pickup
       ? '#d5a65b'
@@ -223,9 +284,9 @@ export function drawScene(
     // Rotated local body frame retains direction, including visible face on the forward side.
     const local = (a: number, b: number, h: number) =>
       v(
-        x + a * Math.cos(heading) - b * Math.sin(heading),
-        y + a * Math.sin(heading) + b * Math.cos(heading),
-        z + h,
+        x + size * (a * Math.cos(heading) - b * Math.sin(heading)),
+        y + size * (a * Math.sin(heading) + b * Math.cos(heading)),
+        swimming ? Math.max(baseHeight + 0.012, z + h * size) : z + h * size,
       );
     const cube = (
       a: number,
@@ -270,7 +331,21 @@ export function drawScene(
         v(x - 0.2, y + 0.25, 0.012),
       ],
       '#655e4b66',
+      undefined,
+      true,
     );
+    if (swimming) {
+      for (let i = 0; i < 12; i++) {
+        const a = (i * Math.PI) / 6,
+          b = ((i + 1) * Math.PI) / 6;
+        line(
+          v(x + Math.cos(a) * 0.3, y + Math.sin(a) * 0.24, baseHeight + 0.02),
+          v(x + Math.cos(b) * 0.3, y + Math.sin(b) * 0.24, baseHeight + 0.02),
+          '#c0e3d3',
+          0.012,
+        );
+      }
+    }
     for (const side of [-1, 1]) {
       cube(
         side * gait - 0.06,
@@ -327,25 +402,94 @@ export function drawScene(
       '#293845',
     );
     face([local(0.122, -0.02, 0.77), local(0.18, 0, 0.71), local(0.122, 0.03, 0.71)], '#ba8765');
+    if (style === 0 || style === 1) {
+      // Wide straw brim, creased crown, shirt bib and work-trouser straps.
+      cube(-0.2, -0.22, 0.87, 0.4, 0.44, 0.035, '#b9975f', '#e5cc90');
+      cube(-0.1, -0.12, 0.9, 0.2, 0.24, 0.11, '#b2945c', '#dec78c');
+      cube(-0.105, -0.125, 0.895, 0.21, 0.25, 0.025, '#665d44', '#87724b');
+      for (const side of [-1, 1])
+        face(
+          [
+            local(0.133, side * 0.1 - 0.025, 0.58),
+            local(0.133, side * 0.1 + 0.025, 0.58),
+            local(0.133, side * 0.1 + 0.025, 0.32),
+            local(0.133, side * 0.1 - 0.025, 0.32),
+          ],
+          '#c5b992',
+        );
+    }
+    if (style === 2 || style === 3) {
+      // Long tied hair and work skirt over boots distinguish the women.
+      cube(-0.16, -0.13, 0.63, 0.08, 0.26, 0.22, '#43332d', '#72533b');
+      cube(-0.21, -0.07, 0.54, 0.09, 0.14, 0.18, '#514031', '#826244');
+      face(
+        [
+          local(-0.14, -0.18, 0.42),
+          local(0.14, -0.18, 0.42),
+          local(0.2, -0.23, 0.12),
+          local(-0.2, -0.23, 0.12),
+        ],
+        '#916c83',
+      );
+      face(
+        [
+          local(-0.14, 0.18, 0.42),
+          local(0.14, 0.18, 0.42),
+          local(0.2, 0.23, 0.12),
+          local(-0.2, 0.23, 0.12),
+        ],
+        '#ad869a',
+      );
+    }
+    if (style === 3) {
+      // Infant is carried in a cloth sling, remaining part of this one entity.
+      cube(0.13, -0.16, 0.42, 0.15, 0.32, 0.18, '#c58f71', '#e2b394');
+      cube(0.18, -0.08, 0.6, 0.13, 0.16, 0.14, skin, '#edc9a5');
+      cube(0.17, -0.09, 0.72, 0.14, 0.18, 0.04, '#ddd4b9', '#f4e5bf');
+    }
   };
   const directions = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
   poses.forEach((p, i) => {
     const next = poses[Math.max(0, i - 1)];
     const heading = i ? Math.atan2(next.y - p.y, next.x - p.x) : directions[m.direction];
-    person(p.x, p.y, p.stride, i, heading);
+    const style = (Math.imul(m.seed ^ (i + 1), 1597334677) >>> 0) % 6;
+    if (style >= 4 && i > 0) {
+      const count = style === 4 ? 2 : 3;
+      for (let child = 0; child < count; child++)
+        person(
+          p.x + (child - (count - 1) / 2) * 0.29,
+          p.y + (child % 2) * 0.18,
+          p.stride,
+          i + child,
+          heading,
+          false,
+          0.64,
+          child % 2 ? 2 : 5,
+        );
+    } else person(p.x, p.y, p.stride, i, heading, false, 1, style);
   });
   if (m.pickup) {
-    person(m.pickup.x, m.pickup.y, 0, 4, Math.PI / 2, true);
+    person(m.pickup.x, m.pickup.y, 0, 4, Math.PI / 2, true, 1, (m.seed + m.rescued) % 4);
     labels.push({
-      point: v(m.pickup.x + 0.5, m.pickup.y + 0.5, 1.06),
+      point: v(m.pickup.x + 0.5, m.pickup.y + 0.5, heightAt(m.pickup.x, m.pickup.y) + 1.06),
       text: 'RESCUE',
       color: '#f7e7ab',
     });
   }
   if (m.supply) {
-    box(m.supply.x + 0.22, m.supply.y + 0.24, 0, 0.55, 0.5, 0.35, '#a78958', '#ddc28a', '#816f50');
+    box(
+      m.supply.x + 0.22,
+      m.supply.y + 0.24,
+      heightAt(m.supply.x, m.supply.y),
+      0.55,
+      0.5,
+      0.35,
+      '#a78958',
+      '#ddc28a',
+      '#816f50',
+    );
     labels.push({
-      point: v(m.supply.x + 0.5, m.supply.y + 0.5, 0.6),
+      point: v(m.supply.x + 0.5, m.supply.y + 0.5, heightAt(m.supply.x, m.supply.y) + 0.6),
       text: 'SUPPLIES',
       color: '#e7eed0',
     });
@@ -368,28 +512,54 @@ export function drawScene(
     color: '#b3f3cd',
   });
   for (const camera of getCameraViews(m)) {
-    box(camera.x + 0.42, camera.y + 0.42, 0, 0.07, 0.07, 0.9, '#5d6f73', '#a1b5af', '#4b5d63');
-    box(camera.x + 0.3, camera.y + 0.3, 0.85, 0.32, 0.22, 0.17, '#536d73', '#afbeb0', '#344c57');
+    box(
+      camera.x + 0.42,
+      camera.y + 0.42,
+      heightAt(camera.x, camera.y),
+      0.07,
+      0.07,
+      0.9,
+      '#5d6f73',
+      '#a1b5af',
+      '#4b5d63',
+    );
+    box(
+      camera.x + 0.3,
+      camera.y + 0.3,
+      heightAt(camera.x, camera.y) + 0.85,
+      0.32,
+      0.22,
+      0.17,
+      '#536d73',
+      '#afbeb0',
+      '#344c57',
+    );
     // Detection is grid-based: use the model predicate for each visible tile,
     // including its shared swept angle and fence/wall line-of-sight test.
-    for (let y = 1; y < 17; y++)
-      for (let x = 1; x < 23; x++) {
+    for (let y = 1; y < MAP_HEIGHT - 1; y++)
+      for (let x = 1; x < MAP_WIDTH - 1; x++) {
         if (!cameraSees(camera, { x, y })) continue;
-        const terrain = getTerrain(m.district, x, y);
+        const terrain = getTerrain(m.district, x, y, m.seed);
         if (
           terrain === 'canyon' ||
-          terrain === 'river' ||
           terrain === 'wall' ||
-          terrain === 'fence'
+          terrain === 'fence' ||
+          terrain === 'mountain'
         )
           continue;
+        const lightHeight = heightAt(x, y) + 0.035;
         face(
-          [v(x, y, 0.035), v(x + 1, y, 0.035), v(x + 1, y + 1, 0.035)],
+          [v(x, y, lightHeight), v(x + 1, y, lightHeight), v(x + 1, y + 1, lightHeight)],
           camera.alert > 0 ? '#ec9a5555' : '#eddaa544',
+          undefined,
+          true,
         );
+
         face(
-          [v(x, y, 0.035), v(x + 1, y + 1, 0.035), v(x, y + 1, 0.035)],
+          [v(x, y, lightHeight), v(x + 1, y + 1, lightHeight), v(x, y + 1, lightHeight)],
           camera.alert > 0 ? '#ec9a5555' : '#eddaa544',
+          undefined,
+          true,
         );
       }
   }
@@ -398,7 +568,7 @@ export function drawScene(
       box(
         cell.x + 0.06,
         cell.y + 0.06,
-        0.025,
+        heightAt(cell.x, cell.y) + 0.025,
         0.88,
         0.88,
         m.hazard.phase === 'active' ? 0.38 : 0.025,
@@ -440,5 +610,57 @@ export function drawScene(
     c.textAlign = 'left';
     c.fillText(`${destination.x < 480 ? '←' : '→'} WELCOME CENTER`, 24, 31);
   }
+  // Full-map overview makes the larger procedural terrain navigable.
+  c.save();
+  const mapX = 790,
+    mapY = 34,
+    scale = 3;
+  c.fillStyle = '#102b35ed';
+  c.fillRect(mapX - 10, mapY - 25, 164, 154);
+  const colors: Record<string, string> = {
+    ground: '#b2a37e',
+    canyon: '#574632',
+    river: '#4c9fac',
+    bridge: '#dfbf85',
+    mesa: '#b67f57',
+    plateau: '#8b9368',
+    mountain: '#695f50',
+    wall: '#5c6e66',
+    fence: '#d9c3a1',
+    climb: '#f4e5a6',
+  };
+  for (let y = 0; y < MAP_HEIGHT; y++)
+    for (let x = 0; x < MAP_WIDTH; x++) {
+      c.fillStyle = colors[getTerrain(m.district, x, y, m.seed)] ?? '#b2a37e';
+      c.fillRect(mapX + x * scale, mapY + y * scale, scale, scale);
+    }
+  const marker = (x: number, y: number, color: string, r = 2) => {
+    c.fillStyle = '#0b2029';
+    c.fillRect(mapX + x * scale - r - 1, mapY + y * scale - r - 1, r * 2 + 2, r * 2 + 2);
+    c.fillStyle = color;
+    c.fillRect(mapX + x * scale - r, mapY + y * scale - r, r * 2, r * 2);
+  };
+  for (const cam of getCameraViews(m)) marker(cam.x + 0.5, cam.y + 0.5, '#ed8e72', 1.5);
+  marker(dock.x + 0.5, dock.y + 0.5, '#a9edaf');
+  if (m.pickup) marker(m.pickup.x + 0.5, m.pickup.y + 0.5, '#ffdf76');
+  for (const p of poses.slice(1)) {
+    c.fillStyle = '#d3e7d3';
+    c.fillRect(mapX + (p.x + 0.5) * scale - 1, mapY + (p.y + 0.5) * scale - 1, 2, 2);
+  }
+  marker(lead.x + 0.5, lead.y + 0.5, '#64f5dc', 2);
+  c.font = 'bold 10px monospace';
+  c.textAlign = 'left';
+  c.fillStyle = '#e5e8cd';
+  c.fillText(`MAP · SEED ${m.seed}`, mapX, mapY - 10);
+  c.font = '9px monospace';
+  c.fillStyle = '#64f5dc';
+  c.fillText('YOU', mapX, mapY + 121);
+  c.fillStyle = '#ffdf76';
+  c.fillText('RESCUE', mapX + 29, mapY + 121);
+  c.fillStyle = '#a9edaf';
+  c.fillText('DOCK', mapX + 80, mapY + 121);
+  c.fillStyle = '#ed8e72';
+  c.fillText('CAM', mapX + 116, mapY + 121);
+  c.restore();
   c.textAlign = 'left';
 }

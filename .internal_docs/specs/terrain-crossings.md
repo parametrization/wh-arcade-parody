@@ -1,27 +1,39 @@
-# Terrain and constructed crossings
+# Seeded landscapes, crossings and patrols
+
+## Replay contract
+
+Against the Wall, Rio Rescue and Flappy Files expose a visible unsigned 32-bit seed, Replay Seed, New Seed and Copy Replay Link. Both direct game URLs and hash routes accept `?seed=123`. Restart retains the seed; applying a different seed resets the run. Replaying requires the same game version and settings. The seed controls initial terrain, obstacles, actors and procedural sequences; player decisions still change the course of a run. Flappy already generates bounded, reachable column heights using its seeded random stream; the public replay controls now expose that capability.
 
 ## Rio Rescue
 
-A fixed-heading perspective camera follows the interpolated convoy, with projected 3D geometry drawn through Canvas. The art direction uses low-poly forms, muted terrain shading, larger articulated figures and deep cliff faces inspired by early PlayStation games. This is not a hardware emulator.
+Each of three districts covers 48×36 cells, four times the previous 24×18 area. Seeded irregular landforms replace repeated straight strips: canyon basins, mesas, plateaus and mountains. Canyon faces have rock strata; mountain peaks and flat-topped landforms use actual terrain elevation. Elevated landforms block walking until a supported climbing route exists. The eastern fence retains marked climbable sections. Start/dock routes and bridge corridors remain protected during generation.
 
-All three 24×18 districts have canyon cells 8–9, river cells 15–16, and fence column 20. Bridge rows 4–5,8–9,13–14 connect both water/gap crossings; fence sections 5,9,13 can be climbed automatically at 1.8× the normal tick interval. Plain canyon, river and fence cells block movement/spawning. Later districts add rocks and cameras. X toggles waiting while camera sweeps and exposure continue. Camera alert accumulates over 1.5s and decays over 1s when hidden; a full meter triggers the existing rewind/jam rules. Normal pause freezes both movement and cameras. Rendering and camera detection share their cone/terrain predicate.
+The river meanders across the map and has animated downstream flow. A horizontal swimming step into water adds one downstream step, producing approximately 45-degree displacement relative to the intended crossing. Each intermediate cell applies collision and collection rules; followers trace the same route. Motion interpolation follows those cardinal segments rather than cutting through terrain. Bridges avoid the current. Reduced motion stops cosmetic flow/gait, while actual current still applies.
+
+A seeded cast of rural workers includes straw hats and work clothing, women, mothers carrying babies, and groups of two or three children represented as one convoy entity. The entity variant is stable while that convoy segment moves. The perspective camera follows the convoy; a minimap identifies terrain, the dock, rescue pickups and cameras. The map seed remains visible.
+
+X toggles waiting while camera sweeps and exposure continue. Camera alert accumulates over 1.5 seconds and decays over one second when hidden. Pause freezes simulation time. Pickups and camera locations must be valid terrain positions; the campaign regression traverses generated routes rather than teleporting between objectives.
 
 ## Against the Wall
 
-A continuous barrier spans row 10, from one outside boundary to the other, separating Alex's southern starting region from the northern Asylum Office. ICE and Border Patrol start north. Paramilitary, Sinaloa, CJNG and Gulf cartel opponents start south. These placements and encounters are fictional gameplay. The cartel names are corroborated by this [US Department of Justice source](https://www.justice.gov/opa/pr/attorney-general-pamela-bondi-announces-29-wanted-defendants-mexico-taken-us-custody); the map is not a real geographic or organizational claim.
+Each district covers 64×48 cells, four times the previous 32×24 area. A continuous border spans row 23 and meets both outside boundaries. Seeded material run lengths divide it into wire, fencing and concrete. Seeded building footprints retain roads and clear border approaches. Collision checks validate all guard positions and patrol waypoints.
 
-| Material | B action | Construction | Lifetime | Crossing speed |
-| --- | --- | --- | --- | --- |
-| Barbed wire | Cut through | 3s | Permanent | 100% |
-| Fence | Build ladder over | 5s | 20s | 65% |
-| Concrete | Dig tunnel under | 10s | Permanent | 40% |
+The Asylum Office is north. ICE and Border Patrol start north; Sinaloa, CJNG, Gulf cartel and paramilitary opponents start south. Names are corroborated by this [US Department of Justice source](https://www.justice.gov/opa/pr/attorney-general-pamela-bondi-announces-29-wanted-defendants-mexico-taken-us-custody). Locations and encounters are fictional game rules.
 
-Start within 1.6 tiles of a closed segment and press B. Stay still while construction proceeds; moving or pressing B again cancels. Threats remain active. Completion opens a physical route through the barrier. Temporary ladder expiration waits for player/enemy collision circles to clear before closing. Checkpoints reset construction and crossings. Four-second sprint and wall-clipped vision remain supported.
+Ten guards include ordinary routes, building perimeters, map-edge patrols, fence patrols and one roaming route on each side. Roaming routes visit waypoints spread over their side; navigation avoids solid buildings. Chase and combat temporarily supersede patrol duties. Returning guards resume their routes. A minimap shows the player, office, border materials and live guards.
 
-The renderer targets a richer console-era perspective presentation, with material-specific structures and visible routes, while retaining the tested simulation. Pointer aiming uses the inverse of that renderer's ground projection. The destination remains labeled ASYLUM OFFICE.
+| Material | Player construction | Crossing | Guard response |
+| --- | --- | --- | --- |
+| Barbed wire | B, stay still for 3 seconds | Full walking speed; remains open until repaired | One nearby guard can mend it in 30 seconds |
+| Fence | B, build ladder for 5 seconds | 65% speed; ladder lasts 20 seconds | A nearby guard knocks it down immediately; occupants are safely dismounted to clear ground before it becomes solid |
+| Concrete | B, select south entry and north exit, build for 10 seconds | Underground travel at 40% walking speed | Requires two guards at each endpoint for 90 seconds to close |
 
-### Day/night and actor status
+Tunnel selection shows valid border tiles and an active candidate. Arrows or Previous/Next cycle candidates; Enter selects; pointer selection uses the same ground projection as rendering. Entry must be within construction reach. Exit must touch concrete on the north face and be within six horizontal tiles of entry. B or Cancel Tunnel cancels selection. Movement cancels construction. The wall stays solid above a tunnel. Selected portals provide bidirectional travel with collision-safe exits and protection against immediate return bouncing.
 
-Day lasts 60 seconds of simulation time, followed by 60 seconds of night, repeating. Pause freezes the cycle; turn-assisted mode advances it when the simulation advances. The HUD shows the current phase and countdown. At night, living enemies carry flashlights whose visible cones use the same wall-clipped range and direction as detection. Nighttime targeting includes other members of the same faction and federal allies. Daylight restores ordinary alliances and clears now-allied targets.
+Construction and repair use simulation time, so pause freezes them. Enemies remain active while the player builds or selects endpoints. Closed passages may be rebuilt. A checkpoint/district reset reconstructs the seeded initial map.
 
-Alex and living enemies have readable green health meters; each living enemy also has an amber attention meter. Meters and nameplates remain bright at night. Alex's health is additionally available as an accessible progress bar in the HUD.
+## Day/night and actor status
+
+Day and night each last 60 seconds of simulation time. The HUD shows the phase and countdown. At night, living enemies carry flashlights using the same wall-clipped range and heading as detection. Night targeting includes same-faction actors and federal allies. Daylight restores alliances and clears now-allied targets.
+
+Alex and living enemies have readable health meters; each living enemy also has an attention meter. Nameplates and meters remain bright at night. Alex's health also has an accessible HUD progress bar. Four-second sprint, wall collision, suspicion decay and dead bodies remain supported.

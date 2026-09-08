@@ -4,11 +4,13 @@ import { interval, type Cell, type Model } from './model';
 export function createMotion(model: Model) {
   let from: Cell[] = [],
     to: Cell[] = [],
-    steps = 0;
+    steps = 0,
+    frames: Cell[][] = [];
   function reset(m: Model) {
     from = m.body.map((c) => ({ ...c }));
     to = m.body.map((c) => ({ ...c }));
     steps = 0;
+    frames = [from, to];
   }
   reset(model);
   return {
@@ -20,6 +22,20 @@ export function createMotion(model: Model) {
       }
       if (m.body.length === to.length && m.body.every((c, i) => c.x === to[i].x && c.y === to[i].y))
         return;
+      const route = m.lastRoute;
+      if (
+        route.length > 2 &&
+        route[0].length === to.length &&
+        route[0].every((c, i) => c.x === to[i].x && c.y === to[i].y)
+      ) {
+        from = to;
+        to = m.body.map((c) => ({ ...c }));
+        frames = route.map((frame) =>
+          to.map((_, i) => ({ ...frame[Math.min(i, frame.length - 1)] })),
+        );
+        steps++;
+        return;
+      }
       const old = to;
       if (
         m.body.length < old.length ||
@@ -34,6 +50,7 @@ export function createMotion(model: Model) {
       }
       from = m.body.map((_, i) => ({ ...(old[i] ?? old.at(-1)!) }));
       to = m.body.map((c) => ({ ...c }));
+      frames = [from, to];
       steps++;
     },
     sample(m: Model, reducedMotion = false) {
@@ -41,12 +58,15 @@ export function createMotion(model: Model) {
         reducedMotion || m.config.mode === 'single-step'
           ? 1
           : Math.max(0, Math.min(1, m.acc / interval(m)));
-      return to.map((c, i) => {
-        const p = from[i];
+      const segment = Math.min(frames.length - 2, Math.floor(alpha * (frames.length - 1)));
+      const local = alpha === 1 ? 1 : alpha * (frames.length - 1) - segment;
+      return to.map((_, i) => {
+        const p = frames[segment][i],
+          c = frames[segment + 1][i];
         const moving = c.x !== p.x || c.y !== p.y;
         return {
-          x: p.x + (c.x - p.x) * alpha,
-          y: p.y + (c.y - p.y) * alpha,
+          x: p.x + (c.x - p.x) * local,
+          y: p.y + (c.y - p.y) * local,
           stride:
             moving && !reducedMotion
               ? Math.sin((steps - 1 + alpha) * Math.PI * 2 + i * 0.7) * 1.4

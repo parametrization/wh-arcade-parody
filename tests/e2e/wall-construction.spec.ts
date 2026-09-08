@@ -14,7 +14,7 @@ test('live Wall keyboard construction progresses, pauses, cancels on movement an
       response,
       body: source.replace(
         marker,
-        'loadDistrict(s);\n  s.x=3.5; s.y=11.5; s.enemies=[];\n  return s;',
+        'loadDistrict(s);\n  const fixture=s.barriers.find(b=>b.material==="wire"); s.x=fixture.x+.5; s.y=fixture.y+1.5; s.enemies=[];\n  return s;',
       ),
     });
   });

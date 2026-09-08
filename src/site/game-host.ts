@@ -34,12 +34,21 @@ export async function mountGame(
   host.dataset.gameId = module.manifest.id;
   host.dataset.reducedMotion = String(settings.reducedMotion);
   host.dataset.muted = String(settings.muted);
-  const services = createServices(host);
+  const replayGames = new Set(['against-the-wall', 'rio-rescue', 'flappy-files']);
+  const hasReplay = replayGames.has(module.manifest.id);
+  const routeQuery = location.hash.includes('?') ? location.hash.split('?')[1] : location.search;
+  const suppliedSeed = new URLSearchParams(routeQuery).get('seed');
+  let replaySeed =
+    suppliedSeed !== null && /^\d+$/.test(suppliedSeed) && Number(suppliedSeed) <= 4294967295
+      ? Number(suppliedSeed)
+      : 1;
+  const services = createServices(host, replaySeed);
   services.audio.setMuted(settings.muted);
   services.audio.setVolume(settings.volume);
   let instance: GameInstance;
   try {
     instance = await module.create(host, services);
+    if (hasReplay) instance.reset(replaySeed);
   } catch (error) {
     services.destroy();
     abort.abort();
@@ -55,6 +64,65 @@ export async function mountGame(
   const status = main.querySelector<HTMLElement>('.game-host-status')!;
   const startButton = main.querySelector<HTMLButtonElement>('[data-testid="game-start"]')!;
   const pauseButton = main.querySelector<HTMLButtonElement>('[data-testid="game-pause"]')!;
+  if (hasReplay) {
+    const replay = document.createElement('form');
+    replay.className = 'game-replay';
+    replay.innerHTML = `<label>Map seed <input data-testid="game-seed" type="number" min="0" max="4294967295" step="1" required aria-label="Map seed"></label><button class="button-link secondary-button" type="submit" data-testid="replay-seed">REPLAY SEED</button><button class="button-link secondary-button" type="button" data-testid="new-seed">NEW SEED</button><button class="button-link secondary-button" type="button" data-testid="copy-seed">COPY REPLAY LINK</button><span data-seed-status role="status"></span><style>.game-replay{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0;font:13px system-ui}.game-replay label{display:flex;align-items:center;gap:8px}.game-replay input{width:130px;min-height:42px;background:#12243b;border:1px solid #8198ae;color:#fff;padding:8px}.game-replay [data-seed-status]{overflow-wrap:anywhere;max-width:100%}</style>`;
+    const input = replay.querySelector<HTMLInputElement>('input')!;
+    const message = replay.querySelector('[data-seed-status]')!;
+    input.value = String(replaySeed);
+    host.dataset.seed = String(replaySeed);
+    const replayURL = () => {
+      const url = new URL(location.href);
+      if (url.hash.startsWith('#/games/'))
+        url.hash = `/games/${module.manifest.id}?seed=${replaySeed}`;
+      else url.searchParams.set('seed', String(replaySeed));
+      return url;
+    };
+    const applySeed = () => {
+      const value = Number(input.value);
+      if (!input.value || !Number.isInteger(value) || value < 0 || value > 4294967295) return;
+      replaySeed = value;
+      host.dataset.seed = String(value);
+      services.random.seed(value);
+      instance.reset(value);
+      history.replaceState(null, '', replayURL());
+      refresh();
+      message.textContent = `Seed ${value} ready. Press Start. Same seed and play settings reproduce the layout.`;
+      startButton.focus({ preventScroll: true });
+    };
+    replay.addEventListener(
+      'submit',
+      (e) => {
+        e.preventDefault();
+        applySeed();
+      },
+      { signal: abort.signal },
+    );
+    replay.querySelector('[data-testid="new-seed"]')!.addEventListener(
+      'click',
+      () => {
+        input.value = String(crypto.getRandomValues(new Uint32Array(1))[0]);
+        applySeed();
+      },
+      { signal: abort.signal },
+    );
+    replay.querySelector('[data-testid="copy-seed"]')!.addEventListener(
+      'click',
+      async () => {
+        const url = replayURL().href;
+        try {
+          await navigator.clipboard.writeText(url);
+          message.textContent = `Replay link copied for seed ${replaySeed}.`;
+        } catch {
+          message.textContent = `Replay link: ${url}`;
+        }
+      },
+      { signal: abort.signal },
+    );
+    main.querySelector('.game-toolbar')!.after(replay);
+  }
+
   if (document.fullscreenEnabled && typeof host.requestFullscreen === 'function') {
     const fullscreenButton = document.createElement('button');
     fullscreenButton.type = 'button';

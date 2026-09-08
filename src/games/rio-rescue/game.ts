@@ -27,6 +27,7 @@ export const game: GameModule = {
       'Enter: start/resume · P/Escape: pause · R: reset run · M: mute',
       'Use the welcome center at the left edge to deliver',
       'X: wait/resume while cameras sweep · marked fence sections climb automatically',
+      'River crossings drift downstream; use bridges or aim upstream. Replay a map using its seed.',
       'Practice: Next step',
     ],
     assetIds: [],
@@ -35,10 +36,11 @@ export const game: GameModule = {
   create(host, services) {
     const root = document.createElement('section');
     root.innerHTML =
-      '<p class="rio-route-help">Cross on bridges · Climb marked fence sections · X: wait for cameras · Space: share supplies</p><p data-hud role="status" aria-live="polite"></p><canvas></canvas><p data-message></p><p data-board></p><div data-controls style="display:flex;flex-wrap:wrap;gap:8px"></div>';
+      '<p class="rio-route-help">Swim across winding rivers: current pushes you downstream · Bridges avoid drift · Climb marked fence sections · X: wait for cameras · Space: share supplies</p><p data-hud role="status" aria-live="polite"></p><canvas></canvas><p data-message></p><p data-board></p><div data-controls style="display:flex;flex-wrap:wrap;gap:8px"></div>';
     host.append(root);
     const canvas = root.querySelector('canvas')!;
     const { ctx } = fitCanvas(canvas, 960, 640);
+    canvas.style.maxWidth = 'min(100%, 1440px, calc((100dvh - 200px) * 1.5))';
     canvas.style.touchAction = 'none';
     canvas.setAttribute(
       'aria-label',

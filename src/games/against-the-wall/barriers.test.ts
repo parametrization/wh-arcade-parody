@@ -1,19 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { create, loadDistrict, path, move, step, solid, beginBreach, barrierRules } from './model';
+import {
+  create,
+  loadDistrict,
+  path,
+  move,
+  step,
+  solid,
+  beginBreach,
+  barrierRules,
+  BORDER_Y,
+  MAP_WIDTH,
+} from './model';
 
 describe('continuous authored border', () => {
   it.each([1, 2, 3])('seals north from south without an end-run in district %s', (district) => {
     const s = create();
     s.district = district;
     loadDistrict(s);
-    expect(s.y).toBeGreaterThan(11);
-    expect(s.office.y).toBeLessThan(10);
-    for (let x = 0; x < 32; x++) expect(solid(s, x, 10), `barrier ${x},10`).toBe(true);
+    expect(s.y).toBeGreaterThan(BORDER_Y + 1);
+    expect(s.office.y).toBeLessThan(BORDER_Y);
+    for (let x = 0; x < MAP_WIDTH; x++) expect(solid(s, x, BORDER_Y), `barrier ${x},10`).toBe(true);
     expect(path(s, s, s.office)).toEqual([]);
-    for (const x of [1.22, 30.78]) {
-      const a = { x, y: 11.5 };
+    for (const x of [1.22, MAP_WIDTH - 1.22]) {
+      const a = { x, y: BORDER_Y + 1.5 };
       move(s, a, 0, -4);
-      expect(a.y).toBeGreaterThanOrEqual(11.219);
+      expect(a.y).toBeGreaterThanOrEqual(BORDER_Y + 1.219);
     }
   });
 
@@ -34,8 +45,8 @@ describe('continuous authored border', () => {
       expect(s.enemies.some((a) => a.faction === 'Border Patrol')).toBe(true);
       for (const actor of s.enemies) {
         if (actor.faction === 'ICE' || actor.faction === 'Border Patrol')
-          expect(actor.y).toBeLessThan(10);
-        else expect(actor.y).toBeGreaterThan(11);
+          expect(actor.y).toBeLessThan(BORDER_Y);
+        else expect(actor.y).toBeGreaterThan(BORDER_Y + 1);
       }
     },
   );
@@ -46,15 +57,15 @@ function setup(material: 'wire' | 'fence' | 'concrete') {
   s.phase = 'running';
   s.enemies = [];
   const b = s.barriers.find(
-    (b) => b.material === material && !solid(s, b.x, 11) && !solid(s, b.x, 9),
+    (b) => b.material === material && !solid(s, b.x, BORDER_Y + 1) && !solid(s, b.x, BORDER_Y - 1),
   )!;
   expect(b).toBeDefined();
   s.x = b.x + 0.5;
-  s.y = 11.5;
+  s.y = BORDER_Y + 1.5;
   return { s, b };
 }
 describe('constructed crossings', () => {
-  it.each(['wire', 'fence', 'concrete'] as const)(
+  it.each(['wire', 'fence'] as const)(
     '%s requires its full construction time and opens a route',
     (material) => {
       const { s, b } = setup(material),
@@ -75,7 +86,7 @@ describe('constructed crossings', () => {
       expect(before - s.y).toBeCloseTo(s.config.walk * 0.05 * barrierRules[material].speed);
     },
   );
-  it.each(['wire', 'concrete'] as const)('%s remains open after twenty seconds', (material) => {
+  it.each(['wire'] as const)('%s remains open after twenty seconds', (material) => {
     const { s, b } = setup(material);
     beginBreach(s);
     step(s, barrierRules[material].seconds);

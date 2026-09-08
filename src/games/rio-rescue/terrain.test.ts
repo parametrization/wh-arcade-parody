@@ -1,160 +1,154 @@
-import { describe, expect, it } from 'vitest';
-import { getTerrain, terrainBlocked } from './terrain';
+import { describe, it, expect } from 'vitest';
+import { getTerrain, terrainHeight, terrainBlocked, cameras } from './terrain';
 import {
   createModel,
-  nextDistrict,
   reachable,
+  returnable,
   dock,
   spawn,
   tick,
-  interval,
-  advance,
+  movementRoute,
+  WIDTH,
+  HEIGHT,
   getCameraViews,
   cameraSees,
+  advance,
   setWaiting,
 } from './model';
-import { defaults } from './config';
-
-function districtModel(district: number) {
-  const m = createModel(71);
-  for (let i = 0; i < district; i++) {
-    m.phase = 'district-complete';
-    nextDistrict(m);
-  }
-  return m;
-}
-const key = (c: { x: number; y: number }) => `${c.x},${c.y}`;
-
-describe('authored canyon terrain routes', () => {
-  it.each([0, 1, 2])(
-    'connects every passable cell, pickup and office in district %s',
-    (district) => {
-      const m = districtModel(district);
-      m.body = [m.body[0]];
-      const cells = new Set(reachable(m).map(key));
-      for (let y = 1; y < 17; y++)
-        for (let x = 1; x < 23; x++) {
-          if (!terrainBlocked(district, x, y))
-            expect(cells.has(`${x},${y}`), `unreachable ${district}:${x},${y}`).toBe(true);
-        }
-      expect(cells.has(key(dock))).toBe(true);
-      for (let n = 0; n < 40; n++) {
+import { createMotion } from './motion';
+const cells = () =>
+  Array.from({ length: WIDTH * HEIGHT }, (_, i) => ({ x: i % WIDTH, y: Math.floor(i / WIDTH) }));
+describe('seeded large landscapes', () => {
+  it('has four times the original area and reproducible varied elevations', () => {
+    expect(WIDTH * HEIGHT).toBe(24 * 18 * 4);
+    const a = cells().map((c) => getTerrain(0, c.x, c.y, 42)),
+      b = cells().map((c) => getTerrain(0, c.x, c.y, 43));
+    expect(a).not.toEqual(b);
+    expect(a).toEqual(cells().map((c) => getTerrain(0, c.x, c.y, 42)));
+    for (const kind of ['canyon', 'river', 'bridge', 'mountain', 'mesa', 'plateau'])
+      expect(a).toContain(kind);
+    expect(new Set(cells().map((c) => terrainHeight(0, c.x, c.y, 42))).size).toBeGreaterThan(8);
+  });
+  it.each([1, 42, 99])('protects start, dock and bridge routes with seed%s', (seed) => {
+    for (let district = 0; district < 3; district++) {
+      const m = createModel(seed);
+      m.district = district;
+      expect(m.body.every((c) => !terrainBlocked(district, c.x, c.y, seed))).toBe(true);
+      const legal = reachable(m);
+      const home = returnable(m);
+      expect(legal).toContainEqual(dock);
+      for (let i = 0; i < 10; i++) {
         m.pickup = null;
         spawn(m);
-        expect(m.pickup).not.toBeNull();
-        expect(cells.has(key(m.pickup!))).toBe(true);
-        expect(terrainBlocked(district, m.pickup!.x, m.pickup!.y)).toBe(false);
+        expect(legal).toContainEqual(m.pickup);
+        expect(terrainBlocked(district, m.pickup!.x, m.pickup!.y, seed)).toBe(false);
+        expect(home.has(`${m.pickup!.x},${m.pickup!.y}`)).toBe(true);
+        for (const dx of [-1, 0, 1])
+          for (const dy of [-1, 0, 1]) {
+            expect(terrainBlocked(district, m.pickup!.x + dx, m.pickup!.y + dy, seed)).toBe(false);
+            expect(getTerrain(district, m.pickup!.x + dx, m.pickup!.y + dy, seed)).not.toBe(
+              'river',
+            );
+          }
       }
-    },
-  );
-
-  it.each([0, 1, 2])(
-    'provides walkable bridges across canyon and river in district %s',
-    (district) => {
-      for (const x of [8, 9, 15, 16]) {
-        expect(getTerrain(district, x, 8)).toBe('bridge');
-        expect(terrainBlocked(district, x, 8)).toBe(false);
-      }
-    },
-  );
-
-  it('blocks actual movement into holes, river and fence while permitting climb cells', () => {
-    for (const type of ['canyon', 'river', 'fence'] as const) {
-      let tested = false;
-      for (let y = 1; y < 17 && !tested; y++)
-        for (let x = 2; x < 23 && !tested; x++) {
-          if (getTerrain(0, x, y) !== type || terrainBlocked(0, x - 1, y)) continue;
-          const m = createModel(1, { ...defaults(), mode: 'standard' });
-          m.body = [{ x: x - 1, y }];
-          m.direction = 'right';
-          m.phase = 'playing';
-          m.safe = 0;
-          m.pickup = null;
-          tick(m);
-          expect(m.body[0]).toEqual({ x: x - 1, y });
-          expect(m.phase).toBe('jam');
-          tested = true;
-        }
-      expect(tested, `movement fixture ${type}`).toBe(true);
+      for (let x = 1; x < 47; x++) expect(terrainBlocked(district, x, 8, seed)).toBe(false);
+      for (const c of cameras(district, seed))
+        expect(terrainBlocked(district, c.x, c.y, seed)).toBe(false);
     }
-    const m = districtModel(0);
-    m.body = [{ x: 19, y: 9 }];
-    m.direction = 'right';
-    m.phase = 'playing';
-    m.pickup = null;
-    const normal = interval(m);
-    tick(m);
-    expect(m.body[0]).toEqual({ x: 20, y: 9 });
-    expect(getTerrain(0, 20, 9)).toBe('climb');
-    expect(interval(m)).toBeCloseTo(normal * 1.8);
-    tick(m);
-    expect(m.body[0]).toEqual({ x: 21, y: 9 });
-    expect(interval(m)).toBeCloseTo(normal);
   });
-});
-
-describe('sweeping surveillance and recovery', () => {
-  it('uses the displayed sweep heading and excludes cells beyond cone and range', () => {
-    const m = createModel();
-    const view = getCameraViews(m)[0];
-    expect(cameraSees(view, { x: 11, y: 5 })).toBe(true);
-    expect(cameraSees(view, { x: 11, y: 8 })).toBe(false);
-    expect(cameraSees(view, { x: 13, y: 3 })).toBe(false);
-    m.time = view.period / 4;
-    const swept = getCameraViews(m)[0];
-    expect(swept.heading).not.toBe(view.heading);
-    expect(cameraSees(swept, { x: 11, y: 5 })).toBe(false);
-  });
-
-  it('increments exposure while waiting, decays outside the cone, and freezes while not playing', () => {
-    const m = createModel();
-    m.phase = 'playing';
-    m.safe = 0;
-    m.body = [{ x: 11, y: 5 }];
-    setWaiting(m, true);
-    advance(m, 0.1);
-    expect(m.cameraAlerts[0]).toBeCloseTo(0.1 / 1.5);
-    expect(m.body).toEqual([{ x: 11, y: 5 }]);
-    m.body = [{ x: 5, y: 8 }];
-    advance(m, 0.025);
-    expect(m.cameraAlerts[0]).toBeCloseTo(0.1 / 1.5 - 0.025);
-    m.phase = 'ready';
-    const time = m.time,
-      alerts = [...m.cameraAlerts];
-    advance(m, 4);
-    expect(m.time).toBe(time);
-    expect(m.cameraAlerts).toEqual(alerts);
+  it('moves swimming leader and convoy through both cardinal cells without diagonal clipping', () => {
+    const m = createModel(42);
     m.phase = 'playing';
     m.cameraEnabled = false;
-    expect(getCameraViews(m)).toEqual([]);
+    m.pickup = null;
+    const entry = cells().find(
+      (c) =>
+        getTerrain(0, c.x, c.y, 42) === 'river' &&
+        !terrainBlocked(0, c.x, c.y + 1, 42) &&
+        getTerrain(0, c.x - 1, c.y, 42) === 'ground' &&
+        !terrainBlocked(0, c.x - 2, c.y, 42),
+    )!;
+    expect(entry).toBeDefined();
+    m.body = [
+      { x: entry.x - 1, y: entry.y },
+      { x: entry.x - 2, y: entry.y },
+    ];
+    m.direction = 'right';
+    const motion = createMotion(m);
+    const route = movementRoute(m, m.body[0], 'right');
+    expect(route).toEqual([entry, { x: entry.x, y: entry.y + 1 }]);
+    tick(m);
+    expect(m.body).toEqual([route[1], route[0]]);
+    motion.update(m);
+    m.acc = 0.24 / 4;
+    const quarter = motion.sample(m)[0];
+    expect(quarter.y).toBe(entry.y);
+    expect(quarter.x).toBeCloseTo(entry.x - 0.5);
+    m.acc = 0.24 * 0.75;
+    const later = motion.sample(m)[0];
+    expect(later.x).toBe(entry.x);
+    expect(later.y).toBeCloseTo(entry.y + 0.5);
   });
-
-  it('recovers story mode at full camera exposure and prevents immediate retrigger', () => {
-    const m = createModel(1, { ...defaults(), mode: 'story' });
+  it('never puts the leader into a blocked downstream cell', () => {
+    const m = createModel(42);
+    m.phase = 'playing';
+    m.pickup = null;
+    m.safe = 0;
+    const entry = cells().find(
+      (c) =>
+        getTerrain(0, c.x, c.y, 42) === 'river' &&
+        terrainBlocked(0, c.x, c.y + 1, 42) &&
+        !terrainBlocked(0, c.x - 1, c.y, 42),
+    )!;
+    expect(entry).toBeDefined();
+    m.body = [{ x: entry.x - 1, y: entry.y }];
+    m.direction = 'right';
+    tick(m);
+    expect(terrainBlocked(0, m.body[0].x, m.body[0].y, 42)).toBe(false);
+    expect(m.phase).toBe('jam');
+  });
+  it('sweeps shared cameras, detects waiting heads and freezes while paused', () => {
+    const m = createModel(42);
     m.phase = 'playing';
     m.safe = 0;
-    m.body = [{ x: 11, y: 5 }];
-    m.cameraAlerts[0] = 0.99;
+    const view = getCameraViews(m)[0];
+    const visible = cells().find(
+      (c) =>
+        cameraSees(view, c) &&
+        !terrainBlocked(0, c.x, c.y, 42) &&
+        Math.hypot(c.x - view.x, c.y - view.y) > 1,
+    )!;
+    expect(visible).toBeDefined();
+    m.body = [visible];
     setWaiting(m, true);
-    advance(m, 0.02);
-    expect(m.phase).toBe('ready');
-    expect(m.cameraAlerts).toEqual([0, 0, 0]);
-    expect(m.safe).toBe(1);
-    expect(m.waiting).toBe(false);
-    m.phase = 'playing';
-    m.body = [{ x: 11, y: 5 }];
-    setWaiting(m, true);
-    advance(m, 0.1);
-    expect(m.cameraAlerts[0]).toBe(0);
-    expect(m.phase).toBe('playing');
+    advance(m, 0.01);
+    expect(m.cameraAlerts[0]).toBeGreaterThan(0);
+    m.phase = 'ready';
+    const time = m.time;
+    advance(m, 3);
+    expect(m.time).toBe(time);
   });
 });
 
-it('blocks camera sight through fence and rock but allows climb openings and open canyon', () => {
-  const base = getCameraViews(districtModel(1))[0];
-  const right = { ...base, x: 18, y: 6, heading: 0, range: 8, halfAngle: 0.5 };
-  expect(cameraSees(right, { x: 22, y: 6 })).toBe(false);
-  expect(cameraSees({ ...right, y: 5 }, { x: 22, y: 5 })).toBe(true);
-  expect(cameraSees({ ...right, x: 7, y: 6 }, { x: 11, y: 6 })).toBe(true);
-  expect(cameraSees({ ...right, x: 10, y: 11 }, { x: 12, y: 11 })).toBe(false);
+it('provides turning space beside the final fence instead of trapping a long convoy', () => {
+  for (let y = 1; y < 35; y++)
+    for (let x = 41; x <= 43; x++) expect(terrainBlocked(1, x, y, 43)).toBe(false);
+  expect(getTerrain(1, 44, 33, 43)).toBe('fence');
+});
+it.each(['mesa', 'plateau'] as const)('blocks camera sight through raised %s terrain', (kind) => {
+  const tile = cells().find((p) => getTerrain(0, p.x, p.y, 42) === kind)!;
+  expect(tile).toBeDefined();
+  const camera = {
+    id: 0,
+    x: tile.x - 1,
+    y: tile.y,
+    heading: 0,
+    range: 4,
+    halfAngle: 0.4,
+    period: 8,
+    district: 0,
+    seed: 42,
+    alert: 0,
+  };
+  expect(cameraSees(camera, { x: tile.x + 1, y: tile.y })).toBe(false);
 });

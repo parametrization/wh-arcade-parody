@@ -1,5 +1,13 @@
-import { createBarriers, barrierRules, type Barrier, type BarrierMaterial } from './barriers';
-export { barrierRules } from './barriers';
+import {
+  createBarriers,
+  barrierRules,
+  MAP_WIDTH,
+  MAP_HEIGHT,
+  BORDER_Y,
+  type Barrier,
+  type BarrierMaterial,
+} from './barriers';
+export { barrierRules, MAP_WIDTH, MAP_HEIGHT, BORDER_Y } from './barriers';
 import { wallEntry, VISION_HALF_ANGLE, DISTRACTION_RANGE } from './visibility';
 export type Faction = 'Cartel' | 'Paramilitary' | 'Border Patrol' | 'ICE';
 export type Phase = 'title' | 'running' | 'paused' | 'checkpoint' | 'district' | 'won';
@@ -9,6 +17,13 @@ export interface Actor {
   id: number;
   faction: Faction;
   group?: string;
+  navigation?: { target: string; wallCount: number; cells: { x: number; y: number }[] };
+  patrol?: {
+    kind: string;
+    points: { x: number; y: number }[];
+    index: number;
+    side: 'north' | 'south';
+  };
   meter: number;
   state: 'patrol' | 'alert' | 'chase' | 'investigate' | 'clash' | 'recover' | 'combat' | 'dead';
   health?: number;
@@ -43,9 +58,27 @@ export const defaults: Config = {
   clash: 5,
   story: true,
 };
+export interface Tunnel {
+  id: number;
+  entrance: { x: number; y: number };
+  exit: { x: number; y: number };
+  open: boolean;
+  repairProgress: number;
+}
 export interface State {
+  tunnelPlacement: null | { entrance: null | { x: number; y: number } };
+  tunnels: Tunnel[];
+  tunnelTransit: null | {
+    id: number;
+    remaining: number;
+    duration: number;
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+  };
+  tunnelCooldown: number;
+  tunnelArrival: null | { x: number; y: number };
   barriers: Barrier[];
-  construction: null | { x: number; y: number; progress: number };
+  construction: null | { x: number; y: number; progress: number; tunnelId?: number };
   crossing: null | { x: number; y: number; material: BarrierMaterial };
   phase: Phase;
   time: number;
@@ -86,6 +119,11 @@ export interface State {
 export const key = (x: number, y: number) => `${Math.floor(x)},${Math.floor(y)}`;
 export function create(seed = 1, config = { ...defaults }): State {
   const s: State = {
+    tunnelPlacement: null,
+    tunnels: [],
+    tunnelTransit: null,
+    tunnelCooldown: 0,
+    tunnelArrival: null,
     barriers: [],
     construction: null,
     crossing: null,
@@ -124,107 +162,154 @@ export function create(seed = 1, config = { ...defaults }): State {
 }
 export function loadDistrict(s: State) {
   s.x = 3.5;
-  s.y = 18.5;
+  s.y = 44.5;
+  s.office = { x: 59.5, y: 3.5 };
   s.stamina = 100;
+  s.health = 100;
   s.heading = 0;
   s.sprinting = false;
   s.sprintLocked = false;
-  s.health = 100;
   s.walkDistance = 0;
   s.moving = false;
   s.tokens = 2;
   s.grace = 0.75;
   s.beacon = null;
   s.localSupplies = 0;
-  s.walls = new Set();
-  s.barriers = createBarriers();
   s.construction = null;
   s.crossing = null;
-  for (const b of s.barriers) s.walls.add(key(b.x, b.y));
-  for (let x = 0; x < 32; x++) {
-    s.walls.add(key(x, 0));
-    s.walls.add(key(x, 23));
-  }
-  for (let y = 0; y < 24; y++) {
-    s.walls.add(key(0, y));
-    s.walls.add(key(31, y));
-  }
-  for (const [x, y, w, h] of [
-    [8, 4, 2, 5],
-    [15, 14, 2, 6],
-    [22, 4, 2, 4],
-    [6, 14, 2, 2],
-  ] as number[][])
-    for (let a = x; a < x + w; a++) for (let b = y; b < y + h; b++) s.walls.add(key(a, b));
-  const extra =
-    s.district === 2
-      ? [
-          [11, 12, 2, 2],
-          [25, 16, 3, 2],
-        ]
-      : s.district === 3
-        ? [
-            [4, 5, 3, 1],
-            [18, 13, 2, 2],
-            [26, 13, 2, 2],
-          ]
-        : [];
-  for (const [x, y, w, h] of extra)
-    for (let a = x; a < x + w; a++) for (let b = y; b < y + h; b++) s.walls.add(key(a, b));
-  s.gate = {
-    x: s.district === 2 ? 19 : 18,
-    y: 6,
-    phase: 'idle',
-    remaining: 0,
-    nextAt: s.time + 18,
+  s.tunnelPlacement = null;
+  s.tunnels = [];
+  s.tunnelTransit = null;
+  s.tunnelCooldown = 0;
+  s.tunnelArrival = null;
+  let rng = (s.seed + Math.imul(s.district, 7919)) >>> 0;
+  const random = () => {
+    rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0;
+    return rng / 4294967296;
   };
-  s.companion = { x: 5.5, y: 7.5, helped: false };
+  s.barriers = createBarriers(rng);
+  s.walls = new Set();
+  for (let x = 0; x < MAP_WIDTH; x++) {
+    s.walls.add(key(x, 0));
+    s.walls.add(key(x, MAP_HEIGHT - 1));
+  }
+  for (let y = 0; y < MAP_HEIGHT; y++) {
+    s.walls.add(key(0, y));
+    s.walls.add(key(MAP_WIDTH - 1, y));
+  }
+  for (const b of s.barriers) s.walls.add(key(b.x, b.y));
+  const buildings: { x: number; y: number; w: number; h: number }[] = [];
+  // Disjoint rectangular buildings retain two-cell roads and clear border approaches.
+  for (let row = 0; row < 4; row++)
+    for (let col = 0; col < 7; col++) {
+      const x = 7 + col * 8 + Math.floor(random() * 2),
+        y = [5, 14, 29, 38][row] + Math.floor(random() * 2);
+      const w = 2 + Math.floor(random() * 3),
+        h = 2 + Math.floor(random() * 3);
+      buildings.push({ x, y, w, h });
+      for (let dx = 0; dx < w; dx++)
+        for (let dy = 0; dy < h; dy++) s.walls.add(key(x + dx, y + dy));
+    }
+  s.gate = { x: 18, y: 12, phase: 'idle', remaining: 0, nextAt: s.time + 18 };
+  s.companion = { x: 5.5, y: 31.5, helped: false };
   s.items = [
-    { x: 5.5, y: 16.5, type: 'water', taken: false },
-    { x: 12.5, y: 17.5, type: 'token', taken: false },
-    { x: 19.5, y: 16.5, type: 'supply', taken: false },
-    { x: 26.5, y: 8.5, type: 'supply', taken: false },
+    { x: 5.5, y: 42.5, type: 'water', taken: false },
+    { x: 12.5, y: 26.5, type: 'token', taken: false },
+    { x: 20.5, y: 26.5, type: 'supply', taken: false },
+    { x: 58.5, y: 3.5, type: 'supply', taken: false },
   ];
-  const spawns: { faction: Faction; group?: string; x: number; y: number }[] = [
-    { faction: 'Cartel', group: 'Sinaloa', x: 6.5, y: 19.5 },
-    { faction: 'Cartel', group: 'CJNG', x: 12.5, y: 13.5 },
-    { faction: 'Cartel', group: 'Gulf', x: 25.5, y: 18.5 },
-    { faction: 'Paramilitary', x: 19.5, y: 15.5 },
-    { faction: 'Border Patrol', x: 12.5, y: 5.5 },
-    { faction: 'ICE', x: 26.5, y: 5.5 },
+  const points = (side: 'north' | 'south') => {
+    const ys = side === 'north' ? [2.5, 11.5, 21.5] : [25.5, 35.5, 45.5];
+    return ys.flatMap((y, row) =>
+      [3.5, 15.5, 27.5, 39.5, 51.5, 60.5]
+        .map((x) => ({ x, y }))
+        .filter((p) => !overlapsWall(s, p.x, p.y))
+        .sort((a, b) => (row % 2 ? b.x - a.x : a.x - b.x)),
+    );
+  };
+  const spawns: { faction: Faction; group?: string; side: 'north' | 'south'; kind: string }[] = [
+    { faction: 'Cartel', group: 'Sinaloa', side: 'south', kind: 'normal' },
+    { faction: 'Cartel', group: 'CJNG', side: 'south', kind: 'building' },
+    { faction: 'Cartel', group: 'Gulf', side: 'south', kind: 'edge' },
+    { faction: 'Paramilitary', side: 'south', kind: 'fence' },
+    { faction: 'Paramilitary', side: 'south', kind: 'wander' },
+    { faction: 'ICE', side: 'north', kind: 'normal' },
+    { faction: 'Border Patrol', side: 'north', kind: 'building' },
+    { faction: 'ICE', side: 'north', kind: 'edge' },
+    { faction: 'Border Patrol', side: 'north', kind: 'fence' },
+    { faction: 'ICE', side: 'north', kind: 'wander' },
   ];
-  s.enemies = spawns.map((spawn, i) => ({
-    id: i,
-    x: spawn.x,
-    y: spawn.y,
-    faction: spawn.faction,
-    group: spawn.group,
-    meter: 0,
-    state: 'patrol',
-    timer: 0,
-    cooldown: 0,
-    originX: spawn.x,
-    originY: spawn.y,
-    way: 1,
-    arrival: -1,
-    health: 100,
-    target: null,
-    committed: false,
-    heading: 0,
-    fireCooldown: 0,
-    shot: 0,
-    walkDistance: 0,
-    moving: false,
-  }));
-  s.message = [
-    '',
-    'The Toll Road: use cover and carry on.',
-    'The Photo Opportunity: rival pursuers can distract each other.',
-    'The Moving Goalpost: the intake desk is ahead.',
-  ][s.district];
+  const used = new Set<string>();
+  s.enemies = spawns.map((a, id) => {
+    const all = points(a.side),
+      shift = Math.floor(random() * all.length);
+    let route =
+      a.kind === 'wander'
+        ? [...all.slice(shift), ...all.slice(0, shift)]
+        : a.kind === 'fence'
+          ? [
+              { x: 2.5, y: a.side === 'north' ? 22.5 : 24.5 },
+              { x: 61.5, y: a.side === 'north' ? 22.5 : 24.5 },
+            ]
+          : a.kind === 'edge'
+            ? [
+                { x: 61.5, y: a.side === 'north' ? 2.5 : 25.5 },
+                { x: 61.5, y: a.side === 'north' ? 21.5 : 45.5 },
+              ]
+            : [all[(shift + id) % all.length], all[(shift + id + 1) % all.length]];
+    if (a.kind === 'building') {
+      const available = buildings.filter((b) =>
+        a.side === 'north' ? b.y < BORDER_Y : b.y > BORDER_Y,
+      );
+      const b = available[Math.floor(random() * available.length)];
+      route = [
+        { x: b.x - 0.5, y: b.y - 0.5 },
+        { x: b.x + b.w + 0.5, y: b.y - 0.5 },
+        { x: b.x + b.w + 0.5, y: b.y + b.h + 0.5 },
+        { x: b.x - 0.5, y: b.y + b.h + 0.5 },
+      ];
+    }
+    route = route.filter((p) => !overlapsWall(s, p.x, p.y));
+    for (
+      let attempt = 0;
+      attempt < route.length && used.has(key(route[0].x, route[0].y));
+      attempt++
+    )
+      route.push(route.shift()!);
+    if (used.has(key(route[0].x, route[0].y))) {
+      const free = all.find((p) => !used.has(key(p.x, p.y)));
+      if (free) route.unshift(free);
+    }
+    const spawn = route[0];
+    used.add(key(spawn.x, spawn.y));
+    return {
+      id,
+      ...spawn,
+      faction: a.faction,
+      group: a.group,
+      meter: 0,
+      state: 'patrol',
+      timer: 0,
+      cooldown: 0,
+      originX: spawn.x,
+      originY: spawn.y,
+      way: 1,
+      arrival: -1,
+      health: 100,
+      target: null,
+      committed: false,
+      heading: 0,
+      fireCooldown: 0,
+      shot: 0,
+      walkDistance: 0,
+      moving: false,
+      patrol: { kind: a.kind, points: route, index: 1 % route.length, side: a.side },
+    };
+  });
+  s.message = 'Find or build a crossing. The Asylum Office is north of the border.';
 }
 export function solid(s: State, x: number, y: number) {
-  return x < 1 || y < 1 || x >= 31 || y >= 23 || s.walls.has(key(x, y));
+  return x < 1 || y < 1 || x >= MAP_WIDTH - 1 || y >= MAP_HEIGHT - 1 || s.walls.has(key(x, y));
 }
 export function sight(s: State, ax: number, ay: number, bx: number, by: number) {
   if (solid(s, ax, ay) || solid(s, bx, by)) return false;
@@ -239,6 +324,7 @@ export function path(
   s: State,
   from: { x: number; y: number },
   to: { x: number; y: number },
+  side?: 'north' | 'south',
 ): { x: number; y: number }[] {
   const start = key(from.x, from.y),
     goal = key(to.x, to.y),
@@ -254,6 +340,8 @@ export function path(
       [0, 1],
       [-1, 0],
     ]) {
+      if ((side === 'north' && y + dy >= BORDER_Y) || (side === 'south' && y + dy <= BORDER_Y))
+        continue;
       const next = key(x + dx, y + dy);
       if (!prev.has(next) && !solid(s, x + dx, y + dy)) {
         prev.set(next, at);
@@ -273,7 +361,8 @@ export function path(
 }
 /** True circle/AABB overlap catches adjoining tile corners, not only axis samples. */
 export function overlapsWall(s: State, x: number, y: number, radius = 0.22): boolean {
-  if (x - radius < 1 || y - radius < 1 || x + radius > 31 || y + radius > 23) return true;
+  if (x - radius < 1 || y - radius < 1 || x + radius > MAP_WIDTH - 1 || y + radius > MAP_HEIGHT - 1)
+    return true;
   for (let tx = Math.floor(x - radius); tx <= Math.floor(x + radius); tx++)
     for (let ty = Math.floor(y - radius); ty <= Math.floor(y + radius); ty++) {
       if (!s.walls.has(key(tx, ty))) continue;
@@ -318,6 +407,7 @@ export function combatHostile(s: Pick<State, 'time'>, a: Faction, b: Faction): b
   return isNight(s) || hostile(a, b);
 }
 export function sees(s: State, e: Actor, target: { x: number; y: number }): boolean {
+  if (target === s && s.tunnelTransit) return false;
   const dx = target.x - e.x,
     dy = target.y - e.y,
     angle = Math.atan2(dy, dx),
@@ -333,7 +423,7 @@ function targetActor(
   s: State,
   id: 'player' | number | null | undefined,
 ): { x: number; y: number } | null {
-  if (id === 'player') return s;
+  if (id === 'player') return s.tunnelTransit ? null : s;
   return typeof id === 'number'
     ? (s.enemies.find((e) => e.id === id && e.state !== 'dead') ?? null)
     : null;
@@ -347,7 +437,7 @@ function clearTarget(e: Actor) {
 }
 function damage(s: State, target: 'player' | number, amount: number) {
   if (target === 'player') {
-    if (s.grace <= 0) s.health = Math.max(0, s.health - amount);
+    if (!s.tunnelTransit && s.grace <= 0) s.health = Math.max(0, s.health - amount);
     return;
   }
   const e = s.enemies.find((e) => e.id === target);
@@ -416,9 +506,10 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
   gateStep(s, dt);
   if (Math.hypot(input.x, input.y) > 0) cancelBreach(s);
   barrierStep(s, dt);
+  tunnelStep(s, dt);
   s.grace = Math.max(0, s.grace - dt);
   s.moving = false;
-  const length = Math.hypot(input.x, input.y);
+  const length = s.tunnelTransit ? 0 : Math.hypot(input.x, input.y);
   if (!input.sprint) s.sprintLocked = false;
   const run = input.sprint && !s.sprintLocked && s.stamina > 1e-8;
   const sprintSeconds = run && length ? Math.min(dt, s.stamina / 25) : 0;
@@ -542,13 +633,48 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
       destination = e.lastSeen;
       speed = e.committed ? 3.2 : 2.2;
     } else {
-      destination = { x: e.originX + e.way * 2, y: e.originY };
+      destination = e.patrol
+        ? e.patrol.points[e.patrol.index]
+        : { x: e.originX + e.way * 2, y: e.originY };
       if (
         Math.hypot(e.x - destination.x, e.y - destination.y) < 0.3 ||
         solid(s, destination.x, destination.y)
       ) {
-        e.way *= -1;
-        destination = { x: e.originX + e.way * 2, y: e.originY };
+        if (e.patrol) {
+          e.patrol.index = (e.patrol.index + 1) % e.patrol.points.length;
+          destination = e.patrol.points[e.patrol.index];
+        } else {
+          e.way *= -1;
+          destination = { x: e.originX + e.way * 2, y: e.originY };
+        }
+      }
+    }
+    if (e.meter === 0 && e.state === 'patrol') {
+      const side = e.y < BORDER_Y ? 'north' : 'south';
+      const open = s.barriers
+        .filter((b) => b.open && Math.hypot(e.x - b.x - 0.5, e.y - b.y - 0.5) < 4)
+        .sort(
+          (a, b) =>
+            Math.hypot(e.x - a.x - 0.5, e.y - a.y - 0.5) -
+            Math.hypot(e.x - b.x - 0.5, e.y - b.y - 0.5),
+        )[0];
+      if (open) destination = { x: open.x + 0.5, y: BORDER_Y + (side === 'north' ? -0.5 : 1.5) };
+      for (const t of s.tunnels.filter((t) => t.open)) {
+        const p = side === 'north' ? t.exit : t.entrance;
+        const assigned = s.enemies
+          .filter(
+            (a) =>
+              a.state !== 'dead' &&
+              (side === 'north' ? a.y < BORDER_Y : a.y > BORDER_Y + 1) &&
+              Math.hypot(a.x - p.x, a.y - p.y) < 12,
+          )
+          .sort(
+            (a, b) =>
+              Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y) || a.id - b.id,
+          )
+          .slice(0, 2);
+        const index = assigned.indexOf(e);
+        if (index >= 0) destination = { x: p.x + (index === 0 ? -0.6 : 0.6), y: p.y };
       }
     }
     if (e.meter > 0 && target && Math.hypot(target.x - e.x, target.y - e.y) < 1.4) {
@@ -556,8 +682,31 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
       destination = null;
     }
     if (destination) {
+      const side =
+        e.state === 'patrol' &&
+        e.patrol &&
+        (e.patrol.side === 'north' ? e.y < BORDER_Y : e.y > BORDER_Y + 1)
+          ? e.patrol.side
+          : undefined;
+      const targetKey = `${side ?? 'free'}:${key(destination.x, destination.y)}`;
+      if (
+        !e.navigation ||
+        e.navigation.target !== targetKey ||
+        e.navigation.wallCount !== s.walls.size
+      ) {
+        e.navigation = {
+          target: targetKey,
+          wallCount: s.walls.size,
+          cells: path(s, e, destination, side),
+        };
+      }
+      while (
+        e.navigation.cells.length &&
+        Math.hypot(e.navigation.cells[0].x - e.x, e.navigation.cells[0].y - e.y) < 0.08
+      )
+        e.navigation.cells.shift();
       const next =
-        path(s, e, destination)[0] ??
+        e.navigation.cells[0] ??
         (!solid(s, destination.x, destination.y) &&
         key(e.x, e.y) === key(destination.x, destination.y)
           ? destination
@@ -627,6 +776,7 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
     }
   }
   if (
+    !s.tunnelTransit &&
     s.grace <= 0 &&
     (s.health <= 0 ||
       s.enemies.some(
@@ -718,6 +868,7 @@ export function cancelBreach(s: State) {
     if (b && !b.open) b.progress = 0;
   }
   s.construction = null;
+  s.tunnelPlacement = null;
 }
 export function beginBreach(s: State) {
   if (s.phase !== 'running') return false;
@@ -727,6 +878,7 @@ export function beginBreach(s: State) {
   }
   const b = nearestBarrier(s);
   if (!b) return false;
+  if (b.material === 'concrete') return beginTunnelPlacement(s);
   b.progress = 0;
   s.construction = { x: b.x, y: b.y, progress: 0 };
   s.message =
@@ -737,8 +889,77 @@ export function beginBreach(s: State) {
         : 'Digging a tunnel. Stay still.';
   return true;
 }
+/** Remove an occupied ladder without embedding its users in the restored fence. */
+function knockLadder(s: State, b: Barrier) {
+  const actors = [s, ...s.enemies.filter((e) => e.state !== 'dead')];
+  const occupants = actors.filter(
+    (a) =>
+      Math.hypot(
+        a.x - Math.max(b.x, Math.min(a.x, b.x + 1)),
+        a.y - Math.max(b.y, Math.min(a.y, b.y + 1)),
+      ) < 0.22,
+  );
+  const placements: { actor: (typeof actors)[number]; x: number; y: number }[] = [];
+  for (const actor of occupants) {
+    const preferred = actor.y < b.y + 0.5 ? 'north' : 'south';
+    const candidates: { x: number; y: number; side: string }[] = [];
+    for (let y = Math.max(1, b.y - 3); y <= Math.min(MAP_HEIGHT - 2, b.y + 3); y++)
+      for (let x = Math.max(1, b.x - 3); x <= Math.min(MAP_WIDTH - 2, b.x + 3); x++) {
+        if (y === b.y) continue;
+        const p = { x: x + 0.5, y: y + 0.5, side: y < b.y ? 'north' : 'south' };
+        if (overlapsWall(s, p.x, p.y) || !sight(s, actor.x, actor.y, p.x, p.y)) continue;
+        if (
+          actors.some(
+            (a) => a !== actor && !occupants.includes(a) && Math.hypot(a.x - p.x, a.y - p.y) < 0.65,
+          ) ||
+          placements.some((a) => Math.hypot(a.x - p.x, a.y - p.y) < 0.65)
+        )
+          continue;
+        candidates.push(p);
+      }
+    candidates.sort(
+      (a, c) =>
+        Number(a.side !== preferred) - Number(c.side !== preferred) ||
+        Math.hypot(a.x - actor.x, a.y - actor.y) - Math.hypot(c.x - actor.x, c.y - actor.y),
+    );
+    if (!candidates.length) return false;
+    placements.push({ actor, ...candidates[0] });
+  }
+  for (const p of placements) {
+    p.actor.x = p.x;
+    p.actor.y = p.y;
+    p.actor.moving = false;
+  }
+  b.open = false;
+  b.progress = 0;
+  b.remaining = 0;
+  s.walls.add(key(b.x, b.y));
+  s.message = 'A guard knocked down the ladder. Everyone on it stepped clear.';
+  return true;
+}
 function barrierStep(s: State, dt: number) {
   for (const b of s.barriers) {
+    const guards = s.enemies.filter(
+      (e) => e.state !== 'dead' && Math.hypot(e.x - b.x - 0.5, e.y - b.y - 0.5) < 1.8,
+    );
+    if (b.open && guards.length) {
+      b.repairProgress += dt;
+      if (b.material === 'fence') {
+        b.remaining = 0;
+        knockLadder(s, b);
+      }
+      if (b.material === 'wire' && b.repairProgress >= 30) {
+        if (
+          ![s, ...s.enemies.filter((e) => e.state !== 'dead')].some(
+            (a) => Math.abs(a.x - b.x - 0.5) < 0.72 && Math.abs(a.y - b.y - 0.5) < 0.72,
+          )
+        ) {
+          b.open = false;
+          b.progress = 0;
+          s.walls.add(key(b.x, b.y));
+        }
+      }
+    } else b.repairProgress = 0;
     if (!b.open || barrierRules[b.material].lifetime === 0) continue;
     b.remaining = Math.max(0, b.remaining - dt);
     if (b.remaining > 0) continue;
@@ -753,6 +974,20 @@ function barrierStep(s: State, dt: number) {
     s.walls.add(key(b.x, b.y));
   }
   if (!s.construction) return;
+  if (s.construction.tunnelId !== undefined) {
+    const t = s.tunnels.find((t) => t.id === s.construction!.tunnelId)!;
+    if (Math.hypot(s.x - t.entrance.x, s.y - t.entrance.y) > 1.6) {
+      cancelBreach(s);
+      return;
+    }
+    s.construction.progress = Math.min(1, s.construction.progress + dt / 10);
+    if (s.construction.progress >= 1 - 1e-9) {
+      t.open = true;
+      s.construction = null;
+      s.message = 'Tunnel ready. Step onto either entrance to cross.';
+    }
+    return;
+  }
   const b = s.barriers.find((b) => b.x === s.construction!.x && b.y === s.construction!.y);
   if (!b || b.open || Math.hypot(s.x - b.x - 0.5, s.y - b.y - 0.5) > 1.6) {
     cancelBreach(s);
@@ -770,5 +1005,119 @@ function barrierStep(s: State, dt: number) {
       b.material === 'fence'
         ? 'Ladder ready for twenty seconds. Cross before it closes.'
         : 'Crossing open. Continue toward the Asylum Office.';
+  }
+}
+
+export function tunnelCandidates(s: State, side: 'north' | 'south') {
+  return s.barriers
+    .filter((b) => b.material === 'concrete')
+    .map((b) => ({ x: b.x + 0.5, y: BORDER_Y + (side === 'south' ? 1.5 : -0.5) }))
+    .filter(
+      (p) =>
+        !overlapsWall(s, p.x, p.y) &&
+        (!s.tunnelPlacement?.entrance ||
+          side === 'south' ||
+          Math.abs(p.x - s.tunnelPlacement.entrance.x) <= 6),
+    );
+}
+export function validTunnelEndpoint(s: State, x: number, y: number, side: 'north' | 'south') {
+  return tunnelCandidates(s, side).some((p) => Math.hypot(p.x - x, p.y - y) < 0.55);
+}
+export function beginTunnelPlacement(s: State) {
+  if (s.phase !== 'running') return false;
+  cancelBreach(s);
+  s.tunnelPlacement = { entrance: null };
+  s.message = 'Choose a concrete tunnel entrance on the south face, then its north exit.';
+  return true;
+}
+export function cancelTunnelPlacement(s: State) {
+  s.tunnelPlacement = null;
+}
+export function chooseTunnelEndpoint(s: State, x: number, y: number) {
+  if (s.phase !== 'running' || !s.tunnelPlacement) return false;
+  const side = s.tunnelPlacement.entrance ? 'north' : 'south';
+  const p = tunnelCandidates(s, side).find((p) => Math.hypot(p.x - x, p.y - y) < 0.55);
+  if (!p) return false;
+  if (!s.tunnelPlacement.entrance) {
+    if (Math.hypot(s.x - p.x, s.y - p.y) > 1.6) return false;
+    s.tunnelPlacement.entrance = p;
+    s.message = 'Choose the north exit within six tiles.';
+    return true;
+  }
+  const entrance = s.tunnelPlacement.entrance;
+  if (Math.hypot(s.x - entrance.x, s.y - entrance.y) > 1.6) return false;
+  const id = s.tunnels.length;
+  s.tunnels.push({ id, entrance, exit: p, open: false, repairProgress: 0 });
+  s.construction = { x: Math.floor(entrance.x), y: BORDER_Y, progress: 0, tunnelId: id };
+  s.tunnelPlacement = null;
+  s.message = 'Digging the selected tunnel. Stay still for ten seconds.';
+  return true;
+}
+function tunnelStep(s: State, dt: number) {
+  if (s.tunnelTransit) {
+    const transit = s.tunnelTransit;
+    transit.remaining = Math.max(0, transit.remaining - dt);
+    if (
+      transit.remaining === 0 &&
+      !overlapsWall(s, transit.to.x, transit.to.y) &&
+      !s.enemies.some(
+        (e) => e.state !== 'dead' && Math.hypot(e.x - transit.to.x, e.y - transit.to.y) < 0.5,
+      )
+    ) {
+      s.x = transit.to.x;
+      s.y = transit.to.y;
+      s.tunnelArrival = { ...transit.to };
+      s.tunnelCooldown = 2;
+      s.tunnelTransit = null;
+      s.grace = Math.max(s.grace, 0.5);
+      s.message = 'Tunnel crossed. Continue toward the office.';
+    }
+  }
+  s.tunnelCooldown = Math.max(0, s.tunnelCooldown - dt);
+  if (s.tunnelArrival && Math.hypot(s.x - s.tunnelArrival.x, s.y - s.tunnelArrival.y) > 0.5)
+    s.tunnelArrival = null;
+  for (const t of s.tunnels) {
+    if (!t.open) continue;
+    const near = (p: { x: number; y: number }, side: 'north' | 'south') =>
+      s.enemies.filter(
+        (e) =>
+          e.state !== 'dead' &&
+          (side === 'north' ? e.y < BORDER_Y : e.y > BORDER_Y + 1) &&
+          Math.hypot(e.x - p.x, e.y - p.y) < 2,
+      ).length;
+    if (s.tunnelTransit?.id === t.id) {
+      t.repairProgress = 0;
+      continue;
+    }
+    if (near(t.entrance, 'south') >= 2 && near(t.exit, 'north') >= 2) t.repairProgress += dt;
+    else t.repairProgress = 0;
+    if (t.repairProgress >= 90) {
+      t.open = false;
+      continue;
+    }
+    if (s.tunnelCooldown > 0 || s.tunnelArrival || s.tunnelTransit) continue;
+    const destination =
+      Math.hypot(s.x - t.entrance.x, s.y - t.entrance.y) < 0.3
+        ? t.exit
+        : Math.hypot(s.x - t.exit.x, s.y - t.exit.y) < 0.3
+          ? t.entrance
+          : null;
+    if (
+      destination &&
+      !overlapsWall(s, destination.x, destination.y) &&
+      !s.enemies.some(
+        (e) => e.state !== 'dead' && Math.hypot(e.x - destination.x, e.y - destination.y) < 0.5,
+      )
+    ) {
+      const duration = Math.hypot(destination.x - s.x, destination.y - s.y) / (s.config.walk * 0.4);
+      s.tunnelTransit = {
+        id: t.id,
+        from: { x: s.x, y: s.y },
+        to: { ...destination },
+        duration,
+        remaining: duration,
+      };
+      s.message = 'Moving underground. The exit will wait until clear.';
+    }
   }
 }

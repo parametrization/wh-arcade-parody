@@ -1,4 +1,12 @@
-import { isNight, canDistract, type State, type Actor } from './model';
+import {
+  MAP_WIDTH,
+  MAP_HEIGHT,
+  tunnelCandidates,
+  isNight,
+  canDistract,
+  type State,
+  type Actor,
+} from './model';
 import { visionBoundary, DISTRACTION_RANGE } from './visibility';
 
 type V = { x: number; y: number; z: number };
@@ -22,6 +30,7 @@ export function drawScene(
   aim: { x: number; y: number } | null,
   variant: string,
   reducedMotion: boolean,
+  tunnelCursor: { x: number; y: number } | null = null,
 ) {
   c.save();
   const night = isNight(s);
@@ -96,8 +105,8 @@ export function drawScene(
     c.fill();
   }
   const barrierKeys = new Set(s.barriers.map((b) => `${b.x},${b.y}`));
-  for (let y = 0; y < 24; y++)
-    for (let x = 0; x < 32; x++) {
+  for (let y = 0; y < MAP_HEIGHT; y++)
+    for (let x = 0; x < MAP_WIDTH; x++) {
       const p = project(v(x + 0.5, y + 0.5));
       if (p.x < -130 || p.x > 1090 || p.y < -180 || p.y > 850) continue;
       const seed = (x * 31 + y * 17) % 9;
@@ -141,6 +150,14 @@ export function drawScene(
     }
   for (const b of s.barriers) {
     const { x, y } = b;
+    const screen = project(v(x + 0.5, y + 0.5));
+    if (screen.x < -160 || screen.x > 1120 || screen.y < -150 || screen.y > 1000) continue;
+    if (b.repairProgress > 0)
+      labels.push({
+        p: v(x + 0.5, y + 0.5, 1.4),
+        text: `MENDING ${Math.ceil(30 - b.repairProgress)}s`,
+        color: '#ffb58f',
+      });
     const height = b.material === 'wire' ? 0.9 : b.material === 'fence' ? 1.65 : 1.85;
     if (b.material === 'concrete') {
       if (b.open) {
@@ -239,6 +256,64 @@ export function drawScene(
         text: `${Math.round(b.progress * 100)}%`,
         color: '#ffe5a1',
       });
+  }
+  // Tunnel portals occupy selected walkable bank cells; the concrete above stays solid.
+  for (const tunnel of s.tunnels) {
+    if (!tunnel.open) continue;
+    for (const point of [tunnel.entrance, tunnel.exit]) {
+      const { x, y } = point;
+      face(
+        [
+          v(x - 0.38, y - 0.35, 0.02),
+          v(x + 0.38, y - 0.35, 0.02),
+          v(x + 0.38, y + 0.35, 0.02),
+          v(x - 0.38, y + 0.35, 0.02),
+        ],
+        '#15202a',
+        true,
+      );
+      for (const side of [-1, 1])
+        box(x + side * 0.36 - 0.045, y - 0.35, 0, 0.09, 0.7, 0.12, '#af8c63', '#d7b17d', '#695c45');
+      beam(v(x - 0.36, y - 0.35, 0.12), v(x + 0.36, y - 0.35, 0.12), 0.05, '#b69969');
+      labels.push({
+        p: v(x, y + 0.75, 0.08),
+        text:
+          tunnel.repairProgress > 0
+            ? `SEALING ${Math.ceil(90 - tunnel.repairProgress)}s`
+            : 'TUNNEL · STEP IN',
+        color: '#dbcb9b',
+      });
+    }
+  }
+  if (s.tunnelPlacement) {
+    for (const side of ['south', 'north'] as const) {
+      for (const p of tunnelCandidates(s, side)) {
+        const selected =
+          tunnelCursor && Math.hypot(p.x - tunnelCursor.x, p.y - tunnelCursor.y) < 0.1;
+        const color = selected ? '#ffe59b' : side === 'south' ? '#93f5d0' : '#89baff';
+        const x = p.x,
+          y = p.y,
+          r = 0.42,
+          t = 0.04;
+        for (const [ax, ay, bx, by] of [
+          [x - r, y - r, x + r, y - r],
+          [x + r, y - r, x + r, y + r],
+          [x + r, y + r, x - r, y + r],
+          [x - r, y + r, x - r, y - r],
+        ]) {
+          face(
+            [
+              v(ax - t, ay - t, 0.06),
+              v(bx + t, by - t, 0.06),
+              v(bx + t, by + t, 0.06),
+              v(ax - t, ay + t, 0.06),
+            ],
+            color,
+            true,
+          );
+        }
+      }
+    }
   }
   // Detection fan is the exact model ray mesh, including narrow wall-corner gaps.
   for (const e of s.enemies) {
@@ -425,6 +500,7 @@ export function drawScene(
   for (const actor of cast) {
     const e: Actor | null = actor.e,
       player = !e;
+    if (player && s.tunnelTransit) continue;
     const heading = e?.heading ?? s.heading;
     const gait =
       !reducedMotion && (e?.moving ?? s.moving)
@@ -570,10 +646,44 @@ export function drawScene(
   }
   floor.forEach(paint);
   meshes.sort((a, b) => b.depth - a.depth).forEach(paint);
+  // Placement guides deliberately overlay cover, so the far-side exits remain selectable.
+  if (s.tunnelPlacement) {
+    c.save();
+    for (const side of ['south', 'north'] as const)
+      for (const p of tunnelCandidates(s, side)) {
+        const selected =
+          tunnelCursor && Math.hypot(p.x - tunnelCursor.x, p.y - tunnelCursor.y) < 0.1;
+        const color = selected ? '#ffe59b' : side === 'south' ? '#93f5d0' : '#89baff';
+        const points = [
+          [-0.43, -0.43],
+          [0.43, -0.43],
+          [0.43, 0.43],
+          [-0.43, 0.43],
+        ].map(([x, y]) => project(v(p.x + x, p.y + y, 0.06)));
+        if (points.every((p) => p.x < 0 || p.x > 960 || p.y < 0 || p.y > 640)) continue;
+        c.beginPath();
+        points.forEach((q, i) => (i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)));
+        c.closePath();
+        c.fillStyle = selected ? '#fff2a63b' : '#80c9ff14';
+        c.fill();
+        c.strokeStyle = color;
+        c.lineWidth = selected ? 3 : 1.5;
+        c.setLineDash(side === 'north' ? [5, 3] : []);
+        c.stroke();
+      }
+    c.restore();
+  }
   c.textAlign = 'center';
   c.font = 'bold 11px monospace';
   for (const label of labels) {
     const p = project(label.p);
+    if (/^(TUNNEL|SEALING)/.test(label.text)) {
+      for (const actor of cast) {
+        if (actor.e?.state === 'dead') continue;
+        const at = project(v(actor.x, actor.y, 1.32));
+        if (Math.abs(p.x - at.x) < 110 && Math.abs(p.y - at.y) < 65) p.x += p.x < 760 ? 140 : -140;
+      }
+    }
     if (p.x < 30 || p.x > 930 || p.y < 30 || p.y > 610) continue;
     const w = c.measureText(label.text).width;
     c.fillStyle = '#172e36df';
@@ -582,7 +692,9 @@ export function drawScene(
     c.fillText(label.text, p.x, p.y);
   }
   const meters = [
-    { x: s.x, y: s.y, health: s.health, attention: null as number | null },
+    ...(s.tunnelTransit
+      ? []
+      : [{ x: s.x, y: s.y, health: s.health, attention: null as number | null }]),
     ...s.enemies
       .filter((e) => e.state !== 'dead')
       .map((e) => ({ x: e.x, y: e.y, health: e.health ?? 100, attention: e.meter })),
@@ -622,6 +734,35 @@ export function drawScene(
   }
   c.textAlign = 'center';
   c.font = 'bold 11px monospace';
+  if (s.tunnelPlacement) {
+    c.fillStyle = '#112939f0';
+    c.fillRect(180, 572, 600, 34);
+    c.fillStyle = '#ffe59b';
+    c.textAlign = 'center';
+    c.fillText(
+      `CHOOSE ${s.tunnelPlacement.entrance ? 'NORTH EXIT' : 'SOUTH ENTRY'} · ARROWS + ENTER OR CLICK A MARKED TILE`,
+      480,
+      594,
+    );
+  }
+  if (s.tunnelTransit) {
+    const transit = s.tunnelTransit;
+    c.fillStyle = '#102b36ed';
+    c.fillRect(220, 558, 520, 64);
+    c.fillStyle = '#dce7cb';
+    c.textAlign = 'center';
+    c.fillText(
+      transit.remaining > 0
+        ? `MOVING UNDERGROUND · ${Math.ceil(transit.remaining)}s`
+        : 'WAITING FOR A CLEAR EXIT',
+      480,
+      580,
+    );
+    c.fillStyle = '#405c64';
+    c.fillRect(240, 598, 480, 8);
+    c.fillStyle = '#c6c896';
+    c.fillRect(240, 598, 480 * (1 - transit.remaining / transit.duration), 8);
+  }
   if (s.construction) {
     const b = s.barriers.find((b) => b.x === s.construction!.x && b.y === s.construction!.y);
     const action =
@@ -647,5 +788,47 @@ export function drawScene(
     c.textAlign = 'left';
     c.fillText(`${office.x < 480 ? '←' : '→'} ASYLUM OFFICE`, 25, 31);
   }
+  // Overview keeps the enlarged seeded district navigable while the main camera follows Alex.
+  const mx = 778,
+    my = 16,
+    scale = 2.5;
+  c.fillStyle = '#10242dea';
+  c.fillRect(mx - 8, my - 8, MAP_WIDTH * scale + 16, MAP_HEIGHT * scale + 32);
+  c.fillStyle = '#334f54';
+  c.fillRect(mx, my, MAP_WIDTH * scale, MAP_HEIGHT * scale);
+  c.fillStyle = '#a49a7d';
+  for (const tile of s.walls) {
+    const [x, y] = tile.split(',').map(Number);
+    c.fillRect(mx + x * scale, my + y * scale, scale, scale);
+  }
+  for (const b of s.barriers) {
+    c.fillStyle = b.open
+      ? '#86edb4'
+      : b.material === 'wire'
+        ? '#b7cfb3'
+        : b.material === 'fence'
+          ? '#d8b779'
+          : '#a6abb8';
+    c.fillRect(mx + b.x * scale, my + b.y * scale, scale, scale);
+  }
+  for (const e of s.enemies) {
+    if (e.state === 'dead') continue;
+    c.fillStyle = e.faction === 'ICE' || e.faction === 'Border Patrol' ? '#8fbce7' : '#e9a09d';
+    c.fillRect(mx + e.x * scale - 1, my + e.y * scale - 1, 3, 3);
+  }
+  for (const p of [s.office, s]) {
+    c.fillStyle = p === s ? '#ffffff' : '#93f5d0';
+    c.fillRect(mx + p.x * scale - 2, my + p.y * scale - 2, 4, 4);
+  }
+  if (s.tunnelPlacement)
+    for (const side of ['north', 'south'] as const)
+      for (const p of tunnelCandidates(s, side)) {
+        c.fillStyle = side === 'south' ? '#93f5d0' : '#89baff';
+        c.fillRect(mx + p.x * scale - 1, my + p.y * scale - 1, 3, 3);
+      }
+  c.textAlign = 'left';
+  c.font = '10px monospace';
+  c.fillStyle = '#dce5d7';
+  c.fillText(`SEED ${s.seed}`, mx, my + MAP_HEIGHT * scale + 15);
   c.restore();
 }

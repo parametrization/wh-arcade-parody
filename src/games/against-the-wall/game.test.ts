@@ -11,6 +11,7 @@ import {
   type Actor,
   beginBreach,
   solid,
+  BORDER_Y,
 } from './model';
 const enemy = (id: number, faction: Actor['faction'], x = 12.5, y = 17.5): Actor => ({
   id,
@@ -36,7 +37,7 @@ describe('Against the Wall simulation', () => {
       s.phase = 'running';
       s.enemies = [];
       s.x = 3.5;
-      s.y = 11.5;
+      s.y = BORDER_Y + 1.5;
       expect(beginBreach(s)).toBe(true);
       step(s, 3);
       expect(path(s, s, s.office).length).toBeGreaterThan(0);
@@ -44,7 +45,7 @@ describe('Against the Wall simulation', () => {
   });
   it('cover blocks visibility while open corridors remain visible', () => {
     const s = create();
-    expect(sight(s, 7.5, 8.5, 10.5, 8.5)).toBe(false);
+    expect(sight(s, 7.5, BORDER_Y - 1, 7.5, BORDER_Y + 2)).toBe(false);
     expect(sight(s, 3.5, 18.5, 7.5, 18.5)).toBe(true);
   });
   it('diagonal movement has no speed advantage', () => {
@@ -53,7 +54,7 @@ describe('Against the Wall simulation', () => {
     a.phase = b.phase = 'running';
     step(a, 0.1, { x: 1, y: 0, sprint: false });
     step(b, 0.1, { x: 1, y: 1, sprint: false });
-    expect(Math.hypot(a.x - 3.5, a.y - 18.5)).toBeCloseTo(Math.hypot(b.x - 3.5, b.y - 18.5));
+    expect(Math.hypot(a.x - 3.5, a.y - 44.5)).toBeCloseTo(Math.hypot(b.x - 3.5, b.y - 44.5));
   });
   it('rival investigators acquire each other and exchange damaging fire', () => {
     const s = create();
@@ -173,7 +174,7 @@ describe('authored districts and moving gate', () => {
     s.phase = 'running';
     s.enemies = [];
     s.x = 3.5;
-    s.y = 11.5;
+    s.y = BORDER_Y + 1.5;
     expect(beginBreach(s)).toBe(true);
     step(s, 3);
     s.gate.nextAt = 0;
@@ -187,10 +188,12 @@ describe('authored districts and moving gate', () => {
     for (let i = 0; i < 240; i++) step(s, 1 / 60);
     expect(s.gate.phase).toBe('idle');
   });
-  it('walking and construction controller reaches all three offices without supplies or sprinting', () => {
+  it('geometry and construction routes reach all three offices without supplies or sprinting', () => {
     const s = create(4);
     s.phase = 'running';
     for (let district = 1; district <= 3; district++) {
+      // Isolate route geometry: distributed patrol survival is tested separately.
+      s.enemies = [];
       const walk = (route: { x: number; y: number }[]) => {
         expect(route.length).toBeGreaterThan(0);
         for (const target of route) {
@@ -207,8 +210,11 @@ describe('authored districts and moving gate', () => {
         }
       };
       const approaches = s.barriers
-        .filter((b) => b.material === 'wire' && !solid(s, b.x, 11) && !solid(s, b.x, 9))
-        .map((b) => ({ x: b.x + 0.5, y: 11.5 }))
+        .filter(
+          (b) =>
+            b.material === 'wire' && !solid(s, b.x, BORDER_Y + 1) && !solid(s, b.x, BORDER_Y - 1),
+        )
+        .map((b) => ({ x: b.x + 0.5, y: BORDER_Y + 1.5 }))
         .map((p) => path(s, s, p))
         .filter((p) => p.length)
         .sort((a, b) => a.length - b.length);

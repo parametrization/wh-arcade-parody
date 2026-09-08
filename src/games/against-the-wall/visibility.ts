@@ -1,3 +1,4 @@
+import { MAP_WIDTH, MAP_HEIGHT } from './barriers';
 import type { Actor, State } from './model';
 export const VISION_HALF_ANGLE = (35 * Math.PI) / 180;
 export const DISTRACTION_RANGE = 4.01;
@@ -32,7 +33,14 @@ export function visionBoundary(s: State, e: Actor) {
   for (let i = -34; i <= 34; i += 2) angles.push((i * Math.PI) / 180);
   for (let x = Math.floor(e.x - range); x <= Math.floor(e.x + range); x++)
     for (let y = Math.floor(e.y - range); y <= Math.floor(e.y + range); y++) {
-      if (!(x < 1 || x >= 31 || y < 1 || y >= 23 || s.walls.has(`${x},${y}`))) continue;
+      if (!(
+        x < 1 ||
+        x >= MAP_WIDTH - 1 ||
+        y < 1 ||
+        y >= MAP_HEIGHT - 1 ||
+        s.walls.has(`${x},${y}`)
+      ))
+        continue;
       tiles.push({ x, y });
       // Trace both sides of each corner so a narrow gap is not bridged by the mesh.
       for (const [cx, cy] of [

@@ -1,4 +1,10 @@
-import { cameras, getTerrain, terrainBlocked, type CameraDefinition } from './terrain';
+import {
+  riverCurrent,
+  cameras,
+  getTerrain,
+  terrainBlocked,
+  type CameraDefinition,
+} from './terrain';
 import { defaults, type Config } from './config';
 export interface Cell {
   x: number;
@@ -13,6 +19,7 @@ export interface Hazard {
   remaining: number;
 }
 export interface Model {
+  lastRoute: Cell[][];
   cameraAlerts: number[];
   cameraEnabled: boolean;
   waiting: boolean;
@@ -49,8 +56,8 @@ export interface Model {
   message: string;
   config: Config;
 }
-export const WIDTH = 24,
-  HEIGHT = 18,
+export const WIDTH = 48,
+  HEIGHT = 36,
   GOALS = [6, 10, 14];
 export const dock: Cell = { x: 1, y: 8 };
 const delta: Record<Direction, Cell> = {
@@ -61,10 +68,10 @@ const delta: Record<Direction, Cell> = {
 };
 export const equal = (a: Cell, b: Cell) => a.x === b.x && a.y === b.y;
 const key = (c: Cell) => `${c.x},${c.y}`;
-export function walls(district: number): Cell[] {
+export function walls(district: number, seed = 1): Cell[] {
   const cells: Cell[] = [];
   for (let y = 0; y < HEIGHT; y++)
-    for (let x = 0; x < WIDTH; x++) if (terrainBlocked(district, x, y)) cells.push({ x, y });
+    for (let x = 0; x < WIDTH; x++) if (terrainBlocked(district, x, y, seed)) cells.push({ x, y });
   return cells;
 }
 function random(m: Model) {
@@ -76,7 +83,7 @@ function random(m: Model) {
 }
 function blocked(m: Model, c: Cell, reservations = true) {
   return (
-    terrainBlocked(m.district, c.x, c.y) ||
+    terrainBlocked(m.district, c.x, c.y, m.seed) ||
     (m.hazard !== null &&
       (reservations || m.hazard.phase === 'active') &&
       m.hazard.cells.some((h) => equal(h, c)))
@@ -87,21 +94,57 @@ export function reachable(m: Model, extra: Cell[] = []): Cell[] {
   const seen = new Set<string>();
   const out: Cell[] = [];
   const queue = [m.body[0]];
-  while (queue.length) {
-    const c = queue.shift()!;
+  for (let cursor = 0; cursor < queue.length; cursor++) {
+    const c = queue[cursor];
     if (seen.has(key(c)) || occupied.has(key(c)) || blocked(m, c)) continue;
     seen.add(key(c));
     out.push(c);
-    for (const d of Object.values(delta)) {
-      const n = { x: c.x + d.x, y: c.y + d.y };
-      if (n.x >= 0 && n.y >= 0 && n.x < WIDTH && n.y < HEIGHT) queue.push(n);
+    for (const direction of Object.keys(delta) as Direction[]) {
+      const route = movementRoute(m, c, direction);
+      if (route.every((n) => !blocked(m, n) && !occupied.has(key(n)))) queue.push(route.at(-1)!);
     }
   }
   return out;
 }
+/** Cells with a directed route home, accounting for mandatory river drift. */
+export function returnable(m: Model): Set<string> {
+  const incoming = new Map<string, string[]>();
+  for (let y = 1; y < HEIGHT - 1; y++)
+    for (let x = 1; x < WIDTH - 1; x++) {
+      const from = { x, y };
+      if (blocked(m, from)) continue;
+      for (const direction of Object.keys(delta) as Direction[]) {
+        const route = movementRoute(m, from, direction);
+        if (route.some((c) => blocked(m, c))) continue;
+        const end = key(route.at(-1)!);
+        const sources = incoming.get(end) ?? [];
+        sources.push(key(from));
+        incoming.set(end, sources);
+      }
+    }
+  const seen = new Set<string>(),
+    queue = [key(dock)];
+  for (let i = 0; i < queue.length; i++) {
+    const cell = queue[i];
+    if (seen.has(cell)) continue;
+    seen.add(cell);
+    queue.push(...(incoming.get(cell) ?? []));
+  }
+  return seen;
+}
 function place(m: Model): Cell | null {
+  const home = returnable(m);
   const legal = reachable(m).filter(
     (c) =>
+      home.has(key(c)) &&
+      getTerrain(m.district, c.x, c.y, m.seed) !== 'river' &&
+      [-1, 0, 1].every((dx) =>
+        [-1, 0, 1].every(
+          (dy) =>
+            !blocked(m, { x: c.x + dx, y: c.y + dy }) &&
+            getTerrain(m.district, c.x + dx, c.y + dy, m.seed) !== 'river',
+        ),
+      ) &&
       !m.body.some((b) => equal(b, c)) &&
       !equal(c, dock) &&
       (!m.pickup || !equal(c, m.pickup)) &&
@@ -146,6 +189,7 @@ function checkpoint(m: Model) {
 }
 export function createModel(seed = 1, config = defaults()): Model {
   const m: Model = {
+    lastRoute: [],
     cameraAlerts: [0, 0, 0],
     cameraEnabled: true,
     waiting: false,
@@ -238,46 +282,60 @@ function collide(m: Model) {
     m.message = 'Route jam! Retry this group; already welcomed people stay safe.';
   }
 }
+/** Ordered cardinal steps ensure every follower traces the swimming route. */
+export function movementRoute(
+  m: Pick<Model, 'district' | 'seed'>,
+  from: Cell,
+  direction: Direction,
+): Cell[] {
+  const d = delta[direction],
+    next = { x: from.x + d.x, y: from.y + d.y };
+  const current = riverCurrent(m.district, next.x, next.y, m.seed);
+  return d.x !== 0 && current ? [next, { x: next.x + current.x, y: next.y + current.y }] : [next];
+}
 export function tick(m: Model) {
   if (m.phase !== 'playing') return;
+  m.lastRoute = [m.body.map((c) => ({ ...c }))];
   const before = snapshot(m);
   const direction = m.queue.shift() ?? m.direction;
-  const d = delta[direction];
-  const next = { x: m.body[0].x + d.x, y: m.body[0].y + d.y };
-  const growth = !!m.pickup && equal(next, m.pickup);
-  const body = growth ? m.body : m.body.slice(0, -1);
-  if (blocked(m, next, false) || body.some((c) => equal(c, next))) {
-    collide(m);
-    return;
-  }
-  m.history.push(before);
-  if (m.history.length > 6) m.history.shift();
-  m.direction = direction;
-  m.body.unshift(next);
-  if (!growth) m.body.pop();
-  if (growth) {
-    m.pickup = null;
-    m.aboard++;
-    m.rescued++;
-    m.message = 'A neighbor joins the convoy.';
-  }
-  if (m.supply && equal(next, m.supply)) {
-    m.supply = null;
-    m.supplies++;
-    m.charges = Math.min(Number(m.config['share.capacity']), m.charges + 1);
-    m.message = 'Supplies collected. Press Space to Share.';
-  }
-  if (m.dockOpen && equal(next, dock)) {
-    m.score += m.aboard * 100 + m.supplies * 25;
-    m.banked += m.aboard;
-    m.aboard = 0;
-    m.supplies = 0;
-    m.pickup = null;
-    m.supply = null;
-    m.phase = 'delivering';
-    m.delivery = 0.6;
-    m.message = 'Welcome home! Everyone in this group is safe.';
-    return;
+  const route = movementRoute(m, m.body[0], direction);
+  for (const next of route) {
+    const growth = !!m.pickup && equal(next, m.pickup);
+    const body = growth ? m.body : m.body.slice(0, -1);
+    if (blocked(m, next, false) || body.some((c) => equal(c, next))) {
+      collide(m);
+      return;
+    }
+    m.history.push(before);
+    if (m.history.length > 6) m.history.shift();
+    m.direction = direction;
+    m.body.unshift(next);
+    if (!growth) m.body.pop();
+    m.lastRoute.push(m.body.map((c) => ({ ...c })));
+    if (growth) {
+      m.pickup = null;
+      m.aboard++;
+      m.rescued++;
+      m.message = 'A neighbor joins the convoy.';
+    }
+    if (m.supply && equal(next, m.supply)) {
+      m.supply = null;
+      m.supplies++;
+      m.charges = Math.min(Number(m.config['share.capacity']), m.charges + 1);
+      m.message = 'Supplies collected. Press Space to Share.';
+    }
+    if (m.dockOpen && equal(next, dock)) {
+      m.score += m.aboard * 100 + m.supplies * 25;
+      m.banked += m.aboard;
+      m.aboard = 0;
+      m.supplies = 0;
+      m.pickup = null;
+      m.supply = null;
+      m.phase = 'delivering';
+      m.delivery = 0.6;
+      m.message = 'Welcome home! Everyone in this group is safe.';
+      return;
+    }
   }
   spawn(m);
 }
@@ -289,7 +347,7 @@ function hazardSafe(m: Model, cells: Cell[]): boolean {
         m.body.some((b) => equal(b, c)) ||
         (m.pickup && equal(c, m.pickup)) ||
         (m.supply && equal(c, m.supply)) ||
-        terrainBlocked(m.district, c.x, c.y),
+        terrainBlocked(m.district, c.x, c.y, m.seed),
     )
   )
     return false;
@@ -306,7 +364,7 @@ function schedule(m: Model) {
         { x: 12, y: 7 },
         { x: 12, y: 8 },
       ]
-    : Array.from({ length: 6 }, (_, i) => ({ x: 17 + (i % 3), y: 1 + Math.floor(i / 3) }));
+    : Array.from({ length: 6 }, (_, i) => ({ x: 3 + (i % 3), y: 1 + Math.floor(i / 3) }));
   if (hazardSafe(m, cells))
     m.hazard = {
       id: Math.floor(m.time * 1000),
@@ -333,7 +391,7 @@ export function interval(m: Model) {
       1000 /
       Number(m.config['assist.speedMultiplier'])) *
     (m.slow > 0 ? 1.5 : 1) *
-    (getTerrain(m.district, m.body[0].x, m.body[0].y) === 'climb' ? 1.8 : 1)
+    (getTerrain(m.district, m.body[0].x, m.body[0].y, m.seed) === 'climb' ? 1.8 : 1)
   );
 }
 export function advance(m: Model, dt: number, step = false) {
@@ -423,13 +481,15 @@ export function nextDistrict(m: Model) {
 
 export interface CameraView extends CameraDefinition {
   district: number;
+  seed: number;
   alert: number;
 }
 export function getCameraViews(m: Model): CameraView[] {
   if (!m.cameraEnabled) return [];
-  return cameras(m.district).map((camera) => ({
+  return cameras(m.district, m.seed).map((camera) => ({
     ...camera,
     district: m.district,
+    seed: m.seed,
     heading: camera.heading + Math.sin((m.time * Math.PI * 2) / camera.period + camera.id) * 0.9,
     alert: m.cameraAlerts[camera.id] ?? 0,
   }));
@@ -447,8 +507,8 @@ export function cameraSees(camera: CameraView, cell: Cell) {
     const x = Math.round(camera.x + (dx * i) / steps);
     const y = Math.round(camera.y + (dy * i) / steps);
     if (x === camera.x && y === camera.y) continue;
-    const terrain = getTerrain(camera.district, x, y);
-    if (terrain === 'wall' || terrain === 'fence') return false;
+    const terrain = getTerrain(camera.district, x, y, camera.seed);
+    if (['wall', 'fence', 'mountain', 'mesa', 'plateau'].includes(terrain)) return false;
   }
   return true;
 }

@@ -101,7 +101,8 @@ describe('Rio rescue rules', () => {
 });
 
 it('can complete all three authored districts through legal movement and deliveries', async () => {
-  const { walls, nextDistrict, equal } = await import('./model');
+  const { movementRoute, nextDistrict, equal, WIDTH, HEIGHT } = await import('./model');
+  const { terrainBlocked } = await import('./terrain');
   const m = createModel(42);
   m.phase = 'playing';
   let moves = 0;
@@ -139,20 +140,37 @@ it('can complete all three authored districts through legal movement and deliver
         ['down', 0, 1],
         ['left', -1, 0],
       ] as const) {
-        const n = { x: c.x + dx, y: c.y + dy };
+        const swimming = movementRoute(m, c, d);
+        const n = swimming.at(-1)!;
         if (
           n.x < 0 ||
           n.y < 0 ||
-          n.x >= 24 ||
-          n.y >= 18 ||
-          walls(m.district).some((w) => equal(w, n)) ||
-          m.body.slice(1).some((b) => equal(b, n))
+          n.x >= WIDTH ||
+          n.y >= HEIGHT ||
+          swimming.some(
+            (cell) =>
+              terrainBlocked(m.district, cell.x, cell.y, m.seed) ||
+              m.body.slice(1).some((b) => equal(b, cell)),
+          )
         )
           continue;
         paths.push([n, [...path, d]]);
       }
     }
-    expect(route?.length).toBeGreaterThan(0);
+    if (!route)
+      throw Error(
+        JSON.stringify({
+          district: m.district,
+          target,
+          body: m.body,
+          direction: m.direction,
+          moves,
+        }),
+      );
+    expect(
+      route?.length,
+      JSON.stringify({ district: m.district, target, body: m.body, direction: m.direction, moves }),
+    ).toBeGreaterThan(0);
     queueTurn(m, route![0]);
     tick(m);
     moves++;
@@ -227,9 +245,9 @@ it('rewind restores route state but does not rewind its cooldown', () => {
     tick(m);
   }
   m.body = [
-    { x: 22, y: 8 },
-    { x: 21, y: 8 },
-    { x: 20, y: 8 },
+    { x: 46, y: 8 },
+    { x: 45, y: 8 },
+    { x: 44, y: 8 },
   ];
   m.direction = 'right';
   tick(m);
@@ -238,9 +256,9 @@ it('rewind restores route state but does not rewind its cooldown', () => {
   m.safe = 0;
   m.phase = 'playing';
   m.body = [
-    { x: 22, y: 8 },
-    { x: 21, y: 8 },
-    { x: 20, y: 8 },
+    { x: 46, y: 8 },
+    { x: 45, y: 8 },
+    { x: 44, y: 8 },
   ];
   m.direction = 'right';
   tick(m);
