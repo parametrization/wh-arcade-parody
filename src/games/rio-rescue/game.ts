@@ -1,3 +1,4 @@
+import { createMotion } from './motion';
 import { drawPerson, drawGround, drawObstacle, drawDock, drawSupply } from './render';
 import type { GameInstance, GameModule, GameState } from '../../shared/contracts';
 import { fitCanvas } from '../../shared/canvas';
@@ -51,6 +52,7 @@ export const game: GameModule = {
       model = createModel(seed, config),
       state: GameState = 'title',
       destroyed = false;
+    const motion = createMotion(model);
     const abort = new AbortController();
     const unsub: (() => void)[] = [];
     let lastHud = '';
@@ -80,21 +82,24 @@ export const game: GameModule = {
     });
     const next = button('Next step', () => {
       if (state === 'running') advance(model, 0, true);
+      motion.reset(model);
       sync();
       draw();
     });
     const continueButton = button('Continue district', () => {
       nextDistrict(model);
+      motion.reset(model);
       state = 'title';
       draw();
     });
     const retryButton = button('Retry group', () => {
       retry(model);
+      motion.reset(model);
       state = 'title';
       draw();
     });
-    function person(x: number, y: number, i: number, leader = false) {
-      drawPerson(ctx, x, y, i, leader);
+    function person(x: number, y: number, i: number, leader = false, stride = 0) {
+      drawPerson(ctx, x, y, i, leader, stride);
     }
     function draw() {
       if (destroyed) return;
@@ -173,7 +178,8 @@ export const game: GameModule = {
         ctx.fillRect(px + 10, py + 7, 3, 3);
         ctx.fillRect(px + 20, py + 7, 3, 3);
       }
-      model.body
+      motion
+        .sample(model, host.dataset.reducedMotion === 'true')
         .slice()
         .reverse()
         .forEach((c, j) =>
@@ -182,6 +188,7 @@ export const game: GameModule = {
             32 + c.y * 24,
             model.body.length - 1 - j,
             j === model.body.length - 1,
+            c.stride,
           ),
         );
       ctx.fillStyle = '#d4ff76';
@@ -324,6 +331,7 @@ export const game: GameModule = {
         state = 'running';
         services.clock.start((dt) => {
           advance(model, dt);
+          motion.update(model);
           sync();
         }, draw);
       },
@@ -350,6 +358,7 @@ export const game: GameModule = {
         seed = nextSeed;
         config = { ...pending };
         model = createModel(seed, config);
+        motion.reset(model);
         state = 'title';
         touch = null;
         services.clock.pause();

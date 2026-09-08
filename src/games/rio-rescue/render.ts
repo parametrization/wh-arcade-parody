@@ -39,17 +39,18 @@ function box(c: C, x: number, y: number, w: number, h: number, d: number, colors
     colors[2],
   );
 }
-export function drawPerson(c: C, x: number, y: number, i: number, leader = false) {
+export function drawPerson(c: C, x: number, y: number, i: number, leader = false, stride = 0) {
   c.save();
   c.translate(x, y);
   c.fillStyle = '#263d4255';
   c.beginPath();
   c.ellipse(13, 21, 10, 3, 0, 0, Math.PI * 2);
   c.fill();
+  c.translate(0, -Math.abs(stride) * 0.35);
   const skin = ['#f3c798', '#bd895f', '#95633f', '#754a32', '#d9a479'][i % 5];
   const coat = leader ? '#46c9aa' : ['#b977a7', '#d3a455', '#7299c3', '#8ca975'][i % 4];
-  box(c, 6, 17, 6, 7, 2, ['#66798b', '#3b506c', '#273346']);
-  box(c, 13, 17, 6, 7, 2, ['#66798b', '#3b506c', '#273346']);
+  box(c, 6, 17 + stride, 6, 7, 2, ['#66798b', '#3b506c', '#273346']);
+  box(c, 13, 17 - stride, 6, 7, 2, ['#66798b', '#3b506c', '#273346']);
   poly(
     c,
     [
@@ -82,8 +83,8 @@ export function drawPerson(c: C, x: number, y: number, i: number, leader = false
     ],
     '#344e61',
   );
-  box(c, 3, 13, 5, 7, 2, [skin, skin, '#7e5844']);
-  box(c, 18, 13, 4, 7, 1, [skin, skin, '#7e5844']);
+  box(c, 3, 13 - stride, 5, 7, 2, [skin, skin, '#7e5844']);
+  box(c, 18, 13 + stride, 4, 7, 1, [skin, skin, '#7e5844']);
   box(c, 7, 2, 11, 11, 3, ['#ffe1af', skin, '#825b45']);
   poly(
     c,
