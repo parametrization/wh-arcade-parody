@@ -408,11 +408,11 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
       c.rect(bx + 1, 4, 98, 59);
       c.clip();
       c.globalAlpha = 0.66;
-      rect(c, bx, 63 - 15 * fill, 100, 15 * fill, '#b5ff27');
+      rect(c, bx, 63 - 15 * fill, 100, 15 * fill, '#f9dc32');
       c.globalAlpha = 1;
       for (let i = 0; i < 4; i++) {
         const yy = 48 - 15 * fill + ((i * 11 + reaction.elapsed * 18) % 15);
-        rect(c, bx + 15 + i * 21, yy, 3, 2, '#eeff98');
+        rect(c, bx + 15 + i * 21, yy, 3, 2, '#fff4ae');
       }
       for (const ex of [43, 57]) {
         poly(c, [bx + ex, 28, bx + ex - 3, 36, bx + ex + 3, 36], '#95e6ff');
@@ -446,10 +446,10 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
         c.beginPath();
         c.rect(0, 65, 640, m.umbrella && Math.abs(m.netX - sx) < catchWidth(m) + 12 ? 183 : 237);
         c.clip();
-        poly(c, [sx - 16, 65, sx + 16, 65, sx + 9, 301, sx - 9, 301], '#afff2688');
+        poly(c, [sx - 16, 65, sx + 16, 65, sx + 9, 301, sx - 9, 301], '#f9d52dcc');
         for (let i = 0; i < 8; i++) {
           const y = 80 + ((i * 31 + reaction.elapsed * 100) % 214);
-          rect(c, sx - 7 + (i % 3) * 5, y, 3, 10, '#e2ff9c');
+          rect(c, sx - 7 + (i % 3) * 5, y, 3, 10, '#fff0a3');
         }
         c.restore();
       }
@@ -699,7 +699,7 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
       `MOUNTAIN DEW · ${Math.ceil(reaction.duration - reaction.elapsed)}s`,
       laneX[reaction.lane],
       128,
-      '#f0ff9a',
+      '#fff0a3',
       9,
       true,
     );

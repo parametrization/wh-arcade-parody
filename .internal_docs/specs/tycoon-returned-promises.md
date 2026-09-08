@@ -10,7 +10,7 @@ Hollow promises show the book, care kit, home key or coin they promise, with a t
 
 A seeded random choice selects one of two reactions with equal probability:
 
-- Flood: a return projectile rises to the issuing booth. Over two seconds, neon-green Mountain Dew rises to the tie knot while the issuer cries. An overflow then runs down that lane for a randomly selected 5–15 seconds. An open umbrella protects the basket. Every unprotected second in the stream adds 0.01 to the movement-speed multiplier and reduces keyboard braking. Fractional exposure accumulates consistently across frame sizes. Wetness persists through the campaign and resets on restart.
+- Flood: a return projectile rises to the issuing booth. Over two seconds, yellow Mountain Dew rises to the tie knot while the issuer cries. An overflow then runs down that lane for a randomly selected 5–15 seconds. An open umbrella protects the basket. Every unprotected second in the stream adds 0.01 to the movement-speed multiplier and reduces keyboard braking. Fractional exposure accumulates consistently across frame sizes. Wetness persists through the campaign and resets on restart.
 - Capitulation: one second of anger, including red face, steam, squint and frown. The last 0.3 seconds zoom the resource into the large scene panel below the names. The full image holds for three seconds, then shrinks and travels automatically to the basket over 0.8 seconds. No catch input is required. Ordinary targets and the round timer freeze while the zoom/flying scene obscures play.
 
 ## Score interpretation
