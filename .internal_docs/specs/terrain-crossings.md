@@ -26,9 +26,13 @@ Ten guards include ordinary routes, building perimeters, map-edge patrols, fence
 | --- | --- | --- | --- |
 | Barbed wire | B, stay still for 3 seconds | Full walking speed; remains open until repaired | One nearby guard can mend it in 30 seconds |
 | Fence | B, build ladder for 5 seconds | 65% speed; ladder lasts 20 seconds | A nearby guard knocks it down immediately; occupants are safely dismounted to clear ground before it becomes solid |
-| Concrete | B, select south entry and north exit, build for 10 seconds | Underground travel at 40% walking speed | Requires two guards at each endpoint for 90 seconds to close |
+| Concrete | B, select wall-side south entry, build for 10 seconds | Underground travel at 40% walking speed | Requires two guards at each endpoint for 90 seconds to close |
 
-Tunnel selection shows valid border tiles and an active candidate. Arrows or Previous/Next cycle candidates; Enter selects; pointer selection uses the same ground projection as rendering. Entry must be within construction reach. Exit must touch concrete on the north face and be within six horizontal tiles of entry. B or Cancel Tunnel cancels selection. Movement cancels construction. The wall stays solid above a tunnel. Selected portals provide bidirectional travel with collision-safe exits and protection against immediate return bouncing.
+Tunnel selection shows only valid south-side entry tiles against concrete. Arrows or Previous/Next cycle entries; Enter or a pointer click commits one entry and immediately starts construction. The exit is generated from the map seed, district and tunnel index: one to ten tiles beyond the north face, with up to five tiles of lateral drift. Unsafe destinations are deliberately not filtered out. No exit marker or location is revealed before surfacing.
+
+After digging, the first underground journey reveals the outcome. Emerging beneath any raised structure causes a fatal collapse; emerging in water causes drowning. Both set health to zero, display the cause, and return to the district checkpoint after two seconds. Otherwise the exit is revealed and the tunnel becomes a reusable bidirectional route. A living enemy occupying a safe exit delays surfacing until it clears. Pause freezes transit and the checkpoint timer. Seeded ponds are visible on the map and excluded from ordinary walking and guard patrol routes.
+
+B or Cancel Tunnel cancels entry selection. Movement cancels construction. The wall stays solid above a tunnel. Discovered portals retain timed travel and protection against immediate return bouncing. Guards cannot repair an undiscovered exit.
 
 Construction and repair use simulation time, so pause freezes them. Enemies remain active while the player builds or selects endpoints. Closed passages may be rebuilt. A checkpoint/district reset reconstructs the seeded initial map.
 

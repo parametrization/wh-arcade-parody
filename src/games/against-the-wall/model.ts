@@ -59,6 +59,7 @@ export const defaults: Config = {
   story: true,
 };
 export interface Tunnel {
+  discovered?: boolean;
   id: number;
   entrance: { x: number; y: number };
   exit: { x: number; y: number };
@@ -95,6 +96,7 @@ export interface State {
   moving: boolean;
   tokens: number;
   grace: number;
+  water: Set<string>;
   walls: Set<string>;
   enemies: Actor[];
   beacon: null | { x: number; y: number; time: number };
@@ -142,6 +144,7 @@ export function create(seed = 1, config = { ...defaults }): State {
     moving: false,
     tokens: 2,
     grace: 0.75,
+    water: new Set(),
     walls: new Set(),
     enemies: [],
     beacon: null,
@@ -189,6 +192,7 @@ export function loadDistrict(s: State) {
   };
   s.barriers = createBarriers(rng);
   s.walls = new Set();
+  s.water = new Set();
   for (let x = 0; x < MAP_WIDTH; x++) {
     s.walls.add(key(x, 0));
     s.walls.add(key(x, MAP_HEIGHT - 1));
@@ -306,10 +310,37 @@ export function loadDistrict(s: State) {
       patrol: { kind: a.kind, points: route, index: 1 % route.length, side: a.side },
     };
   });
+  const reserved = new Set<string>([
+    key(s.x, s.y),
+    key(s.office.x, s.office.y),
+    ...s.items.map((p) => key(p.x, p.y)),
+  ]);
+  for (const actor of s.enemies) {
+    reserved.add(key(actor.x, actor.y));
+    const points = actor.patrol!.points;
+    for (let i = 0; i < points.length; i++)
+      for (const p of path(s, points[i], points[(i + 1) % points.length]))
+        reserved.add(key(p.x, p.y));
+  }
+  for (let attempt = 0, ponds = 0; attempt < 200 && ponds < 5; attempt++) {
+    const x = 3 + Math.floor(random() * 56),
+      y = BORDER_Y - 10 + Math.floor(random() * 8);
+    const cells = [key(x, y), key(x + 1, y), key(x, y + 1), key(x + 1, y + 1)];
+    if (cells.some((k) => s.walls.has(k) || reserved.has(k) || s.water.has(k))) continue;
+    for (const k of cells) s.water.add(k);
+    ponds++;
+  }
   s.message = 'Find or build a crossing. The Asylum Office is north of the border.';
 }
 export function solid(s: State, x: number, y: number) {
-  return x < 1 || y < 1 || x >= MAP_WIDTH - 1 || y >= MAP_HEIGHT - 1 || s.walls.has(key(x, y));
+  return (
+    x < 1 ||
+    y < 1 ||
+    x >= MAP_WIDTH - 1 ||
+    y >= MAP_HEIGHT - 1 ||
+    s.walls.has(key(x, y)) ||
+    s.water.has(key(x, y))
+  );
 }
 export function sight(s: State, ax: number, ay: number, bx: number, by: number) {
   if (solid(s, ax, ay) || solid(s, bx, by)) return false;
@@ -365,7 +396,7 @@ export function overlapsWall(s: State, x: number, y: number, radius = 0.22): boo
     return true;
   for (let tx = Math.floor(x - radius); tx <= Math.floor(x + radius); tx++)
     for (let ty = Math.floor(y - radius); ty <= Math.floor(y + radius); ty++) {
-      if (!s.walls.has(key(tx, ty))) continue;
+      if (!s.walls.has(key(tx, ty)) && !s.water.has(key(tx, ty))) continue;
       const nearestX = Math.max(tx, Math.min(x, tx + 1)),
         nearestY = Math.max(ty, Math.min(y, ty + 1));
       if ((x - nearestX) ** 2 + (y - nearestY) ** 2 < radius ** 2 - 1e-10) return true;
@@ -507,6 +538,7 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
   if (Math.hypot(input.x, input.y) > 0) cancelBreach(s);
   barrierStep(s, dt);
   tunnelStep(s, dt);
+  if (s.phase !== 'running') return;
   s.grace = Math.max(0, s.grace - dt);
   s.moving = false;
   const length = s.tunnelTransit ? 0 : Math.hypot(input.x, input.y);
@@ -659,7 +691,7 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
             Math.hypot(e.x - b.x - 0.5, e.y - b.y - 0.5),
         )[0];
       if (open) destination = { x: open.x + 0.5, y: BORDER_Y + (side === 'north' ? -0.5 : 1.5) };
-      for (const t of s.tunnels.filter((t) => t.open)) {
+      for (const t of s.tunnels.filter((t) => t.open && t.discovered)) {
         const p = side === 'north' ? t.exit : t.entrance;
         const assigned = s.enemies
           .filter(
@@ -1008,17 +1040,16 @@ function barrierStep(s: State, dt: number) {
   }
 }
 
+export function surfaceHeight(s: State, x: number, y: number) {
+  if (Math.abs(x - s.office.x) <= 1.5 && Math.abs(y - s.office.y) <= 1.5) return 1.7;
+  return s.walls.has(key(x, y)) ? 0.85 : 0;
+}
 export function tunnelCandidates(s: State, side: 'north' | 'south') {
+  if (side === 'north') return [];
   return s.barriers
     .filter((b) => b.material === 'concrete')
-    .map((b) => ({ x: b.x + 0.5, y: BORDER_Y + (side === 'south' ? 1.5 : -0.5) }))
-    .filter(
-      (p) =>
-        !overlapsWall(s, p.x, p.y) &&
-        (!s.tunnelPlacement?.entrance ||
-          side === 'south' ||
-          Math.abs(p.x - s.tunnelPlacement.entrance.x) <= 6),
-    );
+    .map((b) => ({ x: b.x + 0.5, y: BORDER_Y + 1.5 }))
+    .filter((p) => !overlapsWall(s, p.x, p.y));
 }
 export function validTunnelEndpoint(s: State, x: number, y: number, side: 'north' | 'south') {
   return tunnelCandidates(s, side).some((p) => Math.hypot(p.x - x, p.y - y) < 0.55);
@@ -1027,7 +1058,7 @@ export function beginTunnelPlacement(s: State) {
   if (s.phase !== 'running') return false;
   cancelBreach(s);
   s.tunnelPlacement = { entrance: null };
-  s.message = 'Choose a concrete tunnel entrance on the south face, then its north exit.';
+  s.message = 'Choose an entrance against the concrete wall. The underground exit is unknown.';
   return true;
 }
 export function cancelTunnelPlacement(s: State) {
@@ -1035,35 +1066,59 @@ export function cancelTunnelPlacement(s: State) {
 }
 export function chooseTunnelEndpoint(s: State, x: number, y: number) {
   if (s.phase !== 'running' || !s.tunnelPlacement) return false;
-  const side = s.tunnelPlacement.entrance ? 'north' : 'south';
-  const p = tunnelCandidates(s, side).find((p) => Math.hypot(p.x - x, p.y - y) < 0.55);
-  if (!p) return false;
-  if (!s.tunnelPlacement.entrance) {
-    if (Math.hypot(s.x - p.x, s.y - p.y) > 1.6) return false;
-    s.tunnelPlacement.entrance = p;
-    s.message = 'Choose the north exit within six tiles.';
-    return true;
-  }
-  const entrance = s.tunnelPlacement.entrance;
-  if (Math.hypot(s.x - entrance.x, s.y - entrance.y) > 1.6) return false;
+  const entrance = tunnelCandidates(s, 'south').find((p) => Math.hypot(p.x - x, p.y - y) < 0.55);
+  if (!entrance || Math.hypot(s.x - entrance.x, s.y - entrance.y) > 1.6) return false;
   const id = s.tunnels.length;
-  s.tunnels.push({ id, entrance, exit: p, open: false, repairProgress: 0 });
+  let rng =
+    (s.seed +
+      Math.imul(s.district, 7919) +
+      Math.imul(id + 1, 104729) +
+      Math.floor(entrance.x) * 31337) >>>
+    0;
+  const random = () => {
+    rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0;
+    return rng / 4294967296;
+  };
+  const north = 1 + Math.floor(random() * 10),
+    offset = Math.floor(random() * 11) - 5;
+  const exit = {
+    x: Math.max(1.5, Math.min(MAP_WIDTH - 1.5, entrance.x + offset)),
+    y: BORDER_Y - north + 0.5,
+  };
+  s.tunnels.push({ id, entrance, exit, open: false, repairProgress: 0, discovered: false });
   s.construction = { x: Math.floor(entrance.x), y: BORDER_Y, progress: 0, tunnelId: id };
   s.tunnelPlacement = null;
-  s.message = 'Digging the selected tunnel. Stay still for ten seconds.';
+  s.message = 'Digging for ten seconds. The hidden exit may emerge beneath a structure or water.';
   return true;
 }
 function tunnelStep(s: State, dt: number) {
   if (s.tunnelTransit) {
     const transit = s.tunnelTransit;
     transit.remaining = Math.max(0, transit.remaining - dt);
+    if (transit.remaining === 0) {
+      const tunnel = s.tunnels.find((t) => t.id === transit.id)!;
+      const water = s.water.has(key(transit.to.x, transit.to.y));
+      if (water || surfaceHeight(s, transit.to.x, transit.to.y) > 0) {
+        tunnel.discovered = true;
+        tunnel.open = false;
+        s.health = 0;
+        s.phase = 'checkpoint';
+        s.checkpointTime = 2;
+        s.tunnelTransit = null;
+        s.beacon = null;
+        s.message = water
+          ? 'The tunnel surfaced under water. Alex drowned. Returning to the checkpoint.'
+          : 'The tunnel collapsed beneath a structure. Alex died. Returning to the checkpoint.';
+        return;
+      }
+    }
     if (
       transit.remaining === 0 &&
-      !overlapsWall(s, transit.to.x, transit.to.y) &&
       !s.enemies.some(
         (e) => e.state !== 'dead' && Math.hypot(e.x - transit.to.x, e.y - transit.to.y) < 0.5,
       )
     ) {
+      s.tunnels.find((t) => t.id === transit.id)!.discovered = true;
       s.x = transit.to.x;
       s.y = transit.to.y;
       s.tunnelArrival = { ...transit.to };
@@ -1089,7 +1144,8 @@ function tunnelStep(s: State, dt: number) {
       t.repairProgress = 0;
       continue;
     }
-    if (near(t.entrance, 'south') >= 2 && near(t.exit, 'north') >= 2) t.repairProgress += dt;
+    if (t.discovered && near(t.entrance, 'south') >= 2 && near(t.exit, 'north') >= 2)
+      t.repairProgress += dt;
     else t.repairProgress = 0;
     if (t.repairProgress >= 90) {
       t.open = false;
@@ -1099,16 +1155,10 @@ function tunnelStep(s: State, dt: number) {
     const destination =
       Math.hypot(s.x - t.entrance.x, s.y - t.entrance.y) < 0.3
         ? t.exit
-        : Math.hypot(s.x - t.exit.x, s.y - t.exit.y) < 0.3
+        : t.discovered && Math.hypot(s.x - t.exit.x, s.y - t.exit.y) < 0.3
           ? t.entrance
           : null;
-    if (
-      destination &&
-      !overlapsWall(s, destination.x, destination.y) &&
-      !s.enemies.some(
-        (e) => e.state !== 'dead' && Math.hypot(e.x - destination.x, e.y - destination.y) < 0.5,
-      )
-    ) {
+    if (destination) {
       const duration = Math.hypot(destination.x - s.x, destination.y - s.y) / (s.config.walk * 0.4);
       s.tunnelTransit = {
         id: t.id,
@@ -1117,7 +1167,7 @@ function tunnelStep(s: State, dt: number) {
         duration,
         remaining: duration,
       };
-      s.message = 'Moving underground. The exit will wait until clear.';
+      s.message = 'Moving underground toward an unknown exit.';
     }
   }
 }

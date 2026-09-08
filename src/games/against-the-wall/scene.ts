@@ -109,6 +109,28 @@ export function drawScene(
     for (let x = 0; x < MAP_WIDTH; x++) {
       const p = project(v(x + 0.5, y + 0.5));
       if (p.x < -130 || p.x > 1090 || p.y < -180 || p.y > 850) continue;
+      if (s.water.has(`${x},${y}`)) {
+        face(
+          [v(x, y, 0.01), v(x + 1, y, 0.01), v(x + 1, y + 1, 0.01), v(x, y + 1, 0.01)],
+          '#326c88',
+          true,
+        );
+        const flow = reducedMotion ? 0 : (s.time * 0.22) % 1;
+        for (let k = 0; k < 3; k++) {
+          const yy = y + ((k / 3 + flow) % 1);
+          face(
+            [
+              v(x + 0.14, yy, 0.015),
+              v(x + 0.8, yy, 0.015),
+              v(x + 0.76, yy + 0.025, 0.015),
+              v(x + 0.12, yy + 0.025, 0.015),
+            ],
+            '#7ab9c366',
+            true,
+          );
+        }
+        continue;
+      }
       const seed = (x * 31 + y * 17) % 9;
       const color = [
         '#ac9e7e',
@@ -260,7 +282,7 @@ export function drawScene(
   // Tunnel portals occupy selected walkable bank cells; the concrete above stays solid.
   for (const tunnel of s.tunnels) {
     if (!tunnel.open) continue;
-    for (const point of [tunnel.entrance, tunnel.exit]) {
+    for (const point of tunnel.discovered ? [tunnel.entrance, tunnel.exit] : [tunnel.entrance]) {
       const { x, y } = point;
       face(
         [
@@ -286,7 +308,7 @@ export function drawScene(
     }
   }
   if (s.tunnelPlacement) {
-    for (const side of ['south', 'north'] as const) {
+    for (const side of ['south'] as const) {
       for (const p of tunnelCandidates(s, side)) {
         const selected =
           tunnelCursor && Math.hypot(p.x - tunnelCursor.x, p.y - tunnelCursor.y) < 0.1;
@@ -523,7 +545,7 @@ export function drawScene(
       coat,
       player ? '#bd8b68' : '#d2a27e',
       player,
-      e?.state === 'dead',
+      player ? s.health <= 0 : e?.state === 'dead',
       player && s.crossing?.material === 'fence',
       player && s.crossing?.material === 'concrete',
     );
@@ -649,7 +671,7 @@ export function drawScene(
   // Placement guides deliberately overlay cover, so the far-side exits remain selectable.
   if (s.tunnelPlacement) {
     c.save();
-    for (const side of ['south', 'north'] as const)
+    for (const side of ['south'] as const)
       for (const p of tunnelCandidates(s, side)) {
         const selected =
           tunnelCursor && Math.hypot(p.x - tunnelCursor.x, p.y - tunnelCursor.y) < 0.1;
@@ -668,7 +690,7 @@ export function drawScene(
         c.fill();
         c.strokeStyle = color;
         c.lineWidth = selected ? 3 : 1.5;
-        c.setLineDash(side === 'north' ? [5, 3] : []);
+        c.setLineDash([]);
         c.stroke();
       }
     c.restore();
@@ -739,11 +761,18 @@ export function drawScene(
     c.fillRect(180, 572, 600, 34);
     c.fillStyle = '#ffe59b';
     c.textAlign = 'center';
-    c.fillText(
-      `CHOOSE ${s.tunnelPlacement.entrance ? 'NORTH EXIT' : 'SOUTH ENTRY'} · ARROWS + ENTER OR CLICK A MARKED TILE`,
-      480,
-      594,
-    );
+    c.fillText(`CHOOSE WALL ENTRY · ARROWS + ENTER OR CLICK A MARKED TILE`, 480, 594);
+  }
+  if (s.phase === 'checkpoint' && s.health <= 0 && /collapse|drown/i.test(s.message)) {
+    c.fillStyle = '#2c1724f0';
+    c.fillRect(180, 260, 600, 100);
+    c.textAlign = 'center';
+    c.fillStyle = '#ffc3a8';
+    c.font = 'bold 24px monospace';
+    c.fillText(/drown/i.test(s.message) ? 'DROWNED' : 'TUNNEL COLLAPSE', 480, 296);
+    c.font = '14px monospace';
+    c.fillStyle = '#f3e0cd';
+    c.fillText('Returning to the district checkpoint…', 480, 328);
   }
   if (s.tunnelTransit) {
     const transit = s.tunnelTransit;
@@ -796,6 +825,11 @@ export function drawScene(
   c.fillRect(mx - 8, my - 8, MAP_WIDTH * scale + 16, MAP_HEIGHT * scale + 32);
   c.fillStyle = '#334f54';
   c.fillRect(mx, my, MAP_WIDTH * scale, MAP_HEIGHT * scale);
+  c.fillStyle = '#4a9cb6';
+  for (const tile of s.water) {
+    const [x, y] = tile.split(',').map(Number);
+    c.fillRect(mx + x * scale, my + y * scale, scale, scale);
+  }
   c.fillStyle = '#a49a7d';
   for (const tile of s.walls) {
     const [x, y] = tile.split(',').map(Number);
@@ -821,7 +855,7 @@ export function drawScene(
     c.fillRect(mx + p.x * scale - 2, my + p.y * scale - 2, 4, 4);
   }
   if (s.tunnelPlacement)
-    for (const side of ['north', 'south'] as const)
+    for (const side of ['south'] as const)
       for (const p of tunnelCandidates(s, side)) {
         c.fillStyle = side === 'south' ? '#93f5d0' : '#89baff';
         c.fillRect(mx + p.x * scale - 1, my + p.y * scale - 1, 3, 3);

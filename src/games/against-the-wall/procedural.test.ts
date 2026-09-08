@@ -74,11 +74,13 @@ function tunnel() {
   expect(beginBreach(s)).toBe(true);
   expect(s.construction).toBeNull();
   expect(chooseTunnelEndpoint(s, entrance.x, entrance.y)).toBe(true);
-  const exit = tunnelCandidates(s, 'north').find((p) => p.x !== entrance.x)!;
-  expect(chooseTunnelEndpoint(s, exit.x, exit.y)).toBe(true);
+  const exit = s.tunnels[0].exit;
+  // Controlled safe-surface fixture; generated hazards are tested separately.
+  s.walls.delete(`${Math.floor(exit.x)},${Math.floor(exit.y)}`);
+  s.water.delete(`${Math.floor(exit.x)},${Math.floor(exit.y)}`);
   return { s, t: s.tunnels[0], entrance, exit };
 }
-it('requires two valid selected concrete endpoints and10 seconds, then crosses safely both ways', () => {
+it('requires a concrete entrance and10 seconds, then discovers its hidden exit and crosses both ways', () => {
   const { s, t, entrance, exit } = tunnel();
   expect(validTunnelEndpoint(s, 0, 0, 'north')).toBe(false);
   step(s, 9.99);
@@ -209,4 +211,92 @@ it('guard ladder knockdown safely dismounts an occupied player and closes in the
     expect(side === 'north' ? s.y < BORDER_Y : s.y > BORDER_Y + 1).toBe(true);
     expect(s.health).toBe(100);
   }
+});
+it('chooses reproducible hidden exits1–10tiles north with bounded lateral offset and no north selection', () => {
+  const exits = [];
+  for (let seed = 1; seed <= 20; seed++) {
+    const run = () => {
+      const s = create(seed);
+      s.phase = 'running';
+      s.enemies = [];
+      const p = tunnelCandidates(s, 'south')[0];
+      s.x = p.x;
+      s.y = p.y;
+      beginBreach(s);
+      expect(chooseTunnelEndpoint(s, p.x, p.y)).toBe(true);
+      return s;
+    };
+    const a = run(),
+      b = run(),
+      t = a.tunnels[0];
+    expect(t).toEqual(b.tunnels[0]);
+    expect(t.discovered).toBe(false);
+    expect(tunnelCandidates(a, 'north')).toEqual([]);
+    expect(BORDER_Y - Math.floor(t.exit.y)).toBeGreaterThanOrEqual(1);
+    expect(BORDER_Y - Math.floor(t.exit.y)).toBeLessThanOrEqual(10);
+    expect(Math.abs(t.exit.x - t.entrance.x)).toBeLessThanOrEqual(5);
+    expect(a.construction).not.toBeNull();
+    exits.push(`${t.exit.x},${t.exit.y}`);
+  }
+  expect(new Set(exits).size).toBeGreaterThan(5);
+});
+it.each(['collapse', 'drown'] as const)(
+  'reveals fatal %s only at surfacing and holds its reason until checkpoint reset',
+  (kind) => {
+    const { s, t, exit } = tunnel();
+    const cell = `${Math.floor(exit.x)},${Math.floor(exit.y)}`;
+    if (kind === 'collapse') s.walls.add(cell);
+    else s.water.add(cell);
+    step(s, 10);
+    expect(s.tunnelTransit).not.toBeNull();
+    expect(t.discovered).toBe(false);
+    const duration = s.tunnelTransit!.duration;
+    step(s, duration - 0.01);
+    expect(s.health).toBe(100);
+    expect(t.discovered).toBe(false);
+    s.phase = 'paused';
+    step(s, 20);
+    expect(t.discovered).toBe(false);
+    s.phase = 'running';
+    step(s, 0.02);
+    expect(s.health).toBe(0);
+    expect(s.phase).toBe('checkpoint');
+    expect(t.discovered).toBe(true);
+    expect(t.open).toBe(false);
+    expect(s.message).toContain(kind === 'collapse' ? 'collapsed' : 'drowned');
+    const reason = s.message;
+    step(s, 1.9);
+    expect(s.message).toBe(reason);
+    expect(s.phase).toBe('checkpoint');
+    step(s, 0.11);
+    expect(s.phase).toBe('running');
+    expect(s.health).toBe(100);
+  },
+);
+it('ponds reproduce without occupying guard spawns or patrol paths and block surface walking', () => {
+  const s = create(72),
+    again = create(72);
+  expect([...s.water]).toEqual([...again.water]);
+  expect(s.water.size).toBeGreaterThan(0);
+  for (const cell of s.water) {
+    const [x, y] = cell.split(',').map(Number);
+    expect(solid(s, x, y)).toBe(true);
+    expect(overlapsWall(s, x + 0.5, y + 0.5)).toBe(true);
+    expect(s.walls.has(cell)).toBe(false);
+  }
+  for (const a of s.enemies) {
+    expect(s.water.has(`${Math.floor(a.x)},${Math.floor(a.y)}`)).toBe(false);
+    for (const p of a.patrol!.points)
+      expect(path(s, a, p).length || Math.hypot(a.x - p.x, a.y - p.y) < 0.1).toBeTruthy();
+  }
+});
+it('does not expose an undiscovered exit through reverse entry or guard repair', () => {
+  const { s, t, exit } = tunnel();
+  t.open = true;
+  s.construction = null;
+  s.x = exit.x;
+  s.y = exit.y;
+  step(s, 0.01);
+  expect(s.tunnelTransit).toBeNull();
+  expect(t.discovered).toBe(false);
 });

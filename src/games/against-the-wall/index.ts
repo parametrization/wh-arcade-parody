@@ -10,7 +10,7 @@ export const manifest = {
     'WASD / arrows: move',
     'Shift: sprint',
     'E: help / collect',
-    'B: build or cancel crossing; concrete: choose entry and exit using arrows and Enter',
+    'B: build or cancel crossing; concrete: choose wall entry using arrows and Enter; the hidden exit is random',
     'Space: aim distraction; Enter: confirm',
     'P / Escape: pause',
     'R: restart',
