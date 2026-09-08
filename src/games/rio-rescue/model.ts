@@ -199,7 +199,11 @@ export function share(m: Model): boolean {
   m.charges--;
   m.slow = Number(m.config['share.seconds']);
   m.acc = (m.acc / previousInterval) * interval(m);
-  if (m.hazard?.kind === 'banner' && m.hazard.phase === 'active') m.hazard = null;
+  if (m.hazard?.kind === 'banner' && m.hazard.phase === 'active') {
+    m.hazard = null;
+    m.nextBanner = m.time + 16;
+    m.nextHazard = Math.min(m.nextFloat, m.nextBanner);
+  }
   m.message = 'Mutual aid! The group slows down; active red tape clears.';
   return true;
 }

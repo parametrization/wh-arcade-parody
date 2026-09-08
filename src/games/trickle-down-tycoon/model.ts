@@ -80,7 +80,9 @@ export function moveNet(m: TycoonModel, x: number) {
   if (m.phase === 'round') m.netX = Math.max(55, Math.min(585, x));
 }
 export function activateCatch(m: TycoonModel) {
-  if (m.phase !== 'round' || m.cooldown > 0) return false;
+  // Practice has no advancing clock: a failed attempt must be retryable after
+  // the player changes lanes instead of waiting on a timer that never runs.
+  if (m.phase !== 'round' || (m.cooldown > 0 && !m.practice)) return false;
   m.catchTime = 0.4 + 0.08 * m.levels[0];
   m.cooldown = m.catchTime + 0.6;
   return true;

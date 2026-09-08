@@ -246,3 +246,20 @@ it('rewind restores route state but does not rewind its cooldown', () => {
   tick(m);
   expect(m.phase).toBe('jam');
 });
+
+it('clearing active tape starts its cooldown instead of immediately scheduling it again', () => {
+  const m = createModel();
+  m.district = 2;
+  m.phase = 'playing';
+  m.rescued = 2;
+  m.charges = 1;
+  m.time = 30;
+  m.nextBanner = 16;
+  m.nextFloat = 100;
+  m.hazard = { id: 1, kind: 'banner', cells: [{ x: 12, y: 6 }], phase: 'active', remaining: 2 };
+  expect(share(m)).toBe(true);
+  advance(m, 1 / 60);
+  expect(m.hazard).toBeNull();
+  expect(m.nextBanner).toBe(46);
+  expect(m.nextHazard).toBe(46);
+});

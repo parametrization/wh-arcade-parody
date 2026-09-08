@@ -104,6 +104,8 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
     paint();
   }
   function pause() {
+    held.clear();
+    services.input.clear();
     if (s.phase === 'running' || s.phase === 'checkpoint') {
       previous = s.phase;
       s.phase = 'paused';

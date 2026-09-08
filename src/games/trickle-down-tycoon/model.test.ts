@@ -18,6 +18,19 @@ import {
 import { createRandom } from '../../shared/random';
 import { defaults, validateConfig } from './config';
 describe('public dividend rules', () => {
+  it('allows retrying a missed practice catch after correcting the lane', () => {
+    const m = createModel(true);
+    startModel(m);
+    practiceNext(m, () => 0);
+    expect(activateCatch(m)).toBe(true);
+    resolveCatches(m);
+    expect(m.targets).toHaveLength(1);
+    moveNet(m, laneX[0]);
+    expect(activateCatch(m)).toBe(true);
+    resolveCatches(m);
+    expect(m.targets).toHaveLength(0);
+    expect(m.resources[0]).toBe(1);
+  });
   it('only catches aligned targets during a live window', () => {
     const m = createModel();
     startModel(m);
