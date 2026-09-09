@@ -1,5 +1,7 @@
 # Delivery status
 
+Current fidelity work and verification supersede the historical counts below: see [top-level progress tracker](../PROGRESS.md) and [integration review](reviews/integration.md). All five games reached ten reviewed attempts; full realistic PS3-era fidelity remains unmet.
+
 Updated 2026-09-08. All five plans and the common foundation passed their implementation gate before game coding began. Five playable game modules are now integrated. The coordinator reports 64 unit/model tests and 38 desktop/mobile browser cases passing, plus successful TypeScript and production-build checks. The final production rebuild also passed after checkbox synchronization; bundle inspection found no workbench/debug UI.
 
 ## Implemented

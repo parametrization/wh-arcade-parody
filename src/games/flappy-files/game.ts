@@ -22,7 +22,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     saved = false;
   const root = document.createElement('section');
   root.className = 'flappy-files';
-  root.innerHTML = `<style>.flappy-files{max-width:1100px;margin:auto;color:#f4eaca;font:15px system-ui}.ff-hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;padding:12px;background:#132640;border:1px solid #a19268}.ff-stage{position:relative;background:#12223b;max-width:768px;margin:auto}.ff-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none}.ff-plaque{position:absolute;color:#fff6d9;background:linear-gradient(#233951,#10243e);border:2px solid #eed49b;border-radius:3px;font:800 14px/1.15 system-ui,sans-serif;letter-spacing:.1px;padding:4px 9px;text-align:center;transform:translate(-50%,-50%);width:112px;white-space:normal;box-shadow:0 2px 0 #071425,inset 0 0 0 1px #4d6177}.ff-plaque::before,.ff-plaque::after{content:"";position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:#e2c483;box-shadow:0 1px 0 #78623d;transform:translateY(-50%)}.ff-plaque::before{left:3px}.ff-plaque::after{right:3px}.ff-plaque--bracket::after{right:calc(-1 * var(--bracket-span));width:var(--bracket-span);height:5px;border-radius:0;background:#acb6bd;border:1px solid #304052;box-shadow:0 2px 0 #142136}.ff-plaque--bracket-right::after{right:auto;left:calc(-1 * var(--bracket-span))}.ff-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}.ff-controls button,.ff-controls select,.ff-overlay button{min-height:44px;padding:10px 14px;font:inherit;background:#203c57;color:#fff4c6;border:1px solid #d4b46b}.ff-overlay{position:absolute;inset:10% 8%;align-content:center;text-align:center;background:#10203bf2;border:2px solid #e6cc87;padding:18px}.ff-overlay h2{font:900 27px monospace;color:#f5d779}.ff-overlay p{line-height:1.5}.ff-note{font-size:13px;line-height:1.5}.ff-status{min-height:40px}.ff-controls label{align-content:center}@media(max-width:500px){.ff-plaque{font-size:11px;width:104px;padding:3px 7px;border-width:1px}.ff-plaque::before,.ff-plaque::after{width:3px;height:3px}.ff-overlay{inset:4%;padding:12px}.ff-overlay h2{font-size:21px}.ff-overlay p{font-size:13px}}</style><div class="ff-hud"><strong>FLAPPY FILES</strong><span data-score></span><span data-burgers></span></div><div class="ff-stage"><canvas aria-label="Eagle carrying files through named cartoon columns"></canvas><div class="ff-labels"></div><div class="ff-overlay"></div></div><div class="ff-controls"><button data-flap>Flap · Space</button><button data-burger>Burger · H</button><button data-pause>Pause · P</button><button data-mute>Sound off · M</button><label>Mode <select data-mode><option value="story">Story · 60 columns</option><option value="endless">Endless</option></select></label><label><input type="checkbox" data-assist> Assist</label></div><div class="ff-status" role="status" aria-live="polite"></div><p class="ff-note">Space / ↑ / W: flap · H: hamburger · P / Escape: pause · R: restart. Burgers dismiss the seven-second distraction immediately. Named characters are fictional political satire, not allegations of involvement in Epstein’s crimes.</p>`;
+  root.innerHTML = `<style>.flappy-files{max-width:1100px;margin:auto;color:#f4eaca;font:15px system-ui}.ff-hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;padding:12px;background:#132640;border:1px solid #a19268}.ff-stage{position:relative;background:#12223b;max-width:768px;margin:auto}.ff-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none}.ff-plaque{position:absolute;color:#fff6d9;background:linear-gradient(#233951,#10243e);border:2px solid #eed49b;border-radius:3px;font:800 14px/1.15 system-ui,sans-serif;letter-spacing:.1px;padding:4px 9px;text-align:center;transform:translate(-50%,-50%);width:112px;white-space:normal;box-shadow:0 2px 0 #071425,inset 0 0 0 1px #4d6177}.ff-plaque::before,.ff-plaque::after{content:"";position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:#e2c483;box-shadow:0 1px 0 #78623d;transform:translateY(-50%)}.ff-plaque::before{left:3px}.ff-plaque::after{right:3px}.ff-plaque--bracket::after{right:calc(-1 * var(--bracket-span));width:var(--bracket-span);height:5px;border-radius:0;background:#acb6bd;border:1px solid #304052;box-shadow:0 2px 0 #142136}.ff-plaque--bracket-right::after{right:auto;left:calc(-1 * var(--bracket-span))}.ff-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}.ff-controls button,.ff-controls select,.ff-overlay button{min-height:44px;padding:10px 14px;font:inherit;background:#203c57;color:#fff4c6;border:1px solid #d4b46b}.ff-overlay{position:absolute;inset:10% 8%;align-content:center;text-align:center;background:#10203bf2;border:2px solid #e6cc87;padding:18px}.ff-overlay h2{font:900 27px monospace;color:#f5d779}.ff-overlay p{line-height:1.5}.ff-note{font-size:13px;line-height:1.5}.ff-status{min-height:40px}.ff-controls label{align-content:center}@media(max-width:500px){.ff-plaque{font-size:11px;width:104px;padding:3px 7px;border-width:1px}.ff-plaque::before,.ff-plaque::after{width:3px;height:3px}.ff-overlay{inset:4%;padding:12px}.ff-overlay h2{font-size:21px}.ff-overlay p{font-size:13px}}</style><div class="ff-hud"><strong>FLAPPY FILES</strong><span data-score></span><span data-burgers></span></div><div class="ff-stage"><canvas aria-label="Eagle carrying files through named cartoon columns"></canvas><div class="ff-labels"></div><div class="ff-overlay"></div></div><div class="ff-controls"><button data-flap>Flap · Space</button><button data-burger>Burger · Q / H</button><button data-pause>Pause · P</button><button data-mute>Sound off · M</button><label>Mode <select data-mode><option value="story">Story · 60 columns</option><option value="endless">Endless</option></select></label><label><input type="checkbox" data-assist> Assist</label></div><div class="ff-status" role="status" aria-live="polite"></div><p class="ff-note">Space / ↑ / W: flap · Q / E / H: hamburger · P / Escape: pause · R: restart. Each cleared column earns 1 point; every 10 delivers a packet. Burgers dismiss the seven-second distraction immediately. Personal best is separate for story/endless and assist. Named characters are fictional political satire, not allegations of involvement in Epstein’s crimes.</p>`;
   host.append(root);
   const canvas = root.querySelector('canvas')!,
     ctx = fitCanvas(canvas, 512, 448).ctx;
@@ -40,7 +40,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     }
   };
   backgroundImage.onerror = () => {};
-  backgroundImage.src = '/assets/generated/flappy-national-mall-v1.png';
+  backgroundImage.src = '/assets/fidelity/mall.png';
   const portraitImage = new Image();
   portraitImage.onload = () => {
     if (!destroyed) {
@@ -51,7 +51,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
   portraitImage.onerror = () => {
     /* Individual procedural portraits remain available offline. */
   };
-  portraitImage.src = '/assets/generated/flappy-portraits-v1.png';
+  portraitImage.src = '/assets/fidelity/political-heads.png';
   let muted = host.dataset.muted !== 'false',
     overlayKey = '';
   function publicState(): GameState {
@@ -63,11 +63,14 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     root.querySelector<HTMLInputElement>('[data-assist]')!.checked = !!config['assist.enabled'];
     render(ctx, m, portraitAtlas, background);
     root.querySelector('[data-score]')!.textContent =
-      `${m.deliveries} deliveries · ${m.clearances} cleared`;
+      `${m.deliveries} deliveries · ${m.clearances} points · Best ${Math.max(m.clearances, s.storage.get(`best.${m.mode}.${config['assist.enabled'] ? 'assist' : 'standard'}`, 0))}`;
     root.querySelector('[data-burgers]')!.textContent =
       `Burgers ${m.burgers} / ${config['burger.capacity']}`;
     labels.replaceChildren();
+    const stageWidth = labels.clientWidth;
     for (const c of m.columns) {
+      const columnWidth = Number(config['columns.width']);
+      if (c.x + columnWidth <= 0 || c.x >= 512) continue;
       const bottom = c.gapY + c.gap;
       const topMount = c.gapY - rigHeight(c.gapY, true);
       const lowerMount = bottom + rigHeight(388 - bottom);
@@ -96,6 +99,19 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
           el.style.setProperty('--bracket-span', `${(18 * labels.clientWidth) / 512}px`);
         }
         labels.append(el);
+        // Keep the complete name readable while its column enters/leaves the viewport.
+        const box = el.getBoundingClientRect(),
+          bounds = labels.getBoundingClientRect();
+        const correction =
+          box.left < bounds.left + 3
+            ? bounds.left + 3 - box.left
+            : box.right > bounds.right - 3
+              ? bounds.right - 3 - box.right
+              : 0;
+        if (correction) {
+          const current = (Number.parseFloat(el.style.left) / 100) * stageWidth;
+          el.style.left = `${current + correction}px`;
+        }
       }
     }
     const key = m.phase;
@@ -112,7 +128,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
           lost: 'DELIVERY DELAYED',
           won: 'THE PUBLIC HAS THE FILES',
         };
-        overlay.innerHTML = `<h2>${titles[key] ?? key}</h2><p>${key === 'title' ? 'Fly the eagle. Thread the red elephant columns. Bring the records to the people. Collect burgers, then press H when Donald Trump tries to cover the screen.' : key === 'won' ? 'Six deliveries made. The records belong in public hands.' : key === 'lost' ? `${m.clearances} columns cleared · ${m.deliveries} deliveries made.` : key === 'chapter' ? 'A public reading stand has received another copy. Keep the paperwork moving.' : 'Take your time. Every game timer is frozen.'}</p><button>${key === 'title' ? 'Start delivery' : key === 'paused' ? 'Resume' : key === 'chapter' ? 'Next chapter' : 'Try again'}</button>`;
+        overlay.innerHTML = `<h2>${titles[key] ?? key}</h2><p>${key === 'title' ? 'Fly the eagle. Thread the columns guarded by satirical political bobbleheads. Bring the records to the people. Collect burgers, then press Q, E or H when Donald Trump tries to cover the screen.' : key === 'won' ? 'Six deliveries made. The records belong in public hands.' : key === 'lost' ? `${m.clearances} columns cleared · ${m.deliveries} deliveries made.` : key === 'chapter' ? 'A public reading stand has received another copy. Keep the paperwork moving.' : 'Take your time. Every game timer is frozen.'}</p><button>${key === 'title' ? 'Start delivery' : key === 'paused' ? 'Resume' : key === 'chapter' ? 'Next chapter' : 'Try again'}</button>`;
         overlay.querySelector('button')!.onclick = () => {
           host.focus({ preventScroll: true });
           if (m.phase === 'paused') resume();
@@ -134,27 +150,38 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     root.querySelector('[data-pause]')!.textContent =
       m.phase === 'paused' ? 'Resume · P' : 'Pause · P';
   }
+  function sound(
+    name: 'flap' | 'pickup' | 'burger' | 'delivery' | 'crash' | 'score',
+    frequency: number,
+    duration: number,
+  ) {
+    if ('effect' in s.audio && typeof s.audio.effect === 'function') s.audio.effect(name);
+    else s.audio.tone(frequency, duration);
+  }
   function process() {
     for (const effect of m.effects) {
       if (effect === 'pickup') {
         notice = `Burger collected. ${m.burgers} available.`;
-        s.audio.tone(740, 0.08);
+        sound('pickup', 740, 0.08);
       } else if (effect === 'distraction') {
-        notice = `Distraction approaching from ${m.event.side}. Press H if you have a burger.`;
+        notice = `Distraction approaching from ${m.event.side}. Press Q, E or H if you have a burger.`;
         s.audio.tone(180, 0.14);
       } else if (effect === 'burger') {
         notice = 'Hamburger served. Distraction dismissed!';
-        s.audio.tone(330, 0.12);
+        sound('burger', 330, 0.12);
       } else if (effect === 'empty')
         notice = 'No burgers. Keep flying; the distraction lasts seven seconds.';
       else if (effect === 'save-burger') notice = 'Save your burger for the distraction.';
       else if (effect === 'delivery') {
         notice = `Files delivered to the public: ${m.deliveries}.`;
-        s.audio.tone(990, 0.12);
+        sound('delivery', 990, 0.12);
       } else if (effect === 'crash') {
         notice = 'Delivery delayed. Try again.';
-        s.audio.tone(110, 0.15);
-      } else if (effect === 'flap') s.audio.tone(260, 0.025);
+        sound('crash', 110, 0.15);
+      } else if (effect === 'score') {
+        notice = `Column cleared: +1 point. ${m.clearances} total.`;
+        sound('score', 520, 0.05);
+      } else if (effect === 'flap') sound('flap', 260, 0.025);
       else if (effect === 'start') notice = 'Keep the files flying.';
     }
     m.effects = [];
@@ -239,7 +266,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
   }
   s.input.bind({
     flap: ['Space', 'ArrowUp', 'KeyW'],
-    burger: ['KeyH'],
+    burger: ['KeyH', 'KeyQ', 'KeyE'],
     pause: ['Escape', 'KeyP'],
     restart: ['KeyR'],
     mute: ['KeyM'],

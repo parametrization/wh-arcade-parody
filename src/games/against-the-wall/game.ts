@@ -14,9 +14,17 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
     previous: M.Phase = 'running',
     overlayKey = '',
     muted = host.dataset.muted !== 'false',
-    tunnelIndex = 0;
+    tunnelIndex = 0,
+    lastHealth = 100,
+    lastPoints = 0,
+    lastWalk = 0,
+    lastTime = 0,
+    lastShots = new Set<number>(),
+    lastWork = false,
+    pointsFeedback = '',
+    pointsUntil = 0;
   const root = document.createElement('section');
-  root.innerHTML = `<style>.aw{font:14px system-ui;color:#f7e7bd;max-width:1440px;margin:auto}.aw-head{display:flex;flex-wrap:wrap;gap:16px;padding:14px;background:#24273e}.aw-stamina{display:flex;align-items:center;gap:8px}.aw-stamina progress{width:120px;accent-color:#8cf1d2}.aw-stage{position:relative}.aw-overlay{position:absolute;inset:15% 10%;background:#18213bf5;border:2px solid #8cf1d2;padding:20px;text-align:center;align-content:center}.aw-controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.aw button{min-width:48px;min-height:46px;padding:10px;background:#263951;color:#f6ecc7;border:1px solid #82bba9;font:inherit;touch-action:none}.aw-note{line-height:1.6}.aw-status{min-height:40px}</style><div class="aw-head"><strong>AGAINST THE WALL</strong><span data-hud></span><label class="aw-stamina">Health <progress data-health max="100" value="100" aria-label="Health remaining"></progress></label><span data-daylight></span><label class="aw-stamina">Sprint <progress data-stamina max="4" value="4" aria-label="Sprint time remaining"></progress> <span data-stamina-label>4.0s / 4s</span></label></div><div class="aw-stage"><canvas aria-label="Perspective border districts with constructed crossings, pursuers and an Asylum Office"></canvas><div class="aw-overlay"></div></div><div class="aw-controls"><button data-dir="up" aria-label="Move up">↑</button><button data-dir="left" aria-label="Move left">←</button><button data-dir="down" aria-label="Move down">↓</button><button data-dir="right" aria-label="Move right">→</button><button data-sprint>Sprint: off</button><button data-breach>Build crossing · B</button><button data-help>Help / Collect · E</button><button data-aim>Distraction · Space</button><button data-confirm>Confirm · Enter</button><button data-step>Step time</button><button data-sound>Sound · M</button></div><div class="aw-construction"><label>Crossing construction <progress data-construction max="1" value="0" aria-label="Crossing construction progress"></progress></label><span data-crossing-info>Approach the barrier and press B.</span></div><div data-tunnel-controls hidden><strong data-tunnel-step></strong> <button data-tunnel-prev>← Previous</button> <button data-tunnel-next>Next →</button> <button data-tunnel-choose>Select · Enter</button> <button data-tunnel-cancel>Cancel tunnel</button></div><p class="aw-status" role="status" aria-live="polite"></p><p class="aw-note">WASD / arrows move on screen · B builds/cancels a crossing; concrete asks for a wall-side entry (arrows cycle, Enter starts digging). The hidden exit is random, up to 10 tiles beyond the wall. Emerging beneath a raised structure causes a fatal collapse; emerging in water causes drowning. Moving cancels construction. Fence patrols knock ladders down, mend wire in 30s, and need two guards on each side for 90s to seal tunnels · Shift runs for up to 4 seconds; release to recharge · E helps nearby adults and collects supplies · Space aims a noise beacon, click a location within four tiles, Enter confirms. Draw hostile factions together: they can exchange fire while you escape. Day and night alternate every 60 seconds of play. By day ICE and Border Patrol are allied and factions protect their own. At night every pursuer uses a flashlight and may shoot anyone they detect, including allies. Green bars show health; amber bars show attention. Losing health returns Alex safely to the district checkpoint. Mint office marker is your destination. Fictional geography and political cartoon dialogue; reaching intake does not mean asylum approval.</p>`;
+  root.innerHTML = `<style>.aw{font:14px system-ui;color:#f7e7bd;max-width:1440px;margin:auto}.aw-head{display:flex;flex-wrap:wrap;gap:16px;padding:14px;background:#24273e}.aw-stamina{display:flex;align-items:center;gap:8px}.aw-stamina progress{width:120px;accent-color:#8cf1d2}.aw-stage{position:relative}.aw-overlay{position:absolute;inset:15% 10%;background:#18213bf5;border:2px solid #8cf1d2;padding:20px;text-align:center;align-content:center}.aw-controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.aw button{min-width:48px;min-height:46px;padding:10px;background:#263951;color:#f6ecc7;border:1px solid #82bba9;font:inherit;touch-action:none}.aw-note{line-height:1.6}.aw-status{min-height:40px}</style><div class="aw-head"><strong>AGAINST THE WALL</strong><span data-hud></span><label class="aw-stamina">Health <progress data-health max="100" value="100" aria-label="Health remaining"></progress></label><span data-daylight></span><label class="aw-stamina">Sprint <progress data-stamina max="4" value="4" aria-label="Sprint time remaining"></progress> <span data-stamina-label>4.0s / 4s</span></label></div><div class="aw-stage"><canvas aria-label="Perspective border districts with constructed crossings, pursuers and an Asylum Office"></canvas><div class="aw-overlay"></div></div><div class="aw-controls"><button data-dir="up" aria-label="Move up">↑</button><button data-dir="left" aria-label="Move left">←</button><button data-dir="down" aria-label="Move down">↓</button><button data-dir="right" aria-label="Move right">→</button><button data-sprint>Sprint: off</button><button data-breach>Build crossing · B</button><button data-help>Help / Collect · E</button><button data-aim>Distraction · Space</button><button data-confirm>Confirm · Enter</button><button data-step>Step time</button><button data-sound>Sound · M</button></div><div class="aw-construction"><label>Crossing construction <progress data-construction max="1" value="0" aria-label="Crossing construction progress"></progress></label><span data-crossing-info>Approach the barrier and press B.</span></div><div data-tunnel-controls hidden><strong data-tunnel-step></strong> <button data-tunnel-prev>← Previous</button> <button data-tunnel-next>Next →</button> <button data-tunnel-choose>Select · Enter</button> <button data-tunnel-cancel>Cancel tunnel</button></div><p class="aw-status" role="status" aria-live="polite"></p><p class="aw-note">Points: 50 per delivered supply, 200 per neighbor helped, 1000 for completing the journey. Scores bank at district intake; personal best saves on completion. WASD / arrows move on screen · Q or B builds/cancels a crossing; concrete asks for a wall-side entry (arrows cycle, Enter starts digging). The hidden exit is random, up to 10 tiles beyond the wall. Emerging beneath a raised structure causes a fatal collapse; emerging in water causes drowning. Moving cancels construction. Fence patrols knock ladders down, mend wire in 30s, and need two guards on each side for 90s to seal tunnels · Shift runs for up to 4 seconds; release to recharge · E helps nearby adults and collects supplies · Space aims a noise beacon, click a location within four tiles, F or Enter confirms. Draw hostile factions together: they can exchange fire while you escape. Day and night alternate every 60 seconds of play. By day ICE and Border Patrol are allied and factions protect their own. At night every pursuer uses a flashlight and may shoot anyone they detect, including allies. Green bars show health; amber bars show attention. Losing health returns Alex safely to the district checkpoint. Mint office marker is your destination. Fictional geography and political cartoon dialogue; reaching intake does not mean asylum approval.</p>`;
   root.className = 'aw';
   host.append(root);
   const canvas = root.querySelector('canvas')!,
@@ -73,6 +81,34 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
   }
   function paint() {
     if (dead) return;
+    if (s.time < lastTime) {
+      lastHealth = s.health;
+      lastPoints = s.score;
+      lastWalk = s.walkDistance;
+      lastShots.clear();
+      lastWork = false;
+      pointsFeedback = '';
+      pointsUntil = 0;
+    }
+    if (s.score > lastPoints) {
+      pointsFeedback = `+${s.score - lastPoints} intake points`;
+      pointsUntil = s.time + 3;
+      services.audio.effect?.('score');
+    }
+    if (s.health < lastHealth) services.audio.effect?.('crash');
+    if (s.moving && s.walkDistance - lastWalk > 0.5) {
+      services.audio.effect?.('step');
+      lastWalk = s.walkDistance;
+    }
+    const shots = new Set(s.enemies.filter((e) => (e.shot ?? 0) > 0).map((e) => e.id));
+    if ([...shots].some((id) => !lastShots.has(id))) services.audio.effect?.('gunshot');
+    if (s.construction && !lastWork) services.audio.effect?.('build');
+    lastHealth = s.health;
+    lastPoints = s.score;
+    lastTime = s.time;
+    lastShots = shots;
+    lastWork = !!s.construction;
+
     draw(
       view.ctx,
       s,
@@ -82,7 +118,7 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
       tunnelCursor(),
     );
     root.querySelector('[data-hud]')!.textContent =
-      `District ${s.district}/3 · Health ${s.health} · Tokens ${s.tokens} · Score ${s.score} · Follow mint office marker`;
+      `District ${s.district}/3 · Health ${s.health} · Tokens ${s.tokens} · Score ${s.score} · Best ${services.storage.get('best', 0)} · Follow mint office marker${s.time < pointsUntil ? ' · ' + pointsFeedback : ''}`;
     root.querySelector<HTMLProgressElement>('[data-health]')!.value = s.health;
     root.querySelector('[data-daylight]')!.textContent =
       `${M.isNight(s) ? 'Night · flashlights · friendly fire' : 'Day'} · ${Math.ceil(M.secondsToLightChange(s))}s until ${M.isNight(s) ? 'day' : 'night'}`;
@@ -226,7 +262,7 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
     if (!aim) return;
     if (M.distract(s, aim.x, aim.y)) {
       aim = null;
-      services.audio.tone(500, 0.12);
+      services.audio.effect?.('pickup');
     } else s.message = 'Choose a walkable spot within four tiles.';
     paint();
   }
@@ -258,8 +294,8 @@ export const createGame: GameModule['create'] = (host, services): GameInstance =
     sprint: ['ShiftLeft', 'ShiftRight'],
     help: ['KeyE'],
     aim: ['Space'],
-    breach: ['KeyB'],
-    confirm: ['Enter'],
+    breach: ['KeyB', 'KeyQ'],
+    confirm: ['Enter', 'KeyF'],
     pause: ['Escape', 'KeyP'],
     restart: ['KeyR'],
     mute: ['KeyM'],

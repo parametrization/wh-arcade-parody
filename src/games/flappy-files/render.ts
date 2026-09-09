@@ -1,4 +1,8 @@
-import { drawBurger } from '../../shared/sprites/burger';
+import { drawFlight } from './eagle';
+import { drawHead } from './heads';
+import { textureRect } from '../../shared/fidelity/materials';
+import { grain, litFill } from './materials';
+import { drawBurger } from './burger';
 import { CAST, type Model } from './model';
 import { value } from './config';
 import { drawColumnCharacter, rigHeight } from './characters';
@@ -104,6 +108,11 @@ export function render(
   sun.addColorStop(1, 'rgba(255,239,185,0)');
   ctx.fillStyle = sun;
   ctx.fillRect(0, 0, 512, 388);
+  const atmosphere = ctx.createRadialGradient(270, 160, 60, 256, 210, 340);
+  atmosphere.addColorStop(0, 'rgba(255,227,178,0)');
+  atmosphere.addColorStop(1, 'rgba(18,27,32,.22)');
+  ctx.fillStyle = atmosphere;
+  ctx.fillRect(0, 0, 512, 388);
   for (const col of m.columns) {
     const w = value(m.config, 'columns.width'),
       bottom = col.gapY + col.gap;
@@ -151,6 +160,22 @@ export function render(
         ],
         '#938d7e',
       );
+      const stoneLight = ctx.createLinearGradient(col.x + w, y, col.x, y);
+      stoneLight.addColorStop(0, '#615a4e');
+      stoneLight.addColorStop(0.22, '#ded4bd');
+      stoneLight.addColorStop(0.52, '#b9ad93');
+      stoneLight.addColorStop(0.85, '#766d5c');
+      stoneLight.addColorStop(1, '#302e2b');
+      ctx.fillStyle = stoneLight;
+      ctx.fillRect(col.x, y, w, h);
+      grain(ctx, 'stone', col.x, y, w, h, 0.35);
+      // Square material patches keep mineral grain proportional on tall shafts.
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(col.x, y, w, h);
+      ctx.clip();
+      for (let ty = y; ty < y + h; ty += w) textureRect(ctx, col.x, ty, w, w, 'limestone', 0.55);
+      ctx.restore();
       for (let j = 8; j < w - 4; j += 10) {
         rect(col.x + j, y, 5, h, '#a4977c');
         rect(col.x + j, y, 1, h, '#f2e6be');
@@ -197,6 +222,25 @@ export function render(
       ],
       '#eadbb8',
     );
+    for (const mount of [upperMount - 8, lowerMount]) {
+      textureRect(ctx, col.x - 5, mount, w + 10, 7, 'concrete', 0.58);
+      ctx.strokeStyle = 'rgba(70,61,45,.4)';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(col.x + w * 0.7, mount);
+      ctx.lineTo(col.x + w * 0.68, mount + 3);
+      ctx.lineTo(col.x + w * 0.73, mount + 6);
+      ctx.stroke();
+    }
+    // Soft contact shadow is offset away from the right-hand sunlight.
+    ctx.save();
+    ctx.shadowColor = 'rgba(10,16,19,.45)';
+    ctx.shadowBlur = 5;
+    ctx.fillStyle = 'rgba(20,25,28,.35)';
+    ctx.beginPath();
+    ctx.ellipse(col.x + w * 0.43, lowerMount - 1, w * 0.42, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
     ctx.fillStyle = 'rgba(20,30,42,.28)';
     ctx.beginPath();
     ctx.ellipse(col.x + w / 2 + 4, lowerMount - 1, w * 0.42, 4, 0, 0, Math.PI * 2);
@@ -253,6 +297,27 @@ export function render(
     rect(xx, 392, 1, 5, '#968f76');
     rect(xx + 15, 394, 3, 1, '#d5cbaa');
   }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 388, 512, 60);
+  ctx.clip();
+  for (let x = 0; x < 512; x += 64) textureRect(ctx, x, 388, 64, 64, 'asphalt', 0.8);
+  ctx.restore();
+  for (const column of m.columns) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 388, 512, 60);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(16,20,21,.25)';
+    ctx.beginPath();
+    ctx.moveTo(column.x, 388);
+    ctx.lineTo(column.x + value(m.config, 'columns.width'), 388);
+    ctx.lineTo(column.x - 18, 440);
+    ctx.lineTo(column.x - 60, 440);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
   // Soft projected shadow supplies a ground reference while the eagle remains freely airborne.
   ctx.fillStyle = 'rgba(14,35,38,.19)';
   ctx.beginPath();
@@ -260,7 +325,7 @@ export function render(
   ctx.fill();
   const wing = reduced ? 1 : Math.floor(m.time * 12) % 3;
   const y = m.y;
-  eagle(125, y - 5, wing);
+  if (!drawFlight(ctx, m.time, y, reduced)) eagle(125, y - 5, wing);
   if (m.config['presentation.showColliders']) {
     ctx.strokeStyle = '#ff00ff';
     ctx.strokeRect(142, y + 12, 24, 16);
@@ -313,9 +378,18 @@ export function render(
     const shape = (points: number[][], color: string) => {
       ctx.fillStyle = color;
       ctx.beginPath();
-      points.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)));
+      const last = points[points.length - 1];
+      ctx.moveTo((last[0] + points[0][0]) / 2, (last[1] + points[0][1]) / 2);
+      points.forEach(([a, b], i) => {
+        const next = points[(i + 1) % points.length];
+        ctx.quadraticCurveTo(a, b, (a + next[0]) / 2, (b + next[1]) / 2);
+      });
       ctx.closePath();
-      ctx.fill();
+      litFill(ctx, color, -12, -12, 72, 68);
+      ctx.save();
+      ctx.clip();
+      grain(ctx, 'feather', -12, -12, 72, 68, 0.38);
+      ctx.restore();
     };
     // Layered flight feathers, with three distinct wing silhouettes.
     const lift = reduced ? 0 : Math.sin(m.time * 12) * 8;
@@ -671,38 +745,55 @@ export function render(
   function portrait(name: string, x: number, y: number, size: number) {
     const index = CAST.indexOf(name);
     if (!portraits || index < 0) return false;
-    const cellW = portraits.naturalWidth / 4,
-      cellH = portraits.naturalHeight / 2;
-    const sx = Math.round((index % 4) * cellW),
-      sy = Math.round(Math.floor(index / 4) * cellH);
-    const ex = Math.round(((index % 4) + 1) * cellW),
-      ey = Math.round((Math.floor(index / 4) + 1) * cellH);
-    ctx.drawImage(portraits, sx, sy, ex - sx, ey - sy, x, y, size, size);
+    drawHead(ctx, portraits, index === 0 ? 7 : index, x, y, size);
     return true;
   }
   function trump(x: number, y: number, exit: boolean) {
-    rect(x + 16, y + 77, 134, 127, '#132c59');
-    rect(x + 35, y + 146, 100, 54, '#284873');
-    rect(x + 26, y + 194, 120, 12, '#1e3c69');
-    rect(x + 20, y + 88, 13, 107, '#35527d');
-    rect(x + 133, y + 91, 12, 108, '#0b1c40');
-    rect(x + 38, y + 141, 89, 9, '#3e608a');
-    rect(x + 47, y + 150, 69, 30, '#345579');
-    rect(x + 48, y + 180, 69, 9, '#213e67');
-    rect(x + 45, y + 89, 19, 58, '#203756');
-    rect(x + 104, y + 88, 20, 60, '#203756');
-    rect(x + 42, y + 56, 82, 47, '#df854c');
-    rect(x + 30, y + 14, 100, 71, '#ef9356');
-    rect(x + 24, y + 10, 110, 20, '#f9d556');
-    rect(x + 43, y, 91, 17, '#f9d556');
-    rect(x + 117, y + 16, 23, 21, '#f5c748');
-    rect(x + 52, y + 38, 13, 5, '#7e4d3c');
-    rect(x + 97, y + 38, 13, 5, '#7e4d3c');
-    rect(x + 37, y + 29, 8, 36, '#f9b375');
-    rect(x + 117, y + 28, 10, 39, '#bf653d');
-    rect(x + 68, y + 43, 18, 16, '#dc7847');
-    rect(x + 43, y + 54, 16, 5, '#e58651');
-    rect(x + 102, y + 54, 13, 5, '#d97948');
+    ctx.beginPath();
+    ctx.moveTo(x + 56, y + 77);
+    ctx.bezierCurveTo(x + 20, y + 77, x + 12, y + 104, x + 17, y + 137);
+    ctx.bezierCurveTo(x + 4, y + 170, x + 16, y + 188, x + 17, y + 204);
+    ctx.quadraticCurveTo(x + 77, y + 217, x + 145, y + 204);
+    ctx.bezierCurveTo(x + 156, y + 177, x + 157, y + 138, x + 147, y + 111);
+    ctx.quadraticCurveTo(x + 138, y + 80, x + 110, y + 77);
+    ctx.closePath();
+    litFill(ctx, '#233e60', x + 10, y + 76, 147, 135);
+    ctx.save();
+    ctx.clip();
+    textureRect(ctx, x + 10, y + 76, 147, 135, 'wool', 0.38);
+    const belly = ctx.createRadialGradient(x + 87, y + 164, 3, x + 87, y + 164, 67);
+    belly.addColorStop(0, 'rgba(130,150,168,.2)');
+    belly.addColorStop(1, 'rgba(2,12,25,.2)');
+    ctx.fillStyle = belly;
+    ctx.fillRect(x + 10, y + 76, 147, 135);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(8,19,32,.4)';
+    ctx.lineWidth = 1;
+    for (const [px, py] of [
+      [42, 137],
+      [120, 143],
+      [54, 191],
+      [101, 191],
+    ]) {
+      ctx.beginPath();
+      ctx.moveTo(x + px - 10, y + py);
+      ctx.quadraticCurveTo(x + px, y + py + 5, x + px + 12, y + py - 2);
+      ctx.stroke();
+    }
+    if (!portraits) {
+      rect(x + 42, y + 56, 82, 47, '#df854c');
+      rect(x + 30, y + 14, 100, 71, '#ef9356');
+      rect(x + 24, y + 10, 110, 20, '#f9d556');
+      rect(x + 43, y, 91, 17, '#f9d556');
+      rect(x + 117, y + 16, 23, 21, '#f5c748');
+      rect(x + 52, y + 38, 13, 5, '#7e4d3c');
+      rect(x + 97, y + 38, 13, 5, '#7e4d3c');
+      rect(x + 37, y + 29, 8, 36, '#f9b375');
+      rect(x + 117, y + 28, 10, 39, '#bf653d');
+      rect(x + 68, y + 43, 18, 16, '#dc7847');
+      rect(x + 43, y + 54, 16, 5, '#e58651');
+      rect(x + 102, y + 54, 13, 5, '#d97948');
+    }
     if (portraits) {
       ctx.save();
       ctx.beginPath();
@@ -711,7 +802,12 @@ export function render(
       portrait('Donald Trump', x + 15, y - 16, 132);
       ctx.restore();
     }
-    rect(x + 73, y + 66, 31, exit ? 16 : 6, '#7c3038');
+    if (exit) {
+      ctx.fillStyle = '#542528';
+      ctx.beginPath();
+      ctx.ellipse(x + 87, y + 77, 13, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     rect(x + 62, y + 99, 39, 21, '#f8eadb');
     rect(x + 79, y + 111, 14, 100, '#c8293b');
     rect(x + 80, y + 117, 4, 90, '#ed5b55');
@@ -763,14 +859,50 @@ export function render(
       ctx.globalAlpha = m.config['assist.enabled'] ? 0.65 : 1;
       const handWidth = 30 + coverage * 95;
       const hx = m.event.side === 'left' ? x + 112 : x - handWidth + 44;
-      rect(hx, y + 12, handWidth, 108, '#ee975e');
-      rect(hx + 5, y + 23, 8, 86, '#ffb378');
-      rect(hx + handWidth - 8, y + 26, 8, 90, '#c97648');
-      rect(hx + 12, y + 60, handWidth - 23, 3, '#d18051');
-      rect(hx + 17, y + 81, handWidth - 28, 3, '#d18051');
-      for (let i = 0; i < 4; i++)
-        rect(hx + i * (handWidth / 4), y - 26 + (i % 2) * 9, handWidth / 4 - 3, 60, '#f7a66a');
-      rect(x - 5, y + 104, 46, 69, '#ee975e');
+      const skin = (px: number, py: number, w: number, h: number, r: number) => {
+        const light = ctx.createLinearGradient(px, py, px + w, py + h);
+        light.addColorStop(0, '#f3bc91');
+        light.addColorStop(0.35, '#dea276');
+        light.addColorStop(1, '#9e5d40');
+        ctx.fillStyle = light;
+        ctx.beginPath();
+        ctx.roundRect(px, py, w, h, r);
+        ctx.fill();
+      };
+      skin(hx, y + 12, handWidth, 108, handWidth * 0.24);
+      for (let i = 0; i < 4; i++) {
+        const px = hx + 3 + i * (handWidth / 4),
+          py = y - 26 + (i % 2) * 9,
+          fw = handWidth / 4 - 5;
+        skin(px, py, fw, 73, fw * 0.48);
+        ctx.strokeStyle = 'rgba(101,59,39,.3)';
+        ctx.lineWidth = 0.8;
+        for (const bend of [28, 43]) {
+          ctx.beginPath();
+          ctx.moveTo(px + 3, py + bend);
+          ctx.quadraticCurveTo(px + fw / 2, py + bend + 2, px + fw - 3, py + bend);
+          ctx.stroke();
+        }
+      }
+      skin(hx - 10, y + 40, handWidth * 0.3, 61, 12);
+      ctx.strokeStyle = 'rgba(103,59,41,.42)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hx + handWidth * 0.22, y + 51);
+      ctx.bezierCurveTo(
+        hx + handWidth * 0.6,
+        y + 43,
+        hx + handWidth * 0.7,
+        y + 70,
+        hx + handWidth * 0.87,
+        y + 67,
+      );
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hx + handWidth * 0.3, y + 58);
+      ctx.quadraticCurveTo(hx + handWidth * 0.15, y + 91, hx + handWidth * 0.43, y + 102);
+      ctx.stroke();
+      skin(x - 5, y + 104, 46, 69, 15);
       ctx.globalAlpha = 1;
     }
     ctx.fillStyle = '#fff0b5';

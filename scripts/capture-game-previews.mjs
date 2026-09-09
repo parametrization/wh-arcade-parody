@@ -14,6 +14,8 @@ try {
     await page.clock.pauseAt(new Date('2026-09-08T12:00:01Z'));
     await page.goto(`${origin}/games/${slug}/`);
     await page.getByTestId('game-start').click();
+    // Canvas-owned images are not document.images; let their requests/decode settle too.
+    await page.waitForLoadState('networkidle');
     if (slug === 'flappy-files') {
       await page.evaluate(() => Promise.all(Array.from(document.images, image => image.decode().catch(() => {}))));
       for (let step = 0; step < 3; step++) {

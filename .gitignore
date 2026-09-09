@@ -12,3 +12,7 @@ test-results/
 .internal_docs/research/*.html
 .internal_docs/research/*.png
 .internal_docs/research/raw/
+
+# Local Python asset-generation caches
+__pycache__/
+*.py[cod]

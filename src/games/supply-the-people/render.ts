@@ -1,3 +1,4 @@
+import { textureRect } from '../../shared/fidelity/materials';
 import type { SupplyModel } from './model';
 import type { SupplyConfig } from './config';
 function rect(
@@ -31,28 +32,22 @@ function panel(
   light = '#7b969b',
   dark = '#091323',
 ) {
-  shadow(c, x + w * 0.53, y + h + 3, w * 0.49, 5, 0.22);
-  poly(
-    c,
-    [x, y, x + w, y, x + w + 3, y + h - 3, x + w - 2, y + h + 3, x + 3, y + h + 3, x - 2, y + 3],
-    dark,
-  );
-  const surface = c.createLinearGradient(x, y, x + w * 0.3, y + h);
-  surface.addColorStop(0, light);
-  surface.addColorStop(0.1, base);
+  shadow(c, x + w * 0.5, y + h + 2, w * 0.48, 4, 0.28);
+  const surface = c.createLinearGradient(x, y, x, y + h);
+  surface.addColorStop(0, base);
   surface.addColorStop(1, dark);
   c.fillStyle = surface;
-  c.fillRect(x + 2, y + 2, w - 4, h - 4);
-  poly(c, [x, y, x + w, y, x + w - 5, y + 4, x + 5, y + 4], light);
-  poly(c, [x, y, x + 5, y + 4, x + 5, y + h - 5, x, y + h], base);
-  poly(c, [x + w, y, x + w, y + h, x + w - 5, y + h - 5, x + w - 5, y + 4], dark);
-  poly(c, [x, y + h, x + w, y + h, x + w - 5, y + h - 5, x + 5, y + h - 5], '#0a192b');
-  for (const px of [x + 8, x + w - 10]) {
-    c.fillStyle = light;
-    c.beginPath();
-    c.arc(px, y + 8, 1.5, 0, Math.PI * 2);
-    c.fill();
-  }
+  c.beginPath();
+  c.roundRect(x, y, w, h, 3);
+  c.fill();
+  c.strokeStyle = light + '88';
+  c.lineWidth = 0.7;
+  c.stroke();
+  c.strokeStyle = '#ffffff15';
+  c.beginPath();
+  c.moveTo(x + 4, y + 2);
+  c.lineTo(x + w - 4, y + 2);
+  c.stroke();
 }
 function label(
   c: CanvasRenderingContext2D,
@@ -63,7 +58,7 @@ function label(
   size = 11,
   center = false,
 ) {
-  c.font = `bold ${size}px monospace`;
+  c.font = `600 ${size}px Arial, sans-serif`;
   c.textAlign = center ? 'center' : 'left';
   c.fillStyle = '#060e1c';
   c.fillText(text, x + 1, y + 1);
@@ -111,112 +106,203 @@ function shadow(
   c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
   c.fill();
 }
-export function portrait(c: CanvasRenderingContext2D, person: number, x: number, y: number) {
+let castImage: HTMLImageElement | undefined;
+function photographicHead(c: CanvasRenderingContext2D, person: number) {
+  if (!castImage && typeof Image !== 'undefined') {
+    castImage = new Image();
+    castImage.src = '/assets/fidelity/political-heads.png';
+  }
+  if (!castImage?.complete || !castImage.naturalWidth) return;
+  c.save();
+  c.beginPath();
+  c.moveTo(35, 7);
+  c.bezierCurveTo(42, 1, 57, 1, 64, 8);
+  c.bezierCurveTo(68, 17, 68, 31, 62, 41);
+  c.bezierCurveTo(58, 50, 41, 50, 36, 41);
+  c.bezierCurveTo(30, 30, 30, 17, 35, 7);
+  c.closePath();
+  c.clip();
+  const cell = castImage.naturalWidth / 4;
+  c.drawImage(
+    castImage,
+    person * cell + cell * 0.18,
+    cell * 0.03,
+    cell * 0.64,
+    cell * 0.94,
+    27,
+    0,
+    45,
+    54,
+  );
+  c.restore();
+}
+export function portrait(
+  c: CanvasRenderingContext2D,
+  person: number,
+  x: number,
+  y: number,
+  time = 0,
+) {
   c.save();
   c.translate(x, y);
-  const backdrop = c.createLinearGradient(0, 0, 100, 70);
-  backdrop.addColorStop(0, '#788b94');
-  backdrop.addColorStop(0.35, '#3a566b');
-  backdrop.addColorStop(1, '#102439');
-  c.fillStyle = backdrop;
+  const bg = c.createLinearGradient(0, 0, 100, 76);
+  bg.addColorStop(0, '#63717a');
+  bg.addColorStop(1, '#14212c');
+  c.fillStyle = bg;
   c.fillRect(0, 0, 100, 76);
-  poly(c, [0, 0, 26, 0, 77, 64, 42, 64], '#97afbd25');
-  poly(c, [100, 0, 82, 0, 58, 64, 86, 64], '#d9e4d515');
-  shadow(c, 51, 63, 34, 9, 0.5);
-  const jacket = ['#305b8c', '#3b526c', '#47516c'][person];
-  poly(c, [15, 62, 22, 47, 36, 40, 61, 40, 77, 47, 87, 63], tone(jacket, -26));
-  poly(c, [22, 47, 38, 41, 48, 51, 42, 64, 17, 64], tone(jacket, 22));
-  poly(c, [38, 41, 48, 49, 59, 41, 71, 46, 64, 64, 41, 64], jacket);
-  poly(c, [71, 46, 79, 48, 86, 64, 64, 64], tone(jacket, -20));
-  poly(c, [26, 47, 38, 44, 33, 61, 21, 63], tone(jacket, 35));
-  poly(c, [38, 41, 49, 48, 59, 40, 56, 58, 43, 58], '#ced9d5');
-  poly(c, [39, 42, 48, 47, 42, 52, 34, 45], '#f4f1df');
-  poly(c, [58, 41, 49, 47, 54, 53, 64, 43], '#f2ecdd');
-  poly(c, [47, 47, 52, 47, 54, 51, 51, 55, 54, 66, 47, 66, 47, 55, 45, 51], '#a83d53');
-  poly(c, [48, 49, 51, 49, 49, 62, 47, 65], '#e57377');
-  poly(c, [33, 44, 43, 54, 38, 60, 27, 48], tone(jacket, -5));
-  poly(c, [64, 43, 55, 54, 60, 61, 72, 47], tone(jacket, -10));
-  const skin = ['#e2a273', '#d1ad92', '#dbbba0'][person];
-  // Faceted forehead, temples, cheekbones and jaw form one sculpted low-poly mesh.
-  poly(c, [29, 17, 37, 7, 56, 6, 68, 16, 70, 31, 62, 42, 50, 46, 37, 42, 29, 32], tone(skin, -54));
-  poly(c, [31, 17, 38, 9, 54, 8, 64, 14, 66, 23, 57, 22, 44, 21], tone(skin, 20));
-  poly(c, [31, 17, 44, 21, 39, 28, 32, 30], tone(skin, 4));
-  poly(c, [44, 21, 57, 22, 58, 31, 48, 34, 39, 28], tone(skin, 10));
-  poly(c, [64, 14, 67, 20, 67, 31, 58, 31, 57, 22], tone(skin, -29));
-  poly(c, [32, 30, 39, 28, 48, 34, 44, 40, 37, 39], tone(skin, -8));
-  poly(c, [48, 34, 58, 31, 64, 34, 58, 40, 50, 44, 44, 40], tone(skin, -21));
-  poly(c, [37, 39, 44, 40, 50, 44, 43, 43], tone(skin, -35));
-  poly(c, [29, 23, 33, 22, 33, 32, 29, 29], tone(skin, -5));
-  poly(c, [67, 23, 71, 22, 70, 30, 66, 32], tone(skin, -33));
-  poly(c, [39, 21, 46, 21, 47, 25, 40, 25], '#f0e5d7');
-  poly(c, [53, 22, 60, 21, 63, 24, 54, 25], '#f0e5d7');
-  rect(c, 42, 22, 3, 3, '#26354a');
-  rect(c, 55, 22, 3, 3, '#26354a');
-  poly(c, [49, 22, 46, 32, 50, 34, 54, 31], tone(skin, -44));
-  poly(c, [49, 22, 49, 31, 52, 31], tone(skin, 34));
-  poly(c, [42, 35, 49, 36, 57, 34, 54, 38, 45, 38], tone(skin, -48));
-  poly(c, [45, 36, 54, 35, 53, 37, 46, 37], '#e9ceb8');
-  if (person === 0) {
-    poly(
-      c,
-      [28, 18, 28, 9, 36, 5, 56, 4, 68, 8, 70, 13, 59, 17, 45, 13, 35, 19, 32, 26],
-      '#b38a44',
-    );
-    poly(c, [28, 10, 37, 5, 57, 5, 67, 8, 58, 11, 41, 10, 32, 16], '#edcc7a');
-    poly(c, [37, 5, 57, 5, 64, 7, 48, 8], '#ffe4a1');
-    poly(c, [32, 16, 42, 10, 53, 12, 44, 15, 35, 20], '#d9b46d');
-    poly(c, [59, 11, 69, 10, 65, 16, 58, 18, 51, 14], '#bd914e');
-    poly(c, [37, 19, 45, 18, 47, 21, 39, 22], '#b78f56');
-    poly(c, [54, 19, 61, 18, 64, 21, 54, 22], '#af8049');
-    block(c, 76, 35, 11, 8, 3, '#d4af58');
-    block(c, 79, 29, 5, 6, 2, '#a6874c');
-    rect(c, 77, 35, 10, 2, '#ffe4a0');
-  } else if (person === 1) {
-    poly(
-      c,
-      [29, 24, 29, 13, 35, 7, 48, 3, 62, 7, 67, 14, 67, 22, 60, 16, 53, 12, 39, 14, 34, 22],
-      '#342c2d',
-    );
-    poly(c, [30, 14, 36, 8, 49, 5, 61, 8, 53, 10, 40, 12], '#705443');
-    poly(c, [33, 15, 42, 11, 54, 10, 46, 15, 36, 19], '#584539');
-    poly(
-      c,
-      [32, 28, 40, 31, 45, 33, 54, 33, 61, 29, 65, 29, 62, 40, 51, 45, 40, 42, 34, 36],
-      '#584237',
-    );
-    poly(c, [39, 34, 48, 37, 59, 33, 57, 39, 50, 42, 43, 39], '#87654b');
-    poly(c, [44, 33, 55, 33, 53, 35, 46, 35], '#e1b693');
-    rect(c, 38, 18, 9, 2, '#574032');
-    rect(c, 53, 18, 9, 2, '#574032');
-    block(c, 79, 33, 3, 23, 2, '#b69a64');
-    shadow(c, 80, 57, 7, 2);
-    poly(c, [73, 37, 79, 37, 85, 42, 91, 43, 91, 47, 83, 46, 77, 41, 73, 41], '#ba5a72');
-  } else {
-    poly(
-      c,
-      [29, 23, 29, 14, 35, 7, 48, 5, 60, 7, 67, 15, 66, 25, 62, 20, 59, 13, 45, 12, 36, 17, 34, 26],
-      '#45372e',
-    );
-    poly(c, [31, 14, 36, 8, 49, 7, 59, 9, 48, 10, 40, 14, 33, 18], '#8e7353');
-    poly(c, [40, 8, 53, 7, 60, 9, 50, 10], '#b29771');
-    c.strokeStyle = '#283342';
-    c.lineWidth = 2;
-    c.strokeRect(36, 20, 13, 9);
-    c.strokeRect(51, 20, 13, 9);
+  textureRect(c, 0, 0, 100, 64, 'plaster', 0.13);
+  const ellipse = (x: number, y: number, rx: number, ry: number, color: string) => {
+    c.fillStyle = color;
     c.beginPath();
-    c.moveTo(49, 23);
-    c.lineTo(51, 23);
+    c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    c.fill();
+  };
+  const curve = (points: number[], fill: string | CanvasGradient) => {
+    c.fillStyle = fill;
+    c.beginPath();
+    c.moveTo(points[0], points[1]);
+    for (let i = 2; i < points.length; i += 6)
+      c.bezierCurveTo(
+        ...(points.slice(i, i + 6) as [number, number, number, number, number, number]),
+      );
+    c.closePath();
+    c.fill();
+  };
+  shadow(c, 50, 62, 35, 7, 0.4);
+  const jacket = c.createLinearGradient(20, 40, 82, 65);
+  jacket.addColorStop(0, '#506b82');
+  jacket.addColorStop(0.45, '#273d51');
+  jacket.addColorStop(1, '#111e2c');
+  curve(
+    [
+      15, 64, 18, 48, 25, 45, 38, 42, 43, 39, 57, 39, 63, 42, 78, 45, 83, 50, 86, 64, 65, 68, 34,
+      68, 15, 64,
+    ],
+    jacket,
+  );
+  textureRect(c, 25, 48, 47, 15, 'wool', 0.12);
+  poly(c, [38, 42, 49, 48, 61, 42, 55, 64, 43, 64], '#d9d9cd');
+  poly(c, [48, 48, 52, 48, 54, 53, 51, 56, 54, 65, 47, 65, 48, 56, 46, 53], '#873544');
+  c.strokeStyle = '#8292a04d';
+  c.lineWidth = 0.7;
+  for (const side of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(49 + side * 10, 43);
+    c.lineTo(49 + side * 17, 50);
+    c.lineTo(49 + side * 7, 60);
     c.stroke();
-    poly(c, [37, 21, 47, 21, 40, 26, 37, 26], '#cbe2dc55');
-    poly(c, [52, 21, 62, 21, 56, 26, 52, 26], '#cbe2dc44');
-    block(c, 76, 31, 14, 21, 2, '#a49678');
-    poly(c, [77, 32, 88, 32, 88, 49, 77, 49], '#e0d6b9');
-    rect(c, 80, 29, 6, 4, '#7c7464');
-    for (let row = 0; row < 3; row++) rect(c, 79, 36 + row * 4, 7, 1, '#8c887a');
   }
-  poly(c, [0, 62, 100, 62, 96, 76, 4, 76], '#132a3d');
-  poly(c, [0, 62, 100, 62, 97, 64, 3, 64], '#a79c78');
-  label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 73, '#efe1ba', 9, true);
+  const skin = ['#d9a078', '#cbaa90', '#d5b395'][person];
+  ellipse(50, 43, 7, 7, '#a77b60');
+  ellipse(31, 28, 4, 7, skin);
+  ellipse(68, 28, 3, 7, '#ab7f66');
+  const flesh = c.createRadialGradient(43, 21, 3, 53, 28, 26);
+  flesh.addColorStop(0, '#f1c7a1');
+  flesh.addColorStop(0.55, skin);
+  flesh.addColorStop(1, '#8d624d');
+  curve([31, 19, 31, 6, 64, 4, 67, 18, 71, 30, 65, 42, 53, 45, 42, 47, 31, 39, 31, 19], flesh);
+  // Rounded cheeks, brow ridge, lower lids and asymmetry keep features organic.
+  ellipse(39, 29, 6, 4, '#d69b7b35');
+  ellipse(60, 29, 5, 4, '#99685122');
+  const blink = Math.sin(time * 0.7 + person) > 0.995;
+  for (const side of [-1, 1]) {
+    const xx = 50 + side * 9;
+    ellipse(xx, 24, 4.2, blink ? 0.5 : 1.6, '#eee1cc');
+    ellipse(xx + 0.4, 24, 1.3, blink ? 0.35 : 1.4, '#42505a');
+    ellipse(xx + 0.6, 24, 0.65, blink ? 0.3 : 1.1, '#252626');
+    c.strokeStyle = '#825f494f';
+    c.lineWidth = 0.7;
+    c.beginPath();
+    c.ellipse(xx, 25, 4.8, 2, 0, 0, Math.PI);
+    c.stroke();
+    c.strokeStyle = person === 0 ? '#9c774b' : '#584438';
+    c.lineWidth = 1.3;
+    c.beginPath();
+    c.moveTo(xx - 4, 21);
+    c.quadraticCurveTo(xx, 19.5, xx + 4, 21);
+    c.stroke();
+  }
+  const nose = c.createLinearGradient(46, 25, 54, 32);
+  nose.addColorStop(0, '#aa765c');
+  nose.addColorStop(0.5, '#efc39c');
+  nose.addColorStop(1, '#b38162');
+  curve([49, 23, 47, 26, 47, 29, 46, 31, 49, 34, 53, 33, 55, 31, 52, 30, 52, 26, 49, 23], nose);
+  c.strokeStyle = '#99634f';
+  c.lineWidth = 0.8;
+  c.beginPath();
+  c.moveTo(42, 36);
+  c.quadraticCurveTo(50, 38, 58, 35);
+  c.stroke();
+  c.strokeStyle = '#f4ccab77';
+  c.beginPath();
+  c.moveTo(45, 39);
+  c.quadraticCurveTo(51, 40, 56, 38);
+  c.stroke();
+  if (person === 0) {
+    curve(
+      [
+        30, 22, 27, 16, 27, 10, 33, 7, 44, 1, 59, 4, 66, 8, 77, 17, 57, 16, 51, 13, 42, 12, 38, 17,
+        30, 22,
+      ],
+      '#c5a261',
+    );
+    c.strokeStyle = '#f0d49a';
+    for (let i = 0; i < 6; i++) {
+      c.beginPath();
+      c.moveTo(31 + i, 12 + i * 0.6);
+      c.bezierCurveTo(41, 4 + i, 54, 6 + i, 64, 10 + i * 0.4);
+      c.stroke();
+    }
+  } else {
+    curve(
+      [
+        31, 24, 25, 17, 32, 7, 41, 5, 53, 0, 67, 8, 67, 20, 60, 18, 59, 11, 51, 12, 41, 11, 35, 17,
+        31, 24,
+      ],
+      person === 1 ? '#49372c' : '#5c4837',
+    );
+    c.strokeStyle = '#9e806033';
+    for (let i = 0; i < 7; i++) {
+      c.beginPath();
+      c.moveTo(32 + i * 2, 13);
+      c.quadraticCurveTo(47, 5 + i, 63, 13 + i * 0.2);
+      c.stroke();
+    }
+  }
+  if (person === 1) {
+    curve(
+      [
+        33, 29, 38, 33, 40, 33, 43, 32, 48, 35, 54, 35, 60, 31, 65, 27, 66, 33, 60, 41, 52, 48, 37,
+        42, 33, 29,
+      ],
+      '#604736',
+    );
+    c.strokeStyle = '#ba977353';
+    c.lineWidth = 0.5;
+    for (let i = 0; i < 15; i++) {
+      c.beginPath();
+      c.moveTo(35 + i * 1.8, 35 + (i % 3));
+      c.lineTo(37 + i * 1.7, 39 + (i % 3));
+      c.stroke();
+    }
+    ellipse(50, 36, 5, 1, '#c69174');
+  }
+  if (person === 2) {
+    c.strokeStyle = '#36393b';
+    c.lineWidth = 1.25;
+    for (const xx of [36, 52]) {
+      c.beginPath();
+      c.roundRect(xx, 21, 12, 8, 2);
+      c.stroke();
+    }
+    c.beginPath();
+    c.moveTo(48, 23);
+    c.lineTo(52, 23);
+    c.stroke();
+  }
+  photographicHead(c, person);
+  poly(c, [0, 62, 100, 62, 100, 76, 0, 76], '#17232f');
+  label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 73, '#e7dcc5', 9, true);
   c.restore();
 }
 
@@ -278,28 +364,106 @@ function destinationIcon(c: CanvasRenderingContext2D, d: number, x: number, y: n
     );
   }
 }
-function building(c: CanvasRenderingContext2D, d: number, x: number, y: number) {
-  shadow(c, x + 24, y + 37, 22, 4, 0.24);
-  block(c, x + 5, y + 17, 30, 19, 7, ['#baa97c', '#b5c6bc', '#c5a17e'][d]);
-  poly(c, [x, y + 18, x + 18, y + 6, x + 39, y + 17], ['#607d78', '#9e7e8a', '#4f8584'][d]);
-  poly(
-    c,
-    [x + 18, y + 6, x + 25, y + 2, x + 46, y + 13, x + 39, y + 17],
-    ['#8da996', '#c4a8ae', '#89b5a6'][d],
-  );
-  poly(c, [x + 39, y + 17, x + 46, y + 13, x + 40, y + 21], '#374f5e');
-  for (const wx of [x + 10, x + 27]) {
-    rect(c, wx, y + 23, 5, 7, '#314e61');
-    poly(c, [wx, y + 23, wx + 5, y + 23, wx, y + 28], '#c8e1d2');
+function building(c: CanvasRenderingContext2D, d: number, x: number, y: number, time = 0) {
+  shadow(c, x + 29, y + 37, 29, 4, 0.28);
+  block(c, x + 2, y + 7, 44, 30, 5, ['#968f78', '#a2aaa0', '#aaa08b'][d]);
+  textureRect(c, x + 3, y + 9, 42, 27, 'plaster', 0.45);
+  rect(c, x + 6, y + 13, 32, 22, '#273238');
+  const interior = c.createLinearGradient(x, y + 14, x, y + 36);
+  interior.addColorStop(0, '#142126');
+  interior.addColorStop(1, '#625e4f');
+  c.fillStyle = interior;
+  c.fillRect(x + 8, y + 15, 28, 20);
+  for (let row = 0; row < 3; row++) {
+    rect(c, x + 9, y + 20 + row * 5, 25, 1, '#a89d7a');
+    for (let n = 0; n < 4; n++) {
+      rect(c, x + 10 + n * 6, y + 16 + row * 5, 4, 4, ['#b8a77f', '#c7cbc0', '#9d8a62'][d]);
+    }
   }
-  rect(c, x + 18, y + 23, 7, 13, '#345468');
-  rect(c, x + 19, y + 24, 5, 2, '#c8d9cb');
+  rect(c, x + 2, y + 6, 45, 4, '#424e4a');
+  textureRect(c, x + 2, y + 6, 45, 4, 'steel', 0.26);
+  rect(c, x + 5, y + 36, 40, 2, '#c0b89c');
+  // Proportioned receiving worker: feet contact the loading apron, elbows articulate.
+  const px = x + 53,
+    py = y + 35,
+    bob = Math.sin(time * 1.3 + d) * 0.35;
+  shadow(c, px, py + 2, 7, 2, 0.35);
+  const limb = (a: number, b: number, e: number, f: number, width: number, color: string) => {
+    c.strokeStyle = color;
+    c.lineWidth = width;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(a, b);
+    c.lineTo(e, f);
+    c.stroke();
+  };
+  limb(px - 2, py - 11, px - 3, py, 3, '#3c4548');
+  limb(px + 2, py - 11, px + 3, py, 3, '#343b40');
+  limb(px - 3, py, px - 1, py + 1, 2.5, '#292b28');
+  limb(px + 3, py, px + 5, py + 1, 2.5, '#292b28');
+  c.fillStyle = ['#a48b63', '#bfc3b6', '#758c81'][d];
+  c.beginPath();
+  c.roundRect(px - 4, py - 22 + bob, 8, 13, 3);
+  c.fill();
+  limb(px - 4, py - 20, px - 6, py - 15, 2.5, '#8b806a');
+  limb(px - 6, py - 15, px - 3, py - 13 + bob, 2, '#bc9270');
+  limb(px + 4, py - 20, px + 6, py - 16, 2.5, '#8b806a');
+  limb(px + 6, py - 16, px + 3, py - 13 + bob, 2, '#bc9270');
+  c.fillStyle = '#c29b7b';
+  c.beginPath();
+  c.ellipse(px, py - 26 + bob, 3.5, 4.5, 0, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = '#4a3e32';
+  c.beginPath();
+  c.ellipse(px, py - 28 + bob, 3.7, 2.6, 0, Math.PI, Math.PI * 2);
+  c.fill();
+  // Receiving staff wear different practical layers, with cloth seams and visible hands.
+  textureRect(c, px - 3, py - 21 + bob, 6, 10, d === 1 ? 'canvas' : 'denim', 0.24);
+  c.strokeStyle = d === 1 ? '#e5e2c6' : '#a0a899';
+  c.lineWidth = 0.45;
+  c.beginPath();
+  c.moveTo(px, py - 21 + bob);
+  c.lineTo(px, py - 12);
+  c.stroke();
+  for (const side of [-1, 1]) {
+    c.fillStyle = '#6e5141';
+    c.beginPath();
+    c.ellipse(px + side * 1.25, py - 26 + bob, 0.42, 0.35, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#c69e7a';
+    c.beginPath();
+    c.ellipse(px + side * 3, py - 13 + bob, 1.25, 0.9, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+  if (d === 0) {
+    c.fillStyle = '#443c31';
+    c.beginPath();
+    c.ellipse(px - 3, py - 25 + bob, 1.4, 3.7, 0.2, 0, Math.PI * 2);
+    c.fill();
+  }
+  if (d === 1) {
+    c.strokeStyle = '#c5c1a8';
+    c.lineWidth = 0.6;
+    c.strokeRect(px - 3, py - 27 + bob, 2.6, 1.8);
+    c.strokeRect(px + 0.3, py - 27 + bob, 2.6, 1.8);
+  }
+  if (d === 2) {
+    c.fillStyle = '#c2b79f';
+    c.beginPath();
+    c.ellipse(px, py - 29 + bob, 3.5, 1.6, 0, Math.PI, Math.PI * 2);
+    c.fill();
+  }
+  rect(c, px - 3, py - 15 + bob, 6, 4, '#8c7758');
+  textureRect(c, px - 3, py - 15 + bob, 6, 4, 'wood', 0.4);
+  c.lineCap = 'butt';
 }
 export function render(
   c: CanvasRenderingContext2D,
   m: SupplyModel,
   config: SupplyConfig,
   lane: number,
+  reducedMotion = false,
+  feedback = '',
 ) {
   c.save();
   c.textAlign = 'left';
@@ -313,9 +477,27 @@ export function render(
   room.addColorStop(1, '#334958');
   c.fillStyle = room;
   c.fillRect(0, 86, 640, 260);
+  for (let tx = 0; tx < 640; tx += 80)
+    for (let ty = 86; ty < 346; ty += 80)
+      textureRect(c, tx, ty, Math.min(80, 640 - tx), Math.min(80, 346 - ty), 'concrete', 0.19);
   poly(c, [0, 86, 640, 86, 575, 112, 68, 112], '#3c5264');
   poly(c, [0, 86, 68, 112, 68, 345, 0, 345], '#506573');
   poly(c, [640, 86, 575, 112, 575, 345, 640, 345], '#253e50');
+  // Dusty daylight pools are grounded to the warehouse floor, not a screen wash.
+  for (const lightX of [90, 310, 530]) {
+    const light = c.createLinearGradient(lightX, 90, lightX + 60, 344);
+    light.addColorStop(0, '#f5e7ba29');
+    light.addColorStop(0.65, '#ead7a00e');
+    light.addColorStop(1, '#d5bd8b00');
+    c.fillStyle = light;
+    c.beginPath();
+    c.moveTo(lightX - 18, 90);
+    c.lineTo(lightX + 18, 90);
+    c.lineTo(lightX + 100, 344);
+    c.lineTo(lightX - 85, 344);
+    c.closePath();
+    c.fill();
+  }
   for (let beam = 0; beam < 8; beam++) {
     const x = beam * 92;
     poly(
@@ -329,6 +511,9 @@ export function render(
   floor.addColorStop(1, '#5a7376');
   c.fillStyle = floor;
   c.fillRect(63, 96, 518, 250);
+  for (let tx = 63; tx < 581; tx += 70)
+    for (let ty = 96; ty < 346; ty += 70)
+      textureRect(c, tx, ty, Math.min(70, 581 - tx), Math.min(70, 346 - ty), 'asphalt', 0.16);
   for (let i = -5; i <= 8; i++) {
     const x = 320 + i * 72;
     c.strokeStyle = '#bed0c229';
@@ -352,7 +537,7 @@ export function render(
     poly(c, [x + 9, 99, x + 60, 99, x + 92, 152, x - 15, 152], '#e5f2c619');
   }
   panel(c, 7, 4, 630, 82, '#263548', '#64747c');
-  for (let i = 0; i < 3; i++) portrait(c, i, 16 + i * 111, 6);
+  for (let i = 0; i < 3; i++) portrait(c, i, 16 + i * 111, 6, reducedMotion ? 0 : m.time);
   panel(c, 356, 9, 273, 63, '#132c35', '#aa9761');
   label(c, 'SUPPLY THE PEOPLE', 369, 28, '#eee2aa', 15);
   label(
@@ -364,6 +549,10 @@ export function render(
     11,
   );
   label(c, `SCORE ${m.score}  ·  BELLS ${m.bells}`, 369, 62, '#8eccc1', 10);
+  if (feedback) {
+    rect(c, 510, 68, 112, 15, '#163e35');
+    label(c, feedback, 566, 79, '#b8f1c7', 10, true);
+  }
   // Conveyor beds retain exactly the original interaction coordinates.
   for (let row = 0; row < 3; row++) {
     const y = 109 + row * 79;
@@ -372,6 +561,8 @@ export function render(
       block(c, leg, y + 49, 12, 26, 8, '#687d85');
       poly(c, [leg, y + 50, leg + 12, y + 50, leg + 12, y + 56, leg, y + 64], '#354b5e');
     }
+    for (let softness = 0; softness < 4; softness++)
+      shadow(c, 269, y + 61, 244 + softness * 2, 6 + softness * 1.7, 0.055);
     // Extruded chassis, recessed slats and faceted steel rollers.
     poly(
       c,
@@ -385,6 +576,8 @@ export function render(
     belt.addColorStop(1, '#1b3546');
     c.fillStyle = belt;
     c.fillRect(21, y + 8, 487, 42);
+    for (let steelX = 21; steelX < 508; steelX += 42)
+      textureRect(c, steelX, y + 8, Math.min(42, 508 - steelX), 42, 'steel', 0.18);
     for (let tile = 0; tile < 22; tile++) {
       const x = 23 + tile * 22;
       c.strokeStyle = '#142c3c';
@@ -429,6 +622,34 @@ export function render(
       poly(c, [cx - 3, y + 8, cx + 2, y + 8, cx + 3, y + 48, cx - 2, y + 48], '#bfd1cb');
       poly(c, [cx + 3, y + 10, cx + 7, y + 15, cx + 7, y + 42, cx + 3, y + 46], '#314e62');
     }
+    // Turned steel bearings replace the angular roller ends; rust stays on housings.
+    for (const cx of [22, 507]) {
+      const steel = c.createLinearGradient(cx - 7, 0, cx + 7, 0);
+      steel.addColorStop(0, '#263238');
+      steel.addColorStop(0.3, '#a1aba7');
+      steel.addColorStop(0.55, '#d1d1bd');
+      steel.addColorStop(1, '#3b484c');
+      c.fillStyle = steel;
+      c.beginPath();
+      c.ellipse(cx, y + 29, 6.8, 20.5, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#252e30';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.ellipse(cx, y + 29, 3.5, 14, 0, 0, Math.PI * 2);
+      c.stroke();
+    }
+    for (let weather = 0; weather < 36; weather++) {
+      const xx = 32 + weather * 13.1;
+      rect(
+        c,
+        xx,
+        y + 55 + (weather % 3),
+        2 + (weather % 4),
+        0.7,
+        weather % 2 ? '#92785666' : '#d4cdb638',
+      );
+    }
     for (let x = 49; x < 489; x += 64) {
       shadow(c, x, y + 56, 2, 1, 0.6);
       rect(c, x, y + 53, 2, 2, '#b6c9c6');
@@ -445,7 +666,7 @@ export function render(
       ['#537a6f', '#795e73', '#4c7c83'][d],
       ['#bad5a2', '#ddbac7', '#a4e2d7'][d],
     );
-    building(c, d, 529, y + 1);
+    building(c, d, 529, y + 1, reducedMotion ? 0 : m.time);
     destinationIcon(c, d, 604, y + 19);
     rect(c, 528, y + 42, 96, 12, '#112937');
     label(c, ['SCHOOL △', 'CLINIC +', 'PANTRY ○'][d], 576, y + 51, '#e8e6c4', 10, true);
@@ -478,6 +699,7 @@ export function render(
       [x - 9, y + 9, x + 8, y + 9, x + 7, y + 28, x - 8, y + 28],
       ['#aac6aa', '#cfabb8', '#9bc8c0'][crate.destination],
     );
+    textureRect(c, x - 14, y + 4, 27, 30, 'wood', 0.27);
     destinationIcon(c, crate.destination, x, y + 18);
     if (crate.sleeve) {
       panel(c, x - 24, y - 11, 49, 15, '#c99b45', '#fff0aa', '#563d2d');

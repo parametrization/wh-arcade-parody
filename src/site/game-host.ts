@@ -21,10 +21,39 @@ export async function mountGame(
   signal?: AbortSignal,
 ): Promise<() => void> {
   const abort = new AbortController();
-  main.innerHTML = `<section class="page-section game-page"><a class="back-link" href="#/">← BACK TO THE ARCADE</a><div class="game-page-heading"><p class="eyebrow">THE PEOPLE'S HOUSE ARCADE</p><h1></h1><p class="game-description"></p></div><div class="game-toolbar" aria-label="Game controls"><button class="button-link" data-testid="game-start">START</button><button class="button-link secondary-button" data-testid="game-pause" disabled>PAUSE</button><button class="button-link secondary-button" data-testid="game-restart">RESTART</button><a class="button-link secondary-button" href="#/">EXIT</a></div><div class="game-surface" tabindex="0" data-testid="game-surface"></div><p class="game-host-status" role="status" aria-live="polite"></p><details class="game-instructions"><summary>Controls & instructions</summary><ul></ul></details><p class="satire-caption">Unofficial political satire. Cartoon encounters are fictional; appearing as a character is not a factual allegation.</p></section>`;
+  main.innerHTML = `<section class="page-section game-page"><a class="back-link" href="#/">← BACK TO THE ARCADE</a><div class="game-page-heading"><p class="eyebrow">THE PEOPLE'S HOUSE ARCADE</p><h1></h1><p class="game-description"></p></div><div class="game-toolbar" aria-label="Game controls"><button class="button-link" data-testid="game-start">START</button><button class="button-link secondary-button" data-testid="game-pause" disabled>PAUSE</button><button class="button-link secondary-button" data-testid="game-restart">RESTART</button><a class="button-link secondary-button" href="#/">EXIT</a></div><p data-testid="press-any-key" class="game-host-status">PRESS ANY KEY TO PLAY · or use Start. Sound follows your mute setting.</p><div class="game-surface" tabindex="0" data-testid="game-surface"></div><p class="game-host-status" role="status" aria-live="polite"></p><details class="game-instructions"><summary>How to Play & controls</summary><ul></ul></details><p class="satire-caption">Unofficial political satire. Cartoon encounters are fictional; appearing as a character is not a factual allegation.</p></section>`;
   main.querySelector('h1')!.textContent = module.manifest.title;
   main.querySelector('.game-description')!.textContent = module.manifest.description;
+  const quickGuides: Record<string, string[]> = {
+    'flappy-files': [
+      'Keep the eagle airborne and thread the column gaps. Collect burgers to dismiss the obstruction with Q, E or H.',
+      'Earn one point for each cleared column. Beat your best while keeping a steady rhythm.',
+    ],
+    'against-the-wall': [
+      'Reach the Asylum Office beyond the border. WASD/arrows move; Shift sprints for four seconds; Q/B builds; E collects or helps.',
+      'Use cover until attention drains. Nighttime flashlights and friendly fire change patrol encounters. Hidden tunnel exits can collapse or flood.',
+      'Bank 50 per supply and 200 per rescued neighbor at district completion; finishing awards 1,000. Injury never earns points.',
+    ],
+    'rio-rescue': [
+      'Steer a growing convoy to neighbors and return to the Welcome Center. Leave room to turn: your own trail is an obstacle.',
+      'Bridges avoid river drift. Marked fence sections climb automatically. Q/Space shares supplies; E/X waits for camera sweeps.',
+      'Bank 100 per delivered neighbor and 25 per carried supply; district completion adds 250.',
+    ],
+    'supply-the-people': [
+      'Route useful supplies to the matching school, clinic or pantry. W/S selects a lane; E acts; Q rings the bell. Pointer controls remain available.',
+      'Remove a sleeve for 5, deliver correctly for 10, and complete balanced sets for 20 plus budget recovery. Misroutes cost budget.',
+    ],
+    'trickle-down-tycoon': [
+      'Move the basket with A/D or the pointer. Catch useful resources; Q returns stored empty promises; E/U opens the umbrella during yellow soda floods.',
+      'Capitulation fulfills promises automatically. Its stacking bonus grows by 10% up to 200% and applies to positive scores. Protect the basket while chasing your best.',
+    ],
+  };
   const instructions = main.querySelector('.game-instructions ul')!;
+  for (const text of quickGuides[module.manifest.id] ?? []) {
+    const p = document.createElement('p');
+    p.textContent = text;
+    instructions.before(p);
+  }
   for (const text of module.manifest.controls) {
     const item = document.createElement('li');
     item.textContent = text;
@@ -225,6 +254,9 @@ export async function mountGame(
   function refresh() {
     if (disposed) return;
     const state = instance.inspect?.().state ?? 'title';
+    services.audio.setActive?.(state === 'running');
+    if (import.meta.env.DEV) host.dataset.audio = JSON.stringify(services.audio.inspect?.());
+    main.querySelector<HTMLElement>('[data-testid="press-any-key"]')!.hidden = state !== 'title';
     host.dataset.state = state;
     startButton.disabled = state !== 'title';
     pauseButton.disabled = state !== 'running' && state !== 'paused';
@@ -329,6 +361,53 @@ export async function mountGame(
     );
     main.querySelector('.game-instructions')!.before(details);
   }
+  const howTo = document.createElement('button');
+  howTo.type = 'button';
+  howTo.className = 'button-link secondary-button';
+  howTo.textContent = 'HOW TO PLAY';
+  howTo.dataset.testid = 'how-to-play';
+  howTo.addEventListener(
+    'click',
+    () => {
+      if (instance.inspect?.().state === 'running') pause();
+      const details = main.querySelector<HTMLDetailsElement>('.game-instructions')!;
+      details.open = true;
+      details.scrollIntoView({
+        behavior: settings.reducedMotion ? 'instant' : 'smooth',
+        block: 'center',
+      });
+    },
+    { signal: abort.signal },
+  );
+  main.querySelector('.game-toolbar')!.append(howTo);
+  window.addEventListener(
+    'keydown',
+    (event) => {
+      if (
+        disposed ||
+        instance.inspect?.().state !== 'title' ||
+        event.repeat ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey
+      )
+        return;
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest('input,textarea,select,button,a,summary,[contenteditable="true"]')
+      )
+        return;
+      if (!(event.key.length === 1 || event.key.startsWith('Arrow') || event.key === 'Enter'))
+        return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void services.audio.unlock();
+      instance.start();
+      host.focus({ preventScroll: true });
+      refresh();
+    },
+    { capture: true, signal: abort.signal },
+  );
   startButton.addEventListener(
     'click',
     () => {

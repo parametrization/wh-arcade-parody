@@ -1,4 +1,4 @@
-import type { AssetRecord, GameServices } from './contracts';
+import type { AssetRecord, GameServices, Clock } from './contracts';
 import { createClock } from './clock';
 import { createInput } from './input';
 import { createRandom } from './random';
@@ -13,11 +13,40 @@ export function createServices(
 ): GameServices {
   // Validate asset identities before allocating event listeners or runtime resources.
   const assets = createAssets(records);
-  const clock = createClock();
+  const baseClock = createClock();
   const input = createInput(host);
   const random = createRandom(seed);
   const storage = createStore(host.dataset.gameId ? `${host.dataset.gameId}.v1` : 'shared.v1');
   const audio = createAudio();
+  audio.setScene?.(host.dataset.gameId ?? '');
+  const clock: Clock = {
+    start(update, render) {
+      audio.setActive?.(true);
+      baseClock.start(update, render);
+    },
+    pause() {
+      audio.setActive?.(false);
+      baseClock.pause();
+    },
+    resume() {
+      audio.setActive?.(true);
+      baseClock.resume();
+    },
+    reset() {
+      audio.setActive?.(false);
+      baseClock.reset();
+    },
+    destroy() {
+      audio.setActive?.(false);
+      baseClock.destroy();
+    },
+    get time() {
+      return baseClock.time;
+    },
+    get fps() {
+      return baseClock.fps;
+    },
+  };
   let disposed = false;
   const suspend = () => {
     clock.pause();

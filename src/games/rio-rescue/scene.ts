@@ -1,9 +1,16 @@
+import { textureFace, textureWorldFace, type MaterialName } from '../../shared/fidelity/materials';
 import { dock, getCameraViews, cameraSees, type Model } from './model';
 import { getTerrain, terrainHeight, riverCurrent, MAP_WIDTH, MAP_HEIGHT } from './terrain';
 
 type V = { x: number; y: number; z: number };
 type Pose = { x: number; y: number; stride: number };
-type Face = { points: V[]; color: string; edge?: string; depth: number };
+type Face = { points: V[]; color: string; edge?: string; depth: number; material?: MaterialName };
+function shade(color: string, light: number) {
+  const value = Number.parseInt(color.slice(1), 16);
+  const channel = (shift: number) =>
+    Math.max(0, Math.min(255, Math.round(((value >> shift) & 255) * light)));
+  return `rgb(${channel(16)} ${channel(8)} ${channel(0)})`;
+}
 /** Fixed-heading perspective camera: east stays screen-right and south stays screen-down. */
 export function drawScene(
   c: CanvasRenderingContext2D,
@@ -37,11 +44,18 @@ export function drawScene(
   };
   const faces: Face[] = [];
   const v = (x: number, y: number, z = 0): V => ({ x, y, z });
-  const face = (points: V[], color: string, edge?: string, ground = false) => {
+  const face = (
+    points: V[],
+    color: string,
+    edge?: string,
+    ground = false,
+    material?: MaterialName,
+  ) => {
     if (points.some((p) => depth(p) < 2)) return;
     faces.push({
       points,
       color,
+      material,
       edge,
       depth:
         points.reduce((n, p) => n + depth(p), 0) / points.length +
@@ -114,6 +128,7 @@ export function drawScene(
           terrain === 'canyon' ? '#655244' : '#497f83',
           undefined,
           true,
+          terrain === 'canyon' ? 'rock' : 'water',
         );
         for (const [dx, dy] of [
           [-1, 0],
@@ -134,20 +149,23 @@ export function drawScene(
                 v(b.x, b.y, (z * (j + 1)) / 4),
                 v(a.x, a.y, (z * (j + 1)) / 4),
               ],
-              ['#bba07b', '#a48a66', '#897359', '#725f4b'][j],
+              ['#b09a79', '#a18a6b', '#907b5e', '#816d53'][j],
+              undefined,
+              false,
+              'rock',
             );
         }
         if (terrain === 'river')
-          for (let k = 0; k < 3; k++) {
+          for (let k = 0; k < 7; k++) {
             const wave = reducedMotion
               ? 0
               : m.time * (riverCurrent(m.district, x, y, m.seed)?.y ?? 1) * 0.7;
-            const yy = y + ((k * 0.31 + wave) % 1);
+            const yy = y + ((k * 0.137 + wave + x * 0.037) % 1);
             line(
-              v(x + 0.12, yy, z + 0.018),
-              v(x + 0.78, yy + 0.05, z + 0.018),
-              k % 2 ? '#a6cbc0' : '#619e9c',
-              0.014,
+              v(x + 0.08 + (k % 3) * 0.09, yy, z + 0.018),
+              v(x + 0.38 + (k % 3) * 0.14, yy + 0.027, z + 0.018),
+              k % 3 ? '#aed3c055' : '#d9e4cfa0',
+              0.009,
             );
           }
         continue;
@@ -156,16 +174,16 @@ export function drawScene(
       const earth =
         terrain === 'mesa' ? '#b38a61' : terrain === 'plateau' ? '#acaa81' : palette[seed];
       face(
-        [v(x, y, elevation), v(x + 1, y, elevation), v(x + 1, y + 1, elevation)],
+        [
+          v(x, y, elevation),
+          v(x + 1, y, elevation),
+          v(x + 1, y + 1, elevation),
+          v(x, y + 1, elevation),
+        ],
         earth,
         undefined,
         true,
-      );
-      face(
-        [v(x, y, elevation), v(x + 1, y + 1, elevation), v(x, y + 1, elevation)],
-        earth,
-        undefined,
-        true,
+        terrain === 'ground' ? 'soil' : 'sandstone',
       );
       if (elevation > 0)
         for (const [dx, dy] of [
@@ -179,14 +197,33 @@ export function drawScene(
           const a =
             dx === -1 ? v(x, y) : dx === 1 ? v(x + 1, y) : dy === -1 ? v(x, y) : v(x, y + 1);
           const b = dx !== 0 ? v(a.x, y + 1) : v(x + 1, a.y);
+          const shade = dx === 1 ? 0.76 : dy === 1 ? 0.9 : 1;
           for (let k = 0; k < 5; k++) {
             const top = elevation - ((elevation - low) * k) / 5,
               bottom = elevation - ((elevation - low) * (k + 1)) / 5;
             face(
               [v(a.x, a.y, top), v(b.x, b.y, top), v(b.x, b.y, bottom), v(a.x, a.y, bottom)],
-              ['#bbaa82', '#a58f69', '#937b59', '#aa9068', '#78684e'][(k + seed) % 5],
+              `rgb(${Math.round((178 - k * 7) * shade)},${Math.round((157 - k * 8) * shade)},${Math.round((122 - k * 7) * shade)})`,
+              undefined,
+              false,
+              'sandstone',
             );
           }
+        }
+      if (terrain === 'ground' || terrain === 'mesa' || terrain === 'plateau')
+        for (let k = 0; k < 5; k++) {
+          const xx = x + ((x * 37 + y * 19 + k * 31 + m.seed) % 97) / 100,
+            yy = y + ((x * 13 + y * 41 + k * 23 + m.seed) % 89) / 100;
+          face(
+            [
+              v(xx, yy, elevation + 0.006),
+              v(xx + 0.025, yy + 0.007, elevation + 0.006),
+              v(xx + 0.012, yy + 0.025, elevation + 0.006),
+            ],
+            k % 2 ? '#d4c29a45' : '#6e62413b',
+            undefined,
+            true,
+          );
         }
       if (terrain === 'mountain') {
         const peak = v(x + 0.38, y + 0.58, elevation + 1.1 + (seed % 3) * 0.2);
@@ -210,6 +247,25 @@ export function drawScene(
             k % 2 ? '#b9a27c' : '#aa9570',
             '#675b46',
           );
+        // Continuous deck grain and dark nail heads make each board a physical surface.
+        face(
+          [v(x, y, 0.051), v(x + 1, y, 0.051), v(x + 1, y + 1, 0.051), v(x, y + 1, 0.051)],
+          '#a38d69',
+          undefined,
+          false,
+          'wood',
+        );
+        for (const xx of [0.08, 0.92])
+          for (let k = 0; k < 5; k++)
+            face(
+              [
+                v(x + xx, y + k * 0.2 + 0.055, 0.055),
+                v(x + xx + 0.018, y + k * 0.2 + 0.055, 0.055),
+                v(x + xx + 0.018, y + k * 0.2 + 0.075, 0.055),
+                v(x + xx, y + k * 0.2 + 0.075, 0.055),
+              ],
+              '#493e31',
+            );
         // Trusses along the banks, leaving the walking surface visibly open.
         for (const side of [0, 1])
           if (getTerrain(m.district, x, y + (side ? 1 : -1), m.seed) !== 'bridge') {
@@ -253,8 +309,21 @@ export function drawScene(
           labels.push({ point: v(x + 0.5, y + 0.5, 0.7), text: 'CLIMB', color: '#f8e8a2' });
         }
       } else if (seed === 0) {
-        line(v(x + 0.18, y + 0.24, 0.015), v(x + 0.38, y + 0.3, 0.015), '#897a59', 0.018);
-        face([v(x + 0.75, y + 0.8), v(x + 0.82, y + 0.8, 0.18), v(x + 0.85, y + 0.85)], '#7b875d');
+        // Sparse dry bunch-grass, grounded on the actual elevated surface.
+        for (let blade = 0; blade < 7; blade++) {
+          const angle = blade * 2.4,
+            length = 0.1 + (blade % 3) * 0.035;
+          line(
+            v(x + 0.79, y + 0.81, elevation + 0.01),
+            v(
+              x + 0.79 + Math.cos(angle) * 0.075,
+              y + 0.81 + Math.sin(angle) * 0.075,
+              elevation + length,
+            ),
+            blade % 2 ? '#8b8866' : '#686e4c',
+            0.007,
+          );
+        }
       }
     }
   const person = (
@@ -288,52 +357,94 @@ export function drawScene(
         y + size * (a * Math.sin(heading) + b * Math.cos(heading)),
         swimming ? Math.max(baseHeight + 0.012, z + h * size) : z + h * size,
       );
-    const cube = (
+    const oval = (
       a: number,
       b: number,
       h: number,
-      w: number,
-      d: number,
-      t: number,
-      col: string,
-      lit: string,
+      rx: number,
+      ry: number,
+      rz: number,
+      color: string,
+      rings = 4,
+      segments = 10,
     ) => {
-      face(
-        [
-          local(a, b, h + t),
-          local(a + w, b, h + t),
-          local(a + w, b + d, h + t),
-          local(a, b + d, h + t),
-        ],
-        lit,
-      );
-      for (const q of [
-        [a, b, a + w, b],
-        [a + w, b, a + w, b + d],
-        [a + w, b + d, a, b + d],
-        [a, b + d, a, b],
-      ])
+      for (let j = 0; j < rings; j++)
+        for (let i = 0; i < segments; i++) {
+          const point = (ii: number, jj: number) => {
+            const angle = (ii * Math.PI * 2) / segments,
+              lat = -Math.PI / 2 + (jj * Math.PI) / rings;
+            return local(
+              a + Math.cos(angle) * Math.cos(lat) * rx,
+              b + Math.sin(angle) * Math.cos(lat) * ry,
+              h + Math.sin(lat) * rz,
+            );
+          };
+          const angle = ((i + 0.5) * Math.PI * 2) / segments + heading;
+          const light =
+            0.72 +
+            0.21 * Math.cos(angle + 2.1) +
+            0.15 * Math.sin(-Math.PI / 2 + ((j + 0.5) * Math.PI) / rings);
+          face(
+            [point(i, j), point(i + 1, j), point(i + 1, j + 1), point(i, j + 1)],
+            shade(color, light),
+            undefined,
+            false,
+            color === coat
+              ? 'canvas'
+              : color === '#c6aa71' || color === '#cfb274'
+                ? 'straw'
+                : undefined,
+          );
+        }
+    };
+    const limb = (a: number[], b: number[], radius: number, color: string) => {
+      // Tapered joint-to-joint cylinders, with rounded articulated joints.
+      const dx = b[0] - a[0],
+        dy = b[1] - a[1],
+        dz = b[2] - a[2];
+      const len = Math.hypot(dx, dy, dz) || 1;
+      const ux = dz / len,
+        uz = -dx / len;
+      for (let i = 0; i < 8; i++) {
+        const point = (p: number[], angle: number, r: number) =>
+          local(
+            p[0] + Math.cos(angle) * ux * r,
+            p[1] + Math.sin(angle) * r,
+            p[2] + Math.cos(angle) * uz * r,
+          );
+        const angle = (i * Math.PI) / 4,
+          next = ((i + 1) * Math.PI) / 4;
         face(
           [
-            local(q[0], q[1], h),
-            local(q[2], q[3], h),
-            local(q[2], q[3], h + t),
-            local(q[0], q[1], h + t),
+            point(a, angle, radius),
+            point(a, next, radius),
+            point(b, next, radius * 0.8),
+            point(b, angle, radius * 0.8),
           ],
-          col,
+          shade(color, 0.78 + 0.2 * Math.cos(angle + heading + 2)),
+          undefined,
+          false,
+          color === coat ? 'canvas' : color === skin ? undefined : 'denim',
         );
+      }
+      oval(b[0], b[1], b[2], radius * 0.83, radius * 0.83, radius * 0.83, color, 3, 8);
     };
-    face(
-      [
-        v(x - 0.23, y - 0.2, 0.012),
-        v(x + 0.26, y - 0.2, 0.012),
-        v(x + 0.31, y + 0.22, 0.012),
-        v(x - 0.2, y + 0.25, 0.012),
-      ],
-      '#655e4b66',
-      undefined,
-      true,
-    );
+    if (!swimming)
+      for (let layer = 5; layer >= 0; layer--) {
+        const points = [];
+        const radius = 0.17 + layer * 0.035;
+        for (let i = 0; i < 20; i++) {
+          const angle = (i * Math.PI) / 10;
+          points.push(
+            v(
+              x + Math.cos(angle) * radius * size + 0.06,
+              y + Math.sin(angle) * radius * 0.65 * size + 0.07,
+              baseHeight + 0.014,
+            ),
+          );
+        }
+        face(points, '#25362c0b', undefined, true);
+      }
     if (swimming) {
       for (let i = 0; i < 12; i++) {
         const a = (i * Math.PI) / 6,
@@ -347,66 +458,57 @@ export function drawScene(
       }
     }
     for (const side of [-1, 1]) {
-      cube(
-        side * gait - 0.06,
-        side * 0.12 - 0.045,
-        0.02,
-        0.16,
-        0.09,
-        0.3,
-        side < 0 ? '#384c61' : '#4e6172',
-        '#667c86',
-      );
-      cube(side * gait - 0.03, side * 0.12 - 0.05, 0, 0.21, 0.11, 0.065, '#303d49', '#657078');
-      cube(
-        -side * gait - 0.06,
-        side * 0.24 - 0.045,
-        climb ? 0.51 : 0.31,
-        0.12,
-        0.09,
-        0.29,
-        coat,
-        '#d8d2b4',
-      );
-      cube(
-        -side * gait - 0.04,
-        side * 0.24 - 0.04,
-        climb ? 0.73 : 0.28,
-        0.1,
-        0.085,
-        0.09,
+      const swing = side * gait,
+        knee = [swing * 0.4, side * 0.095, 0.26],
+        ankle = [swing, side * 0.095, 0.065];
+      limb([0, side * 0.1, 0.45], knee, 0.066, '#536478');
+      limb(knee, ankle, 0.052, '#46576b');
+      oval(swing + 0.025, side * 0.095, 0.04, 0.12, 0.058, 0.048, '#413d36', 3, 8);
+      const shoulder = [0, side * 0.17, 0.72],
+        elbow = [-swing * 0.5, side * 0.215, climb ? 0.82 : 0.53],
+        hand = [-swing, side * 0.23, climb ? 0.97 : 0.36];
+      limb(shoulder, elbow, 0.052, coat);
+      limb(elbow, hand, 0.038, skin);
+      oval(hand[0], hand[1], hand[2], 0.043, 0.031, 0.05, skin, 3, 8);
+      // A thumb and grouped fingers articulate the hand rather than a mitten sphere.
+      limb(
+        [hand[0] + 0.025, hand[1], hand[2]],
+        [hand[0] + 0.055, hand[1] - side * 0.017, hand[2] - 0.018],
+        0.012,
         skin,
-        '#edc4a0',
       );
+      for (let finger = 0; finger < 3; finger++)
+        limb(
+          [hand[0] - 0.018 + finger * 0.016, hand[1], hand[2] - 0.024],
+          [hand[0] - 0.012 + finger * 0.016, hand[1] + side * 0.01, hand[2] - 0.058],
+          0.008,
+          skin,
+        );
     }
-    cube(-0.13, -0.18, 0.29, 0.26, 0.36, 0.31, coat, '#b8d0b8');
-    cube(-0.24, -0.14, 0.33, 0.12, 0.28, 0.26, '#8b7855', '#baa57a');
-    cube(-0.1, -0.11, 0.63, 0.22, 0.22, 0.22, skin, '#e7c39b');
-    cube(-0.12, -0.12, 0.83, 0.23, 0.24, 0.065, '#493a32', '#75604a');
-    face(
-      [
-        local(0.122, -0.082, 0.78),
-        local(0.122, -0.046, 0.78),
-        local(0.122, -0.046, 0.75),
-        local(0.122, -0.082, 0.75),
-      ],
-      '#293845',
-    );
-    face(
-      [
-        local(0.122, 0.045, 0.78),
-        local(0.122, 0.08, 0.78),
-        local(0.122, 0.08, 0.75),
-        local(0.122, 0.045, 0.75),
-      ],
-      '#293845',
-    );
-    face([local(0.122, -0.02, 0.77), local(0.18, 0, 0.71), local(0.122, 0.03, 0.71)], '#ba8765');
+    oval(-0.005, 0, 0.58, 0.135, 0.19, 0.22, coat, 5, 12);
+    oval(-0.14, 0, 0.56, 0.08, 0.14, 0.16, '#807153', 4, 10);
+    oval(0, 0, 0.795, 0.055, 0.063, 0.075, skin, 3, 8);
+    oval(0.015, 0, 0.905, 0.104, 0.092, 0.14, skin, 6, 12);
+    oval(-0.025, 0, 1.002, 0.1, 0.094, 0.057, '#47362c', 4, 12);
+    // Cheekbones, brow, eyelids and lips follow the face heading.
+    oval(0.101, -0.061, 0.91, 0.026, 0.027, 0.032, skin, 3, 8);
+    oval(0.101, 0.061, 0.91, 0.026, 0.027, 0.032, skin, 3, 8);
+    oval(0.119, 0, 0.899, 0.038, 0.025, 0.047, skin, 3, 8);
+    for (const side of [-1, 1]) {
+      oval(0.104, side * 0.048, 0.945, 0.016, 0.027, 0.012, '#ebe1cc', 3, 8);
+      oval(0.117, side * 0.048, 0.945, 0.007, 0.01, 0.009, '#303a38', 3, 6);
+      limb([0.102, side * 0.071, 0.965], [0.114, side * 0.028, 0.962], 0.008, '#604b3c');
+    }
+    limb([0.106, -0.033, 0.851], [0.111, 0.032, 0.851], 0.009, '#875647');
+    // Shirt seam and lightly weathered shoulder creases.
+    for (const side of [-1, 1])
+      limb([0.112, side * 0.13, 0.7], [0.135, side * 0.045, 0.59], 0.008, '#ddd2b4');
+    limb([0.136, 0, 0.6], [0.125, 0, 0.44], 0.006, '#697b70');
     if (style === 0 || style === 1) {
       // Wide straw brim, creased crown, shirt bib and work-trouser straps.
-      cube(-0.2, -0.22, 0.87, 0.4, 0.44, 0.035, '#b9975f', '#e5cc90');
-      cube(-0.1, -0.12, 0.9, 0.2, 0.24, 0.11, '#b2945c', '#dec78c');
-      cube(-0.105, -0.125, 0.895, 0.21, 0.25, 0.025, '#665d44', '#87724b');
+      oval(0, 0, 1.025, 0.24, 0.23, 0.023, '#cfb274', 3, 16);
+      oval(-0.015, 0, 1.077, 0.113, 0.114, 0.075, '#c6aa71', 4, 12);
+      oval(-0.015, 0, 1.037, 0.116, 0.117, 0.013, '#77624a', 3, 12);
       for (const side of [-1, 1])
         face(
           [
@@ -420,32 +522,38 @@ export function drawScene(
     }
     if (style === 2 || style === 3) {
       // Long tied hair and work skirt over boots distinguish the women.
-      cube(-0.16, -0.13, 0.63, 0.08, 0.26, 0.22, '#43332d', '#72533b');
-      cube(-0.21, -0.07, 0.54, 0.09, 0.14, 0.18, '#514031', '#826244');
-      face(
-        [
-          local(-0.14, -0.18, 0.42),
-          local(0.14, -0.18, 0.42),
-          local(0.2, -0.23, 0.12),
-          local(-0.2, -0.23, 0.12),
-        ],
-        '#916c83',
-      );
-      face(
-        [
-          local(-0.14, 0.18, 0.42),
-          local(0.14, 0.18, 0.42),
-          local(0.2, 0.23, 0.12),
-          local(-0.2, 0.23, 0.12),
-        ],
-        '#ad869a',
-      );
+      oval(-0.06, 0, 0.929, 0.08, 0.108, 0.142, '#49362e', 5, 12);
+      oval(-0.155, 0, 0.85, 0.052, 0.065, 0.13, '#554031', 4, 10);
+      // Closed pleated cloth follows the hips; the hem swings with the stride.
+      for (let panel = 0; panel < 16; panel++) {
+        const a = (panel * Math.PI) / 8,
+          b = ((panel + 1) * Math.PI) / 8;
+        const hem = (angle: number) =>
+          local(
+            Math.cos(angle) * 0.19 + gait * 0.12,
+            Math.sin(angle) * 0.225,
+            0.13 + 0.012 * Math.cos(angle * 4),
+          );
+        face(
+          [
+            local(Math.cos(a) * 0.13, Math.sin(a) * 0.165, 0.44),
+            local(Math.cos(b) * 0.13, Math.sin(b) * 0.165, 0.44),
+            hem(b),
+            hem(a),
+          ],
+          panel % 2 ? '#8e7380' : '#a08690',
+          undefined,
+          false,
+          'canvas',
+        );
+      }
     }
     if (style === 3) {
       // Infant is carried in a cloth sling, remaining part of this one entity.
-      cube(0.13, -0.16, 0.42, 0.15, 0.32, 0.18, '#c58f71', '#e2b394');
-      cube(0.18, -0.08, 0.6, 0.13, 0.16, 0.14, skin, '#edc9a5');
-      cube(0.17, -0.09, 0.72, 0.14, 0.18, 0.04, '#ddd4b9', '#f4e5bf');
+      oval(0.155, 0, 0.54, 0.12, 0.19, 0.14, '#baa18a', 5, 12);
+      limb([0.14, -0.13, 0.7], [0.2, 0.1, 0.48], 0.025, '#d0bfa2');
+      oval(0.2, 0, 0.72, 0.065, 0.069, 0.078, skin, 4, 10);
+      oval(0.19, 0, 0.775, 0.068, 0.073, 0.028, '#e5d4b8', 3, 10);
     }
   };
   const directions = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
@@ -585,6 +693,24 @@ export function drawScene(
     c.closePath();
     c.fillStyle = f.color;
     c.fill();
+    if (f.material) {
+      if (['soil', 'sandstone', 'rock', 'water', 'wood'].includes(f.material))
+        textureWorldFace(c, points, f.points, f.material, f.material === 'water' ? 0.25 : 0.38);
+      else textureFace(c, points, f.material, 0.25);
+    }
+    // Distance haze is applied to each opaque material face, leaving status/vision overlays clear.
+    if (f.material) {
+      const distance =
+        f.points.reduce((sum, p) => sum + Math.max(0, cy - p.y - 2), 0) / f.points.length;
+      const haze = Math.min(0.19, distance * 0.014);
+      if (haze > 0) {
+        c.beginPath();
+        points.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+        c.closePath();
+        c.fillStyle = `rgba(198,188,158,${haze})`;
+        c.fill();
+      }
+    }
     if (f.edge) {
       c.strokeStyle = f.edge;
       c.lineWidth = 0.6;

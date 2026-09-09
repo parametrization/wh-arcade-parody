@@ -1,4 +1,9 @@
 import {
+  textureWorldFace,
+  materialReady,
+  type MaterialName,
+} from '../../shared/fidelity/materials';
+import {
   MAP_WIDTH,
   MAP_HEIGHT,
   tunnelCandidates,
@@ -10,7 +15,73 @@ import {
 import { visionBoundary, DISTRACTION_RANGE } from './visibility';
 
 type V = { x: number; y: number; z: number };
-type Mesh = { p: V[]; color: string; depth: number };
+type Mesh = {
+  p: V[];
+  color: string;
+  depth: number;
+  material?: MaterialName;
+  staticTerrain?: boolean;
+};
+interface TextureRaster {
+  image: HTMLCanvasElement;
+  x: number;
+  y: number;
+}
+interface TerrainTextureCache {
+  camera: string;
+  stable: number;
+  pixels: number;
+  faces: Map<string, TextureRaster>;
+  ground?: HTMLCanvasElement;
+}
+const terrainTextures = new WeakMap<CanvasRenderingContext2D, TerrainTextureCache>();
+/** Cache only atlas projection, never actors, light cones, water ripples or depth order. */
+function textureRaster(
+  c: CanvasRenderingContext2D,
+  points: { x: number; y: number }[],
+  world: V[],
+  material: MaterialName,
+  opacity: number,
+  cache: TerrainTextureCache,
+) {
+  if (cache.stable < 1 || !materialReady() || c.globalAlpha !== 1) {
+    textureWorldFace(c, points, world, material, opacity);
+    return;
+  }
+  const key =
+    material + ':' + opacity + ':' + world.map((p) => p.x + ',' + p.y + ',' + p.z).join(';');
+  const hit = cache.faces.get(key);
+  if (hit) {
+    c.drawImage(hit.image, hit.x, hit.y);
+    return;
+  }
+  const x = Math.max(0, Math.floor(Math.min(...points.map((p) => p.x)))),
+    y = Math.max(0, Math.floor(Math.min(...points.map((p) => p.y))));
+  const right = Math.min(c.canvas.width, Math.ceil(Math.max(...points.map((p) => p.x)))),
+    bottom = Math.min(c.canvas.height, Math.ceil(Math.max(...points.map((p) => p.y))));
+  const width = right - x,
+    height = bottom - y;
+  if (width <= 0 || height <= 0) return;
+  // At most 16 MiB of pixel storage per renderer; moving cameras bypass allocations.
+  if (cache.pixels + width * height > 4 * 1024 * 1024) {
+    textureWorldFace(c, points, world, material, opacity);
+    return;
+  }
+  const image = document.createElement('canvas');
+  image.width = width;
+  image.height = height;
+  const ctx = image.getContext('2d')!;
+  textureWorldFace(
+    ctx,
+    points.map((p) => ({ x: p.x - x, y: p.y - y })),
+    world,
+    material,
+    opacity,
+  );
+  cache.faces.set(key, { image, x, y });
+  cache.pixels += width * height;
+  c.drawImage(image, x, y);
+}
 const distance = 16;
 const focal = 1000;
 /** Perspective camera axes are orthogonal; input rays meet the simulation ground plane. */
@@ -34,16 +105,33 @@ export function drawScene(
 ) {
   c.save();
   const night = isNight(s);
+  const cameraKey = `${s.x}:${s.y}:${c.canvas.width}:${c.canvas.height}:${night}:${materialReady()}:${s.seed}:${s.district}:${[...s.walls].join('|')}:${[...s.water].join('|')}`;
+  let textureCache = terrainTextures.get(c);
+  if (!textureCache || textureCache.camera !== cameraKey) {
+    textureCache = { camera: cameraKey, stable: 0, pixels: 0, faces: new Map() };
+    terrainTextures.set(c, textureCache);
+  } else textureCache.stable++;
+
   const depth = (p: V) => distance - (p.y - s.y) * 0.68 - p.z * 0.73;
   const project = (p: V) => projectScene(s, p.x, p.y, p.z);
   const v = (x: number, y: number, z = 0): V => ({ x, y, z });
   const floor: Mesh[] = [],
     meshes: Mesh[] = [];
-  const face = (p: V[], color: string, ground = false) => {
+  let collectingTerrain = true,
+    rasterizingGround = false;
+  const face = (
+    p: V[],
+    color: string,
+    ground = false,
+    material?: MaterialName,
+    dynamic = false,
+  ) => {
     if (p.some((p) => depth(p) < 1)) return;
     (ground ? floor : meshes).push({
       p,
       color,
+      material,
+      staticTerrain: ground && collectingTerrain && !dynamic,
       depth: p.reduce((n, p) => n + depth(p), 0) / p.length,
     });
   };
@@ -58,9 +146,24 @@ export function drawScene(
     top: string,
     side: string,
   ) => {
-    face([v(x, y, z + h), v(x + w, y, z + h), v(x + w, y + d, z + h), v(x, y + d, z + h)], top);
-    face([v(x, y, z), v(x + w, y, z), v(x + w, y, z + h), v(x, y, z + h)], side);
-    face([v(x, y + d, z), v(x + w, y + d, z), v(x + w, y + d, z + h), v(x, y + d, z + h)], base);
+    face(
+      [v(x, y, z + h), v(x + w, y, z + h), v(x + w, y + d, z + h), v(x, y + d, z + h)],
+      top,
+      false,
+      w > 0.5 && h > 0.3 ? 'concrete' : undefined,
+    );
+    face(
+      [v(x, y, z), v(x + w, y, z), v(x + w, y, z + h), v(x, y, z + h)],
+      side,
+      false,
+      w > 0.5 && h > 0.3 ? 'concrete' : undefined,
+    );
+    face(
+      [v(x, y + d, z), v(x + w, y + d, z), v(x + w, y + d, z + h), v(x, y + d, z + h)],
+      base,
+      false,
+      w > 0.5 && h > 0.3 ? 'concrete' : undefined,
+    );
     for (const xx of [x, x + w])
       face([v(xx, y, z), v(xx, y + d, z), v(xx, y + d, z + h), v(xx, y, z + h)], side);
   };
@@ -114,7 +217,21 @@ export function drawScene(
           [v(x, y, 0.01), v(x + 1, y, 0.01), v(x + 1, y + 1, 0.01), v(x, y + 1, 0.01)],
           '#326c88',
           true,
+          'water',
         );
+        for (const [dx, dy] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          if (s.water.has(`${x + dx},${y + dy}`)) continue;
+          const ax = dx === 1 ? x + 1 : dx === -1 ? x : x + 0.05,
+            ay = dy === 1 ? y + 1 : dy === -1 ? y : y + 0.05;
+          const bx = dx ? ax : x + 0.95,
+            by = dy ? ay : y + 0.95;
+          beam(v(ax, ay, 0.018), v(bx, by, 0.018), 0.012, '#b6c3b64c');
+        }
         const flow = reducedMotion ? 0 : (s.time * 0.22) % 1;
         for (let k = 0; k < 3; k++) {
           const yy = y + ((k / 3 + flow) % 1);
@@ -127,24 +244,24 @@ export function drawScene(
             ],
             '#7ab9c366',
             true,
+            undefined,
+            true,
           );
         }
         continue;
       }
       const seed = (x * 31 + y * 17) % 9;
-      const color = [
-        '#ac9e7e',
-        '#ad9f80',
-        '#ae9f7f',
-        '#b1a282',
-        '#aa9c7a',
-        '#ad9e7d',
-        '#afa180',
-        '#ab9e7d',
-        '#b0a181',
-      ][seed];
-      face([v(x, y), v(x + 1, y), v(x + 1, y + 1)], color, true);
-      face([v(x, y), v(x + 1, y + 1), v(x, y + 1)], color, true);
+      const color = '#ad9f80';
+      face([v(x, y), v(x + 1, y), v(x + 1, y + 1), v(x, y + 1)], color, true, 'soil');
+      for (let grit = 0; grit < 5; grit++) {
+        const gx = x + ((x * 37 + y * 19 + grit * 43) % 97) / 97,
+          gy = y + ((x * 17 + y * 41 + grit * 31) % 89) / 89;
+        face(
+          [v(gx, gy, 0.002), v(gx + 0.028, gy - 0.015, 0.002), v(gx + 0.06, gy + 0.02, 0.002)],
+          grit % 2 ? '#675d4940' : '#e6d5ac35',
+          true,
+        );
+      }
       if (s.walls.has(`${x},${y}`) && !barrierKeys.has(`${x},${y}`)) {
         box(x, y, 0, 1, 1, 0.85, '#a49780', '#d0c1a1', '#8c8471');
         for (let k = 1; k <= 2; k++)
@@ -170,6 +287,7 @@ export function drawScene(
           );
       }
     }
+  collectingTerrain = false;
   for (const b of s.barriers) {
     const { x, y } = b;
     const screen = project(v(x + 0.5, y + 0.5));
@@ -337,9 +455,40 @@ export function drawScene(
       }
     }
   }
+  // Directional cover shadows soften at the outer edge, with no collision changes.
+  for (const cell of s.walls) {
+    const [x, y] = cell.split(',').map(Number);
+    if (s.walls.has(`${x + 1},${y + 1}`)) continue;
+    const center = project(v(x + 0.5, y + 0.5));
+    if (center.x < -120 || center.x > 1080 || center.y < -100 || center.y > 740) continue;
+    for (let penumbra = 0; penumbra < 3; penumbra++) {
+      const spread = penumbra * 0.04;
+      face(
+        [
+          v(x + 0.18 - spread, y + 0.18 - spread, 0.004),
+          v(x + 1.02 + spread, y + 0.18 - spread, 0.004),
+          v(x + 1.6 + spread, y + 1.45 + spread, 0.004),
+          v(x + 0.58 - spread, y + 1.45 + spread, 0.004),
+        ],
+        night ? '#08121b08' : '#1b282214',
+        true,
+      );
+    }
+  }
+  const visibleGroundRegion = (x: number, y: number, r: number) => {
+    const corners = [v(x - r, y - r), v(x + r, y - r), v(x + r, y + r), v(x - r, y + r)];
+    if (corners.some((p) => depth(p) < 1)) return true;
+    const screen = corners.map(project);
+    return (
+      Math.max(...screen.map((p) => p.x)) >= 0 &&
+      Math.min(...screen.map((p) => p.x)) <= c.canvas.width &&
+      Math.max(...screen.map((p) => p.y)) >= 0 &&
+      Math.min(...screen.map((p) => p.y)) <= c.canvas.height
+    );
+  };
   // Detection fan is the exact model ray mesh, including narrow wall-corner gaps.
   for (const e of s.enemies) {
-    if (e.state === 'dead') continue;
+    if (e.state === 'dead' || !visibleGroundRegion(e.x, e.y, s.config.vision)) continue;
     const boundary = visionBoundary(s, e);
     face(
       [v(e.x, e.y, 0.025), ...boundary.map((p) => v(p.x, p.y, 0.025))],
@@ -403,117 +552,193 @@ export function drawScene(
     const cs = Math.cos(heading),
       sn = Math.sin(heading);
     const ground = climb ? Math.sin((y - Math.floor(y)) * Math.PI) * 1.75 : 0;
-    const local = (a: number, b: number, h: number) =>
-      v(x + a * cs - b * sn, y + a * sn + b * cs, ground + h);
-    const cube = (
+    const local = (a: number, b: number, h: number) => {
+      // Adult head-to-body ratio; face attachments shrink together around the neck.
+      if (h > 0.97) {
+        a *= 0.8;
+        b *= 0.8;
+        h = 0.97 + (h - 0.97) * 0.8;
+      }
+      return v(x + a * cs - b * sn, y + a * sn + b * cs, ground + h);
+    };
+    const screen = project(local(0, 0, 0.5));
+    if (screen.x < -100 || screen.x > 1060 || screen.y < -120 || screen.y > 800) return;
+    const shade = (hex: string, light: number) => {
+      const rgb = parseInt(hex.slice(1), 16);
+      return (
+        '#' +
+        [16, 8, 0]
+          .map((shift) =>
+            Math.min(255, Math.max(0, Math.round(((rgb >> shift) & 255) * light)))
+              .toString(16)
+              .padStart(2, '0'),
+          )
+          .join('')
+      );
+    };
+    // Rounded mesh rings give silhouettes hips, shoulders, knees and cheekbones.
+    const oval = (
       a: number,
       b: number,
-      h: number,
-      w: number,
-      d: number,
-      t: number,
+      z: number,
+      rx: number,
+      ry: number,
+      rz: number,
       color: string,
-      light: string,
     ) => {
-      face(
-        [
-          local(a, b, h + t),
-          local(a + w, b, h + t),
-          local(a + w, b + d, h + t),
-          local(a, b + d, h + t),
-        ],
-        light,
-      );
-      for (const q of [
-        [a, b, a + w, b],
-        [a + w, b, a + w, b + d],
-        [a + w, b + d, a, b + d],
-        [a, b + d, a, b],
-      ])
-        face(
-          [
-            local(q[0], q[1], h),
-            local(q[2], q[3], h),
-            local(q[2], q[3], h + t),
-            local(q[0], q[1], h + t),
-          ],
-          color,
-        );
+      const rings = 6,
+        sides = 10;
+      for (let j = 0; j < rings; j++)
+        for (let i = 0; i < sides; i++) {
+          const points: V[] = [];
+          for (const [k, l] of [
+            [i, j],
+            [i + 1, j],
+            [i + 1, j + 1],
+            [i, j + 1],
+          ]) {
+            const phi = (k / sides) * Math.PI * 2,
+              theta = (l / rings) * Math.PI;
+            points.push(
+              local(
+                a + Math.cos(phi) * Math.sin(theta) * rx,
+                b + Math.sin(phi) * Math.sin(theta) * ry,
+                z + Math.cos(theta) * rz,
+              ),
+            );
+          }
+          const normal = ((i + 0.5) / sides) * Math.PI * 2;
+          face(
+            points,
+            shade(
+              color,
+              0.66 +
+                0.27 * Math.max(0, Math.cos(normal + heading + 1)) +
+                0.15 * Math.cos((j / rings) * Math.PI),
+            ),
+          );
+        }
     };
-    face(
-      [
-        v(x - 0.28, y - 0.2, 0.012),
-        v(x + 0.32, y - 0.2, 0.012),
-        v(x + 0.36, y + 0.25, 0.012),
-        v(x - 0.25, y + 0.24, 0.012),
-      ],
-      '#46534745',
-      true,
-    );
-    if (dead) {
-      cube(-0.32, -0.17, 0.025, 0.65, 0.34, 0.13, coat, '#8c9787');
-      cube(0.32, -0.11, 0.035, 0.2, 0.22, 0.13, skin, '#e0bb97');
-      for (const side of [-1, 1])
-        cube(-0.63, side * 0.1 - 0.045, 0.02, 0.32, 0.09, 0.08, '#3b4d5c', '#627381');
-      return;
+    const limb = (a: number[], b: number[], ra: number, rb: number, color: string) => {
+      const dx = b[0] - a[0],
+        dy = b[1] - a[1],
+        dz = b[2] - a[2],
+        length = Math.hypot(dx, dy, dz) || 1;
+      const ux = -dy / (Math.hypot(dx, dy) || 1),
+        uy = dx / (Math.hypot(dx, dy) || 1);
+      const tangent = Math.hypot(dx, dy) < 0.001 ? [1, 0, 0] : [ux, uy, 0];
+      const second = [
+        (-dz * tangent[1]) / length,
+        (dz * tangent[0]) / length,
+        (dx * tangent[1] - dy * tangent[0]) / length,
+      ];
+      for (let i = 0; i < 10; i++) {
+        const points: V[] = [];
+        for (const [end, index] of [
+          [0, i],
+          [1, i],
+          [1, i + 1],
+          [0, i + 1],
+        ]) {
+          const p = end ? b : a,
+            r = end ? rb : ra,
+            t = (index / 10) * Math.PI * 2;
+          points.push(
+            local(
+              p[0] + r * (Math.cos(t) * tangent[0] + Math.sin(t) * second[0]),
+              p[1] + r * (Math.cos(t) * tangent[1] + Math.sin(t) * second[1]),
+              p[2] + r * Math.sin(t) * second[2],
+            ),
+          );
+        }
+        face(
+          points,
+          shade(color, 0.7 + 0.3 * Math.max(0, Math.cos((i / 10) * Math.PI * 2 + heading))),
+        );
+      }
+    };
+    // Nested translucent ellipses soften both contact and directional cast shadows.
+    for (let layer = 0; layer < 4; layer++) {
+      const points = Array.from({ length: 18 }, (_, i) => {
+        const t = (i / 18) * Math.PI * 2;
+        return v(
+          x + 0.08 + Math.cos(t) * (0.32 + layer * 0.055),
+          y + 0.08 + Math.sin(t) * (0.19 + layer * 0.03),
+          0.006 + layer * 0.0003,
+        );
+      });
+      face(points, layer === 0 ? '#15201825' : '#1520180c', true);
     }
-    if (crawl) {
-      cube(-0.22, -0.17, 0.2, 0.55, 0.34, 0.2, coat, '#aec7b2');
-      cube(0.31, -0.11, 0.22, 0.24, 0.22, 0.22, skin, '#dfb593');
+    if (dead || crawl) {
+      oval(0, 0, 0.18, 0.4, 0.17, 0.14, coat);
+      oval(0.39, 0, 0.2, 0.15, 0.12, 0.13, skin);
       for (const side of [-1, 1]) {
-        cube(-0.48 + gait, -0.04 + side * 0.13, 0.03, 0.3, 0.09, 0.15, '#3b4d5c', '#64737a');
-        cube(0.12 - gait, side * 0.23 - 0.04, 0.035, 0.16, 0.09, 0.2, skin, '#dabc99');
+        limb([-0.2, side * 0.1, 0.13], [-0.65, side * 0.13 + gait, 0.06], 0.095, 0.055, '#39424a');
+        limb([0.16, side * 0.16, 0.19], [0.35 - gait, side * 0.28, 0.045], 0.065, 0.04, coat);
       }
       return;
     }
     for (const side of [-1, 1]) {
-      const step = side * gait;
+      const step = side * gait,
+        lift = Math.max(0, step) * 0.42,
+        knee = [-step * 0.4, side * 0.095, 0.31 + lift * 0.4],
+        hip = [0, side * 0.095, 0.56],
+        ankle = [step, side * 0.1, 0.08 + lift];
+      limb(hip, knee, 0.092, 0.067, '#3e4a52');
+      limb(knee, ankle, 0.068, 0.049, '#354047');
+      oval(step + 0.035, side * 0.1, 0.055 + lift, 0.105, 0.067, 0.052, '#292b28');
+      const shoulder = [0, side * 0.2, 0.9],
+        elbow = [step * 0.45, side * 0.24, climb ? 0.93 : 0.7],
+        hand = [-step, side * 0.24, climb ? 1.03 + step * 0.3 : 0.49 + lift * 0.3];
+      limb(shoulder, elbow, 0.081, 0.061, coat);
+      limb(elbow, hand, 0.062, 0.04, coat);
+      oval(hand[0], hand[1], hand[2], 0.044, 0.041, 0.064, skin);
+      // Seams and crumpled elbow fabric retain a subdued tactile highlight.
       beam(
-        local(step, side * 0.115, 0.035),
-        local(-step * 0.5, side * 0.115, 0.43),
-        0.075,
-        '#40586c',
+        local(elbow[0] - 0.035, elbow[1], elbow[2]),
+        local(elbow[0] + 0.045, elbow[1], elbow[2] - 0.025),
+        0.006,
+        '#c5c0a433',
       );
-      cube(step - 0.08, side * 0.115 - 0.055, 0.015, 0.24, 0.11, 0.085, '#283b48', '#60747a');
-      beam(
-        local(-step, side * 0.25, climb ? 0.88 : 0.39),
-        local(step * 0.5, side * 0.21, 0.76),
-        0.057,
-        coat,
-      );
-      cube(-step - 0.035, side * 0.25 - 0.05, climb ? 0.86 : 0.32, 0.12, 0.1, 0.1, skin, '#e1bd98');
     }
-    cube(-0.14, -0.18, 0.39, 0.29, 0.36, 0.4, coat, '#b8c9b6');
-    // Lapels and belt are separate surfaces rather than flat front-facing decals.
-    face(
-      [local(0.152, -0.16, 0.77), local(0.152, -0.025, 0.68), local(0.152, -0.08, 0.56)],
-      '#d9d4b8',
-    );
-    face(
-      [local(0.152, 0.16, 0.77), local(0.152, 0.025, 0.68), local(0.152, 0.08, 0.56)],
-      '#aec0b5',
-    );
-    cube(-0.145, -0.185, 0.4, 0.3, 0.37, 0.04, '#38483f', '#6b7662');
-    cube(-0.065, -0.065, 0.78, 0.13, 0.13, 0.08, skin, '#ddb68e');
-    cube(-0.11, -0.115, 0.83, 0.24, 0.23, 0.26, skin, '#e5c29c');
-    face([local(0.14, -0.115, 0.91), local(0.19, 0, 0.9), local(0.14, 0.03, 0.88)], '#b27f60');
-    for (const side of [-1, 1])
-      face(
-        [
-          local(0.132, side * 0.067 - 0.018, 1.01),
-          local(0.132, side * 0.067 + 0.018, 1.01),
-          local(0.132, side * 0.067 + 0.018, 0.977),
-          local(0.132, side * 0.067 - 0.018, 0.977),
-        ],
-        '#243846',
-      );
+    oval(0, 0, 0.7, 0.135, 0.18, 0.255, coat);
+    oval(-0.015, 0, 0.54, 0.125, 0.15, 0.105, '#424942');
+    limb([0, 0, 0.94], [0, 0, 1.025], 0.052, 0.05, skin);
+    oval(0.012, 0, 1.105, 0.115, 0.095, 0.15, skin);
+    // Ears, brow, nose and jaw are separate dimensional features.
+    for (const side of [-1, 1]) {
+      oval(0.015, side * 0.098, 1.1, 0.029, 0.019, 0.045, skin);
+      oval(0.112, side * 0.045, 1.13, 0.011, 0.021, 0.012, '#2c2522');
+      beam(local(0.108, side * 0.065, 1.155), local(0.122, side * 0.025, 1.153), 0.005, '#43372e');
+    }
+    oval(0.125, 0, 1.102, 0.036, 0.026, 0.042, skin);
+    beam(local(0.117, -0.035, 1.057), local(0.122, 0.035, 1.057), 0.005, '#775443');
+    oval(-0.02, 0, 1.208, 0.106, 0.096, 0.051, player ? '#3b3029' : coat);
+    if (!player) oval(0.08, 0, 1.197, 0.109, 0.109, 0.015, '#3e473c');
     if (player) {
-      cube(-0.25, -0.14, 0.44, 0.13, 0.28, 0.28, '#8c7853', '#c4ac78');
-      cube(-0.12, -0.125, 1.065, 0.24, 0.25, 0.08, '#48372d', '#765b43');
+      oval(-0.145, 0, 0.72, 0.105, 0.155, 0.19, '#78674f');
+      for (const side of [-1, 1])
+        beam(local(-0.09, side * 0.12, 0.88), local(0.06, side * 0.12, 0.61), 0.013, '#514735');
     } else {
-      cube(-0.13, -0.13, 1.075, 0.27, 0.26, 0.07, coat, '#b4c4ad');
-      cube(0.05, -0.145, 1.065, 0.18, 0.29, 0.022, '#455c5b', '#829584');
-      cube(0.145, -0.16, 0.64, 0.02, 0.1, 0.055, '#bdb48a', '#ddd2a5');
+      oval(0.12, 0, 0.75, 0.035, 0.135, 0.13, '#424b43');
+      for (const side of [-1, 1]) oval(0.135, side * 0.08, 0.71, 0.029, 0.042, 0.065, '#636a57');
+    }
+    beam(local(0.137, 0, 0.6), local(0.132, 0, 0.91), 0.004, '#292e2a');
+    for (const side of [-1, 1]) {
+      beam(local(0.11, side * 0.075, 0.61), local(0.125, side * 0.12, 0.79), 0.004, '#c3bfa53b');
+      beam(
+        local(0, side * 0.159, 0.55),
+        local(-gait * 0.3, side * 0.115, 0.32),
+        0.003,
+        '#a8b2ab50',
+      );
+      for (let fold = 0; fold < 3; fold++)
+        beam(
+          local(0.1, side * 0.09, 0.63 + fold * 0.052),
+          local(0.128, side * 0.05, 0.62 + fold * 0.052),
+          0.003,
+          '#181f2348',
+        );
     }
   };
   const cast = [...s.enemies.map((e) => ({ x: e.x, y: e.y, e })), { x: s.x, y: s.y, e: null }];
@@ -659,14 +884,47 @@ export function drawScene(
         b = Math.round((rgb & 255) * 0.47);
       c.fillStyle = `rgba(${r},${g},${b},${mesh.color.length === 9 ? Number.parseInt(mesh.color.slice(7), 16) / 255 : 1})`;
     } else c.fillStyle = mesh.color;
+    if (night && mesh.color === '#f4edaa85' && points.length > 6) {
+      const source = points[0],
+        radius = Math.max(
+          ...points.slice(1).map((p) => Math.hypot(p.x - source.x, p.y - source.y)),
+        );
+      const glow = c.createRadialGradient(source.x, source.y, 0, source.x, source.y, radius);
+      glow.addColorStop(0, '#fff2c58c');
+      glow.addColorStop(0.28, '#e9dba755');
+      glow.addColorStop(0.8, '#d8d5a51d');
+      glow.addColorStop(1, '#d8d5a500');
+      c.fillStyle = glow;
+    }
     c.fill();
+    if (mesh.material) {
+      if (rasterizingGround)
+        textureWorldFace(c, points, mesh.p, mesh.material, night ? 0.11 : 0.34);
+      else textureRaster(c, points, mesh.p, mesh.material, night ? 0.11 : 0.34, textureCache!);
+    }
   };
   // Ground is its own pass; foreground raised meshes then occlude bodies by physical depth.
   if (night) {
     c.fillStyle = '#071529ce';
     c.fillRect(0, 0, 960, 640);
   }
-  floor.forEach(paint);
+  if (textureCache!.stable >= 1 && materialReady() && c.globalAlpha === 1) {
+    if (!textureCache!.ground) {
+      const main = c,
+        layer = document.createElement('canvas');
+      layer.width = c.canvas.width;
+      layer.height = c.canvas.height;
+      c = layer.getContext('2d')!;
+      rasterizingGround = true;
+      floor.filter((mesh) => mesh.staticTerrain).forEach(paint);
+      rasterizingGround = false;
+      c = main;
+      textureCache!.ground = layer;
+      textureCache!.pixels += layer.width * layer.height;
+    }
+    c.drawImage(textureCache!.ground, 0, 0);
+    floor.filter((mesh) => !mesh.staticTerrain).forEach(paint);
+  } else floor.forEach(paint);
   meshes.sort((a, b) => b.depth - a.depth).forEach(paint);
   // Placement guides deliberately overlay cover, so the far-side exits remain selectable.
   if (s.tunnelPlacement) {
@@ -696,7 +954,7 @@ export function drawScene(
     c.restore();
   }
   c.textAlign = 'center';
-  c.font = 'bold 11px monospace';
+  c.font = 'bold 11px Arial, sans-serif';
   for (const label of labels) {
     const p = project(label.p);
     if (/^(TUNNEL|SEALING)/.test(label.text)) {
@@ -721,7 +979,7 @@ export function drawScene(
       .filter((e) => e.state !== 'dead')
       .map((e) => ({ x: e.x, y: e.y, health: e.health ?? 100, attention: e.meter })),
   ];
-  c.font = 'bold 9px monospace';
+  c.font = 'bold 9px Arial, sans-serif';
   for (const actor of meters) {
     const p = project(v(actor.x, actor.y, 1.32));
     if (p.x < 48 || p.x > 912 || p.y < 30 || p.y > 580) continue;
@@ -729,7 +987,12 @@ export function drawScene(
       y = Math.round(p.y - (actor.attention === null ? 30 : 44)),
       health = Math.max(0, Math.min(100, actor.health));
     c.fillStyle = '#07151fee';
-    c.fillRect(x - 2, y - 2, 90, actor.attention === null ? 17 : 31);
+    c.beginPath();
+    c.roundRect(x - 2, y - 2, 90, actor.attention === null ? 17 : 31, 3);
+    c.fill();
+    c.strokeStyle = '#c2d8c32c';
+    c.lineWidth = 0.6;
+    c.stroke();
     c.textAlign = 'left';
     c.fillStyle = '#e7f5e7';
     c.fillText('HP', x + 2, y + 8);
@@ -755,7 +1018,7 @@ export function drawScene(
     }
   }
   c.textAlign = 'center';
-  c.font = 'bold 11px monospace';
+  c.font = 'bold 11px Arial, sans-serif';
   if (s.tunnelPlacement) {
     c.fillStyle = '#112939f0';
     c.fillRect(180, 572, 600, 34);
@@ -768,9 +1031,9 @@ export function drawScene(
     c.fillRect(180, 260, 600, 100);
     c.textAlign = 'center';
     c.fillStyle = '#ffc3a8';
-    c.font = 'bold 24px monospace';
+    c.font = 'bold 24px Arial, sans-serif';
     c.fillText(/drown/i.test(s.message) ? 'DROWNED' : 'TUNNEL COLLAPSE', 480, 296);
-    c.font = '14px monospace';
+    c.font = '14px Arial, sans-serif';
     c.fillStyle = '#f3e0cd';
     c.fillText('Returning to the district checkpoint…', 480, 328);
   }
@@ -861,7 +1124,7 @@ export function drawScene(
         c.fillRect(mx + p.x * scale - 1, my + p.y * scale - 1, 3, 3);
       }
   c.textAlign = 'left';
-  c.font = '10px monospace';
+  c.font = '10px Arial, sans-serif';
   c.fillStyle = '#dce5d7';
   c.fillText(`SEED ${s.seed}`, mx, my + MAP_HEIGHT * scale + 15);
   c.restore();

@@ -1,3 +1,4 @@
+import { getTerrain } from './terrain';
 import { createMotion } from './motion';
 import { drawScene } from './scene';
 import type { GameInstance, GameModule, GameState } from '../../shared/contracts';
@@ -23,12 +24,12 @@ export const game: GameModule = {
       'Guide a convoy across canyon bridges, rivers and climbable fences while avoiding scanning cameras.',
     controls: [
       'Arrows/WASD: steer',
-      'Space: share',
+      'Space / Q: share · X / E: wait · F: single-step practice',
       'Enter: start/resume · P/Escape: pause · R: reset run · M: mute',
       'Use the welcome center at the left edge to deliver',
       'X: wait/resume while cameras sweep · marked fence sections climb automatically',
       'River crossings drift downstream; use bridges or aim upstream. Replay a map using its seed.',
-      'Practice: Next step',
+      'Score: 100 per neighbor delivered + 25 per supply delivered + 250 per district. Personal best is saved for each mode/speed.',
     ],
     assetIds: [],
   },
@@ -36,7 +37,7 @@ export const game: GameModule = {
   create(host, services) {
     const root = document.createElement('section');
     root.innerHTML =
-      '<p class="rio-route-help">Swim across winding rivers: current pushes you downstream · Bridges avoid drift · Climb marked fence sections · X: wait for cameras · Space: share supplies</p><p data-hud role="status" aria-live="polite"></p><canvas></canvas><p data-message></p><p data-board></p><div data-controls style="display:flex;flex-wrap:wrap;gap:8px"></div>';
+      '<p class="rio-route-help">Swim across winding rivers: current pushes you downstream · Bridges avoid drift · Climb marked fence sections · X: wait for cameras · Space: share supplies</p><p data-hud role="status" aria-live="polite"></p><canvas></canvas><p data-message></p><p data-points aria-live="polite"></p><p>Earn 100 points per neighbor delivered, 25 per supply delivered, and 250 per completed district. Retry restores the last delivery; a route jam ends the current group. Space/Q shares supplies; X/E waits; F advances single-step practice.</p><p data-board></p><div data-controls style="display:flex;flex-wrap:wrap;gap:8px"></div>';
     host.append(root);
     const canvas = root.querySelector('canvas')!;
     const { ctx } = fitCanvas(canvas, 960, 640);
@@ -58,7 +59,11 @@ export const game: GameModule = {
     const motion = createMotion(model);
     const abort = new AbortController();
     const unsub: (() => void)[] = [];
-    let lastHud = '';
+    let lastHud = '',
+      pointFeedback = '';
+    let observedScore = 0,
+      feedbackUntil = 0;
+    const bests = new Map<string, number>();
     function button(label: string, action: () => void) {
       const b = document.createElement('button');
       b.type = 'button';
@@ -80,7 +85,7 @@ export const game: GameModule = {
     ] as const)
       button(label, () => turn(d)).setAttribute('aria-label', `Move ${d}`);
     button('Share', () => {
-      if (state === 'running' && share(model)) services.audio.tone(650);
+      if (state === 'running' && share(model)) services.audio.effect?.('pickup');
       draw();
     });
     const waitButton = button('Wait · X', () => {
@@ -88,7 +93,7 @@ export const game: GameModule = {
       draw();
     });
     const next = button('Next step', () => {
-      if (state === 'running') advance(model, 0, true);
+      if (state === 'running') stepModel(0, true);
       motion.reset(model);
       sync();
       draw();
@@ -147,7 +152,21 @@ export const game: GameModule = {
         );
         ctx.textAlign = 'left';
       }
-      const text = `District ${model.district + 1}/3 · Welcomed ${model.banked}/${GOALS[model.district]} · Aboard ${model.aboard} · Score ${model.score} · Center ${model.dockOpen ? 'OPEN' : 'opens after 3 pickups'}`;
+      const bestKey = `best.${config.mode}.${config['assist.speedMultiplier']}`;
+      let best = bests.get(bestKey) ?? services.storage.get(bestKey, 0);
+      if (model.score > observedScore) {
+        pointFeedback = `+${model.score - observedScore} · ${model.phase === 'district-complete' || model.phase === 'won' ? 'District completed' : 'Group welcomed'}`;
+        feedbackUntil = model.monotonic + 3;
+        if (model.score > best) {
+          best = model.score;
+          services.storage.set(bestKey, best);
+        }
+      }
+      observedScore = model.score;
+      bests.set(bestKey, best);
+      root.querySelector('[data-points]')!.textContent =
+        model.monotonic < feedbackUntil ? pointFeedback : '';
+      const text = `District ${model.district + 1}/3 · Welcomed ${model.banked}/${GOALS[model.district]} · Aboard ${model.aboard} · Score ${model.score} · Best ${best} · Center ${model.dockOpen ? 'OPEN' : 'opens after 3 pickups'}`;
       if (text !== lastHud) {
         hud.textContent = text;
         lastHud = text;
@@ -159,6 +178,25 @@ export const game: GameModule = {
       continueButton.hidden = model.phase !== 'district-complete';
       retryButton.hidden = state !== 'lost';
       controls.style.flexDirection = config['presentation.leftHanded'] ? 'row-reverse' : 'row';
+    }
+    function stepModel(dt: number, force = false) {
+      const before = {
+        x: model.body[0].x,
+        y: model.body[0].y,
+        aboard: model.aboard,
+        score: model.score,
+        phase: model.phase,
+      };
+      advance(model, dt, force);
+      if (model.phase === 'jam' && before.phase !== 'jam') services.audio.effect?.('crash');
+      else if (model.score > before.score) services.audio.effect?.('delivery');
+      else if (model.aboard > before.aboard) services.audio.effect?.('rescue');
+      else if (before.x !== model.body[0].x || before.y !== model.body[0].y)
+        services.audio.effect?.(
+          getTerrain(model.district, model.body[0].x, model.body[0].y, model.seed) === 'river'
+            ? 'water'
+            : 'step',
+        );
     }
     function sync() {
       const before = state;
@@ -184,8 +222,9 @@ export const game: GameModule = {
       down: ['ArrowDown', 'KeyS'],
       left: ['ArrowLeft', 'KeyA'],
       right: ['ArrowRight', 'KeyD'],
-      share: ['Space'],
-      wait: ['KeyX'],
+      share: ['Space', 'KeyQ'],
+      wait: ['KeyX', 'KeyE'],
+      step: ['KeyF'],
       pause: ['KeyP', 'Escape'],
       restart: ['KeyR'],
       mute: ['KeyM'],
@@ -195,13 +234,23 @@ export const game: GameModule = {
       unsub.push(services.input.on(d, () => turn(d)));
     unsub.push(
       services.input.on('share', () => {
-        if (state === 'running') share(model);
+        if (state === 'running' && share(model)) services.audio.effect?.('pickup');
       }),
     );
     unsub.push(
       services.input.on('wait', () => {
         if (state === 'running') setWaiting(model, !model.waiting);
         draw();
+      }),
+    );
+    unsub.push(
+      services.input.on('step', () => {
+        if (state === 'running' && config.mode === 'single-step') {
+          stepModel(0, true);
+          motion.reset(model);
+          sync();
+          draw();
+        }
       }),
     );
     let muted = host.dataset.muted !== 'false';
@@ -252,7 +301,7 @@ export const game: GameModule = {
         model.phase = 'playing';
         state = 'running';
         services.clock.start((dt) => {
-          advance(model, dt);
+          stepModel(dt);
           motion.update(model);
           sync();
         }, draw);
@@ -280,6 +329,9 @@ export const game: GameModule = {
         seed = nextSeed;
         config = { ...pending };
         model = createModel(seed, config);
+        observedScore = 0;
+        pointFeedback = '';
+        feedbackUntil = 0;
         motion.reset(model);
         state = 'title';
         touch = null;

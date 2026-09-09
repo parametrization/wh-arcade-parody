@@ -56,6 +56,7 @@ export async function mountWorkbench(
   function updateInspection() {
     if (!instance?.inspect || disposed) return;
     const data = instance.inspect();
+    services?.audio.setActive?.(data.state === 'running');
     main.querySelector('[data-testid="diagnostic-state"]')!.textContent = data.state;
     main.querySelector('[data-testid="diagnostic-time"]')!.textContent =
       `${data.time.toFixed(2)} s`;
@@ -111,6 +112,7 @@ export async function mountWorkbench(
     renderFields();
     let nextServices: GameServices | undefined;
     try {
+      host.dataset.gameId = module.manifest.id;
       nextServices = createServices(host, seed());
       services = nextServices;
       nextServices.audio.setMuted(settings.muted);

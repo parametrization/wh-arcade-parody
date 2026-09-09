@@ -1,0 +1,57 @@
+# Against the Wall — fidelity review
+
+## Attempt 1
+
+Plan: preserve the existing simulation and replace block-shaped bodies with articulated anatomical meshes; introduce grounded soft shadows and restrained soil/concrete photographic material detail. Keep legacy controls and clarify objective scoring.
+
+Implemented: tapered upper/lower limbs and separate boots, rounded hips/torso/skull, ears/nose/brows/eyes, layered hair/caps, backpack straps, vest pouches and fabric seams. Walking, ladder climbing, crawling and fallen poses use the same simulation positions and gait. Four translucent contact-shadow layers anchor actors. Seed-stable ground grit and shared soil/concrete atlas surfaces add material detail. Q joins B for construction. HUD displays saved best; instructions explain supply/help/journey scoring without changing arithmetic.
+
+Validation: all 62 Wall unit tests and TypeScript passed after geometry changes. Both desktop/mobile construction browser checks passed (2/2, 16.2 seconds). Gameplay screenshot initially captured at evidence/against-wall-attempt1.png; final material-atlas capture inspected at evidence/against-wall-attempt1-atlas.png. Soil and concrete detail is visible; repeated tile boundaries remain a visual limitation. Final full integration checks remain with root.
+
+Critical review: bodies have a much better silhouette and differentiated facial features, but characters remain small and stylized at normal camera distance. Materials and landscape silhouettes still fall short of realistic PS3-era scenery. The minimap and health/attention meters remain readable. No model rules, collision geometry, seed logic, tunnel fate, repair rules or night rules were changed. Mesh colors remain hexadecimal so existing night attenuation applies to new character surfaces.
+
+Acceptance: characters improved, not yet visually accepted as realistic; world/materials improved but repeated tile boundaries remain; gameplay/scoring preserved with clearer guidance; audio and shared how-to/start flows owned by root and not yet verified here. Fullscreen, reduced motion and representative nighttime/combat previews still require integrated review. This attempt is not a pass or a claim of PS3 hardware equivalence. Next review should prioritize scenery texture scale, face readability at play size, richer ambient lighting and representative action scenes.
+
+## Attempts 2–10 — bounded reviewed iterations
+
+The previews `evidence/wall-fidelity-attempt2.png` through `attempt10.png` render the real seeded model in a staged barrier encounter. Two existing actors are positioned on verified clear nearby cells to expose bodies, meters and vision cones; no rules are changed. Attempts 6/10 show night. These isolated fixtures avoid shared-host HMR; actual mounted-game verification is recorded separately. Each fixture returned zero browser exceptions.
+
+| Attempt | Concrete implementation and visual finding | Gameplay / scoring / audio / quality review |
+| --- | --- | --- |
+| 2 | Continuous world-coordinate soil/concrete UV mapping replaces per-face stretching/repetition. Terrain materials move with geometry; underlying tile boundaries remain visible. | Rendering only; model, points and audio unchanged. Realism not accepted. |
+| 3 | Unified ground base color and textured raised-cover tops/fronts eliminate abrupt per-cell palette shifts and plain roof surfaces. Cover remains box-shaped. | Occluding/colliding volumes unchanged, including tunnel-fate terrain. No scoring/audio changes. Not accepted. |
+| 4 | Reduced head-to-body ratios around a shared neck pivot and added clothing folds/seams. Facial attachments remain aligned; visible actors still look stylized and small. | Simulation positions and cast retained. Reduced-motion remains supported. No points/audio change. Not accepted. |
+| 5 | Added lifted swing feet, coordinated knee flex and raised alternating ladder elbows. Boots remain grounded on stance legs; natural animation remains limited. | Gait is visual only, preserving collision, four-second sprint and ladder crossing speeds. No score/audio changes. Not accepted. |
+| 6 | Added radial falloff within the exact wall-clipped night vision mesh. Flashlights fade with distance rather than filling flat bright triangles. | The detection polygon and night/friendly-fire rules are unchanged. Night fixture confirms visible health/attention and readable silhouettes; lighting is still simplified. Not accepted. |
+| 7 | Applied continuous water material and restrained shoreline reflections, retaining animated ripple motion. Water is more recognizable but still has grid-shaped boundaries. | Water collision and hidden-tunnel drowning conditions unchanged. Reduced-motion stops flow. No score/audio changes. Not accepted. |
+| 8 | Connected movement-driven footsteps, volley gunshots, construction, injury, pickup and intake-score effects to the shared audio service. Added immediate intake-point feedback beside the unchanged score/best. | Sound and feedback observe state; they do not award points or change damage. Playback inherits browser unlock/mute/volume/lifecycle. Synthetic effects are not claimed to be recorded foley or subjectively realistic. Visual bar still fails. |
+| 9 | Improved name/meter typography and rounded high-contrast meter backplates; added nearby F confirmation alongside Enter. | Existing Q/B, E, WASD/arrows and original Enter remain. Values and hit regions unchanged. Labels remain readable in staged scenes; final mobile host tests below. Not accepted visually. |
+| 10 | Added soft directional cover shadows at exposed wall edges, with a subdued night variant. Final previews show better grounded cover but simplified geometry and faceted silhouettes remain conspicuous. | No model changes. Final TypeScript and all 62 Wall unit tests passed. Day and night previews inspected. Realism not accepted. |
+
+## Final disposition: exhausted at 10/10
+
+No further fidelity attempts under this budget. The work improves anatomy, texture continuity, water, shadows, flashlight falloff, feedback and sound hooks, but does **not** meet a realistic PS3-era visual standard. Remaining material defects include small stylized faces, simplified body meshes/poses, box-like terrain and limited environmental lighting. Health/attention labels and collision clues remain deliberately clear.
+
+Characters/world therefore fail acceptance. Gameplay/scoring preserve all existing objective rules, factions, patrols, construction/repair, random hidden tunnel exits, timed transit, collapse/drowning/checkpoint outcomes, night behavior and seed generation. The model file was not edited in these fidelity iterations. Root reports shared how-to/any-game-key start and audio lifecycle tests passed, but audible sound realism remains unaccepted; no recorded-foley claim is made. Global fullscreen/tuning/reduced-motion checks remain part of root integration. Actual host test results and final capture paths follow below.
+
+### Final live-host verification
+
+Actual public-route captures inspected: `evidence/wall-fidelity-live-movement.png` (unmodified seed 123, keyboard movement) and `evidence/wall-fidelity-live-night-build-combat.png` (real host/services/input/rendering with a staged initial wire-adjacent position, night time and one committed nearby enemy). The latter visibly shows wire-cutting progress, night flashlight, combat pose, health and attention meters. Construction advanced to 0.878; no browser exceptions occurred. These captures reinforce the exhaustion finding: gameplay is legible, but the bodies and geometry remain stylized.
+
+Desktop/mobile construction and nightfall/health/pause checks passed, as did mobile lifecycle/tuning. The first desktop lifecycle attempt was interrupted by a detached/remounted pause button during concurrent HMR; a stable single-test rerun passed in 9.5 seconds. Root's complete stable browser regression remains final integration authority. A public-route sprint probe sampled stamina after key release at 4s, so it is not claimed as quantitative sprint validation; the camera scene changed during keyboard input and existing model sprint tests pass. No controls assertion was weakened in the test suite.
+
+Final evidence available for archival: `evidence/wall-fidelity-attempt10-day.png`, `evidence/wall-fidelity-attempt10.png`, `evidence/wall-fidelity-live-movement.png`, `evidence/wall-fidelity-live-night-build-combat.png`. Browser artifacts: `/tmp/wall-fidelity-final-results` and `/tmp/wall-fidelity-recheck`.
+
+### Integration regression repair (not another art attempt)
+
+The stable integration run exposed excessive stationary rendering cost during the long tunnel browser scenario. Added a camera-keyed raster cache of **only** projected material atlas faces. Geometry, actors, water ripples, light cones, depth ordering and model timing remain live. The cache is capped at 16 MiB of pixel storage per rendering context, invalidates on camera/backing-size changes, keys opacity separately, bypasses image-not-ready cases, and avoids allocating while the camera moves.
+
+A 15-frame stationary benchmark improved from mean 85.33 ms/frame (minimum 24.9) to mean 33.95 ms/frame (minimum 16.8). Pixel comparison before/after gave mean absolute channel error 0.358/255 and maximum 5/255, consistent with offscreen alpha-rounding; no geometry or material UV change. Benchmark evidence: `/tmp/wall-benchmark-before.png`, `/tmp/wall-benchmark-after.png` and corresponding `.rgba` files. TypeScript passed.
+
+The newly added desktop held-Shift browser check passes: real key input drains sprint while held, pausing freezes it and releasing recharges. This resolves the earlier post-release sampling ambiguity. Final mobile/tunnel results are recorded after the active regression run.
+
+The first material-face cache was insufficient: 7/8 tunnel/sprint cases passed, but the long desktop tunnel still exceeded 60 seconds. The final repair also caches the static ground color/material layer and conservatively skips entirely offscreen vision cones before computing their clipped boundaries. Animated water ripples, actor/contact shadows, cones and raised-object ordering remain dynamic. Invalidation includes seed, district, exact wall/water topology, camera position, viewport, day/night and readiness of the actual atlas instance. No presentation-rate or simulation-rate change was introduced.
+
+A same-state construction fixture (960×640, seed 123, stationary camera, no enemies) compared the saved pre-cache renderer with the final renderer over 20 frames: mean 108.97 → 32.07 ms, minimum 15.3 → 8.4 ms. Headless timing was noisy; the target of a sub-15-ms **mean** was not achieved. These are stationary gains: moving the camera invalidates caches, so these figures do not establish equivalent moving-camera performance. Final images `evidence/wall-cache-final-before.png` and `evidence/wall-cache-final-after.png` differ by mean absolute channel error 0.189/255, maximum 4/255, consistent with cached alpha compositing.
+
+After this repair, the formerly failing long desktop tunnel case passes in 26.3 seconds (`/tmp/wall-cache-long-tunnel`). Both desktop and mobile held-sprint checks had passed in the preceding regression run; root's full stable integration rerun is pending. This is a regression repair within attempt 10, not an additional art iteration, and does not change the exhausted visual acceptance result.

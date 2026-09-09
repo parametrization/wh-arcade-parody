@@ -1,5 +1,7 @@
 # Planning index
 
+Current fidelity work and verification supersede the historical counts below: see [top-level progress tracker](../PROGRESS.md) and [integration review](reviews/integration.md). All five games reached ten reviewed attempts; full realistic PS3-era fidelity remains unmet.
+
 Updated 2026-09-07. This is the first consolidated design proposal, not a claim of implemented games. The user has accepted real-name GOP/MAGA satire with fictional gameplay and evidence-based factual labels. All titles and new tuning numbers below remain proposed.
 
 ## Required sequence

@@ -29,10 +29,18 @@ export function createGame(host: HTMLElement, services: GameServices): GameInsta
     lastMessage = '',
     lastItems = '',
     lastControls = '',
+    lastScoreText = '',
+    observedScore = 0,
+    feedback = '',
+    feedbackTime = 0,
     unlocked = services.storage.get('endlessUnlocked', false);
   const section = document.createElement('section');
   section.className = 'supply-game';
   section.innerHTML = `<style>.supply-game{color:#e5edf1;font:13px Arial,sans-serif}.supply-game button{min-height:44px;padding:10px 13px;border:1px solid #69918f;background:#1c3449;color:#e6ffed;cursor:pointer;font:12px monospace}.supply-game button:disabled{opacity:.45;cursor:default}.supply-game .supply-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}.supply-game .supply-controls label{display:flex;align-items:center;gap:6px}.supply-game .supply-crates{display:flex;gap:7px;flex-wrap:wrap;padding-bottom:10px}.supply-game .supply-crates button{font-size:11px}.supply-game p{line-height:1.7}.supply-game .supply-message{min-height:24px;color:#c3eadb}.supply-game .supply-upgrades{padding:15px;border:1px solid #a48d65;background:#283343}.supply-game .supply-upgrades[hidden]{display:none}</style><canvas aria-label="Three conveyor lanes. Use the labeled crate and gate buttons below to play." role="img"></canvas><div class="supply-controls"><button data-lane="0">Lane 1: School △</button><button data-lane="1">Lane 2: Clinic +</button><button data-lane="2">Lane 3: Pantry ○</button><button data-bell>Ring bell (B)</button><button data-lock>Lock selected gate</button><button data-step hidden>Advance 1 second</button></div><div class="supply-crates" aria-label="Crates on the conveyor"></div><div class="supply-upgrades" hidden><p>Shift complete. Pick one cooperative upgrade:</p><div class="supply-controls"><button data-upgrade="handling">Wider handling window +12</button><button data-upgrade="recovery">Recovery bin +6</button><button data-upgrade="bell">Longer bell +2 seconds</button></div></div><p class="supply-message" role="status" aria-live="polite"></p><p class="supply-help">Tap gold crates to remove markups; tap a lane gate to change its destination. Arrows select a lane; Space strips its leading sleeve or blocks a VIP diversion. 1/2/3 cycle gates, B rings the bell. Untimed practice is available in tuning and advances only when you press its step button.</p><p style="font-size:10px;color:#a4b3c7">Real names, fictional cartoon encounters. Original procedural artwork. No financial or criminal allegation.</p>`;
+  const scoreInfo = document.createElement('p');
+  scoreInfo.className = 'supply-score';
+  scoreInfo.setAttribute('aria-live', 'polite');
+  section.append(scoreInfo);
   host.append(section);
   const canvas = section.querySelector('canvas')!;
   const viewport = fitCanvas(canvas, 640, 390);
@@ -42,13 +50,31 @@ export function createGame(host: HTMLElement, services: GameServices): GameInsta
     actionKey = bindings.action?.join(' / ') ?? 'Space',
     bellKey = bindings.bell?.join(' / ') ?? 'B';
   section.querySelector('.supply-help')!.textContent =
-    `Tap gold crates to remove markups; tap a lane gate to change its destination. Arrows select a lane (or your saved left/right bindings); ${actionKey} strips its leading sleeve or blocks a VIP diversion. 1/2/3 cycle gates; ${bellKey} rings the bell. Untimed practice advances only when you press its step button.`;
+    `Deliver eight crates to each destination across three shifts. Strip costly sleeves, match gate symbols, and preserve the budget; a zero budget ends the run. Tap gold crates or their buttons; tap a lane gate to cycle it. W/S or arrows select a lane (or your saved bindings); E or ${actionKey} strips its leading sleeve or blocks a VIP diversion. 1/2/3 cycle gates; Q or ${bellKey} rings the bell. Untimed practice advances only when you press its step button.`;
   const endlessButton = document.createElement('button');
   endlessButton.textContent = 'Play unlocked endless mode';
   endlessButton.dataset.endless = '';
   section.querySelector('.supply-controls')!.append(endlessButton);
   const crateButtons = new Map<number, HTMLButtonElement>();
   function ui() {
+    if (model.score !== observedScore) {
+      const gained = model.score - observedScore;
+      if (gained > 0) {
+        feedback = `+${gained} points`;
+        feedbackTime = 1.8;
+        services.audio.effect?.('score');
+      } else {
+        feedback = '';
+        feedbackTime = 0;
+      }
+      observedScore = model.score;
+    }
+
+    const scoreText = `Score ${model.score} · Best ${services.storage.get('best.' + (config.practice ? 'practice' : config.mode), 0)} · Strip +5 · Correct delivery +10 · Balanced set +20. Best saves when a run ends.`;
+    if (scoreText !== lastScoreText) {
+      scoreInfo.textContent = scoreText;
+      lastScoreText = scoreText;
+    }
     const controlKey = `${model.phase}|${paused}|${lane}|${model.gates.join(',')}|${model.bells}|${config.practice}|${unlocked}`;
     if (controlKey !== lastControls) {
       lastControls = controlKey;
@@ -118,11 +144,26 @@ export function createGame(host: HTMLElement, services: GameServices): GameInsta
   }
   function draw() {
     if (dead) return;
-    render(viewport.ctx, model, config, lane);
+    render(
+      viewport.ctx,
+      model,
+      config,
+      lane,
+      host.dataset.reducedMotion === 'true',
+      feedbackTime > 0 ? feedback : '',
+    );
     ui();
   }
   function step(dt: number) {
-    if (!paused && model.phase === 'shift') tick(model, dt, config, () => services.random.next());
+    if (!paused && model.phase === 'shift') {
+      feedbackTime = Math.max(0, feedbackTime - dt);
+      const delivered = model.delivered.reduce((a, b) => a + b, 0),
+        budget = model.budget;
+      tick(model, dt, config, () => services.random.next());
+      if (model.delivered.reduce((a, b) => a + b, 0) > delivered)
+        services.audio.effect?.('delivery');
+      else if (model.budget < budget) services.audio.effect?.('crash');
+    }
   }
   function action() {
     if (paused || model.phase !== 'shift') return;
@@ -131,20 +172,20 @@ export function createGame(host: HTMLElement, services: GameServices): GameInsta
       .sort((a, b) => b.x - a.x)[0];
     if (crate) {
       stripCrate(model, crate.id);
-      services.audio.tone(540, 0.06);
+      services.audio.effect?.('pickup');
     } else lockGate(model, lane);
     draw();
   }
   services.input.bind({
     left: ['ArrowLeft', 'KeyA'],
     right: ['ArrowRight', 'KeyD'],
-    up: ['ArrowUp'],
-    down: ['ArrowDown'],
-    action: ['Space'],
+    up: ['ArrowUp', 'KeyW'],
+    down: ['ArrowDown', 'KeyS'],
+    action: ['Space', 'KeyE'],
     gate1: ['Digit1'],
     gate2: ['Digit2'],
     gate3: ['Digit3'],
-    bell: ['KeyB'],
+    bell: ['KeyB', 'KeyQ'],
   });
   const off = [
     services.input.on('left', () => {
@@ -190,8 +231,10 @@ export function createGame(host: HTMLElement, services: GameServices): GameInsta
       if (button.hasAttribute('data-bell')) ringBell(model);
       if (button.hasAttribute('data-lock')) lockGate(model, lane);
       if (button.hasAttribute('data-step')) step(1);
-      if (button.dataset.upgrade)
+      if (button.dataset.upgrade && model.phase === 'upgrade') {
         upgrade(model, button.dataset.upgrade as 'handling' | 'recovery' | 'bell');
+        services.audio.effect?.('build');
+      }
       if (button.hasAttribute('data-endless') && services.storage.get('endlessUnlocked', false)) {
         services.clock.pause();
         services.clock.reset();

@@ -1,5 +1,16 @@
+import { textureFace, textureRect } from '../../shared/fidelity/materials';
 import type { TycoonConfig } from './config';
 import { catchWidth, laneX, resourceNames, type TycoonModel } from './model';
+const images = new Map<string, HTMLImageElement>();
+function asset(name: string) {
+  let img = images.get(name);
+  if (!img && typeof Image !== 'undefined') {
+    img = new Image();
+    img.src = `/assets/fidelity/${name}.png`;
+    images.set(name, img);
+  }
+  return img?.complete && img.naturalWidth ? img : null;
+}
 function rect(
   c: CanvasRenderingContext2D,
   x: number,
@@ -106,12 +117,50 @@ function shadow(
   ry: number,
   alpha = 0.25,
 ) {
-  c.fillStyle = `rgba(3,12,22,${alpha})`;
+  c.save();
+  c.translate(x, y);
+  c.scale(rx, ry);
+  const fade = c.createRadialGradient(0, 0, 0.1, 0, 0, 1);
+  fade.addColorStop(0, `rgba(3,12,22,${alpha})`);
+  fade.addColorStop(0.5, `rgba(3,12,22,${alpha * 0.55})`);
+  fade.addColorStop(1, 'rgba(3,12,22,0)');
+  c.fillStyle = fade;
   c.beginPath();
-  c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  c.arc(0, 0, 1, 0, Math.PI * 2);
   c.fill();
+  c.restore();
 }
-export function portrait(c: CanvasRenderingContext2D, person: number, x: number, y: number) {
+function volume(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  color: string,
+  rotation = 0,
+) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(rotation);
+  const light = c.createRadialGradient(-rx * 0.35, -ry * 0.4, 1, 0, 0, Math.max(rx, ry));
+  light.addColorStop(0, tone(color, 16));
+  light.addColorStop(0.58, color);
+  light.addColorStop(1, tone(color, -24));
+  c.fillStyle = light;
+  c.beginPath();
+  c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  c.fill();
+  c.restore();
+}
+export function portrait(
+  c: CanvasRenderingContext2D,
+  person: number,
+  x: number,
+  y: number,
+  time = 0,
+  reducedMotion = false,
+  mood = 'idle',
+) {
   c.save();
   c.translate(x, y);
   const backdrop = c.createLinearGradient(0, 0, 100, 70);
@@ -123,6 +172,9 @@ export function portrait(c: CanvasRenderingContext2D, person: number, x: number,
   poly(c, [0, 0, 26, 0, 77, 64, 42, 64], '#97afbd25');
   poly(c, [100, 0, 82, 0, 58, 64, 86, 64], '#d9e4d515');
   shadow(c, 51, 63, 34, 9, 0.5);
+  c.save();
+  const breathe = reducedMotion ? 0 : Math.sin(time * 1.7 + person) * 0.45;
+  c.translate(0, breathe);
   const jacket = ['#305b8c', '#3b526c', '#47516c'][person];
   poly(c, [15, 62, 22, 47, 36, 40, 61, 40, 77, 47, 87, 63], tone(jacket, -26));
   poly(c, [22, 47, 38, 41, 48, 51, 42, 64, 17, 64], tone(jacket, 22));
@@ -137,25 +189,62 @@ export function portrait(c: CanvasRenderingContext2D, person: number, x: number,
   poly(c, [33, 44, 43, 54, 38, 60, 27, 48], tone(jacket, -5));
   poly(c, [64, 43, 55, 54, 60, 61, 72, 47], tone(jacket, -10));
   const skin = ['#e2a273', '#d1ad92', '#dbbba0'][person];
-  // Faceted forehead, temples, cheekbones and jaw form one sculpted low-poly mesh.
-  poly(c, [29, 17, 37, 7, 56, 6, 68, 16, 70, 31, 62, 42, 50, 46, 37, 42, 29, 32], tone(skin, -54));
-  poly(c, [31, 17, 38, 9, 54, 8, 64, 14, 66, 23, 57, 22, 44, 21], tone(skin, 20));
-  poly(c, [31, 17, 44, 21, 39, 28, 32, 30], tone(skin, 4));
-  poly(c, [44, 21, 57, 22, 58, 31, 48, 34, 39, 28], tone(skin, 10));
-  poly(c, [64, 14, 67, 20, 67, 31, 58, 31, 57, 22], tone(skin, -29));
-  poly(c, [32, 30, 39, 28, 48, 34, 44, 40, 37, 39], tone(skin, -8));
-  poly(c, [48, 34, 58, 31, 64, 34, 58, 40, 50, 44, 44, 40], tone(skin, -21));
-  poly(c, [37, 39, 44, 40, 50, 44, 43, 43], tone(skin, -35));
-  poly(c, [29, 23, 33, 22, 33, 32, 29, 29], tone(skin, -5));
-  poly(c, [67, 23, 71, 22, 70, 30, 66, 32], tone(skin, -33));
-  poly(c, [39, 21, 46, 21, 47, 25, 40, 25], '#f0e5d7');
-  poly(c, [53, 22, 60, 21, 63, 24, 54, 25], '#f0e5d7');
-  rect(c, 42, 22, 3, 3, '#26354a');
-  rect(c, 55, 22, 3, 3, '#26354a');
-  poly(c, [49, 22, 46, 32, 50, 34, 54, 31], tone(skin, -44));
-  poly(c, [49, 22, 49, 31, 52, 31], tone(skin, 34));
-  poly(c, [42, 35, 49, 36, 57, 34, 54, 38, 45, 38], tone(skin, -48));
-  poly(c, [45, 36, 54, 35, 53, 37, 46, 37], '#e9ceb8');
+  // Sculpted volumes, shaded cheeks and small anatomical features at booth scale.
+  volume(c, 49, 25, 19, 22, skin, -0.04);
+  volume(c, 31, 26, 3.4, 6.3, tone(skin, -10));
+  volume(c, 68, 26, 3.3, 6.1, tone(skin, -21));
+  volume(c, 40, 29, 9, 9, tone(skin, 5));
+  volume(c, 58, 30, 8, 9, tone(skin, -8));
+  volume(c, 50, 39, 10, 6, tone(skin, -12));
+  for (const ex of [41, 58]) {
+    volume(c, ex, 23, 6, 3, tone(skin, -29));
+    volume(c, ex, 23, 4.8, 1.7, '#d8d5c9');
+    volume(c, ex + 0.4, 23, 1.35, 1.5, '#5a6f78');
+    rect(c, ex + 0.1, 22.4, 0.8, 1.7, '#1f2d31');
+    rect(c, ex - 0.3, 22.1, 0.6, 0.6, '#f0ebd9');
+    c.strokeStyle = tone(skin, -42);
+    c.lineWidth = 0.65;
+    c.beginPath();
+    c.moveTo(ex - 5, 20);
+    c.quadraticCurveTo(ex, 18.7, ex + 5, 20.5);
+    c.stroke();
+    c.strokeStyle = tone(skin, -22);
+    c.beginPath();
+    c.moveTo(ex - 4, 26);
+    c.quadraticCurveTo(ex, 28, ex + 4, 26.5);
+    c.stroke();
+  }
+  volume(c, 49, 28, 3.1, 7.2, tone(skin, 2), -0.08);
+  volume(c, 49.5, 32, 4, 2.2, tone(skin, -4));
+  c.strokeStyle = tone(skin, -58);
+  c.lineWidth = 0.65;
+  c.beginPath();
+  c.moveTo(45.5, 32.5);
+  c.quadraticCurveTo(47, 34, 48, 32.9);
+  c.moveTo(51, 33);
+  c.lineTo(53, 32);
+  c.stroke();
+  volume(c, 49.5, 37.1, 6.7, 1.55, '#9d6d60');
+  c.strokeStyle = '#69453d';
+  c.lineWidth = 0.7;
+  c.beginPath();
+  c.moveTo(43, 37);
+  c.quadraticCurveTo(49.5, 38, 56, 36.6);
+  c.stroke();
+  c.strokeStyle = tone(skin, -27);
+  c.lineWidth = 0.45;
+  for (let i = 0; i < 3; i++) {
+    c.beginPath();
+    c.moveTo(38 + i, 13 + i * 2);
+    c.quadraticCurveTo(48, 11 + i * 2, 60 - i, 14 + i * 2);
+    c.stroke();
+  }
+  for (const side of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(49 + side * 6, 30);
+    c.quadraticCurveTo(49 + side * 10, 34, 49 + side * 9, 38);
+    c.stroke();
+  }
   if (person === 0) {
     poly(
       c,
@@ -214,6 +303,86 @@ export function portrait(c: CanvasRenderingContext2D, person: number, x: number,
     rect(c, 80, 29, 6, 4, '#7c7464');
     for (let row = 0; row < 3; row++) rect(c, 79, 36 + row * 4, 7, 1, '#8c887a');
   }
+  const heads = asset('political-heads');
+  if (heads) {
+    c.save();
+    c.beginPath();
+    const tilt = reducedMotion ? 0 : Math.sin(time * 0.75 + person) * 0.015;
+    c.translate(49, 28);
+    c.rotate(tilt);
+    c.translate(-49, -28);
+    c.moveTo(29, 16);
+    c.bezierCurveTo(27, -1, 69, -3, 70, 15);
+    c.lineTo(69, 32);
+    c.bezierCurveTo(66, 46, 56, 49, 48, 48);
+    c.bezierCurveTo(34, 47, 28, 39, 29, 16);
+    c.closePath();
+    c.clip();
+    const cell = heads.naturalWidth / 4;
+    c.drawImage(heads, person * cell + 42, 18, cell - 80, 407, 26, 1, 48, 49);
+    c.restore();
+  }
+  if (!reducedMotion && (time + person * 0.9) % 4.4 < 0.13) {
+    for (const ex of [41, 57]) {
+      c.fillStyle = tone(skin, -4);
+      c.beginPath();
+      c.ellipse(ex, 23, 5.1, 1.6, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#674c42';
+      c.lineWidth = 0.7;
+      c.beginPath();
+      c.moveTo(ex - 4, 23);
+      c.quadraticCurveTo(ex, 24.2, ex + 4, 23);
+      c.stroke();
+    }
+  }
+  for (const side of [-1, 1]) {
+    const high = mood === 'angry' ? 40 : mood === 'filling' || mood === 'overflow' ? 31 : 58;
+    const handX = 49 + side * (mood === 'idle' ? 27 : 22);
+    c.strokeStyle = jacket;
+    c.lineWidth = 7;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(49 + side * 23, 52);
+    c.lineTo(handX, high + 5);
+    c.stroke();
+    volume(c, handX, high, 3.4, 4.6, skin, side * 0.2);
+    if (mood === 'idle')
+      for (let finger = 0; finger < 3; finger++)
+        volume(c, handX - 2 + finger * 2, high + 2, 1, 2, skin);
+  }
+  textureFace(
+    c,
+    [
+      { x: 19, y: 48 },
+      { x: 34, y: 43 },
+      { x: 43, y: 64 },
+      { x: 16, y: 64 },
+    ],
+    'wool',
+    0.25,
+  );
+  textureFace(
+    c,
+    [
+      { x: 62, y: 43 },
+      { x: 78, y: 48 },
+      { x: 85, y: 64 },
+      { x: 57, y: 64 },
+    ],
+    'wool',
+    0.25,
+  );
+  c.strokeStyle = '#aab6bd66';
+  c.lineWidth = 0.55;
+  for (const side of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(49 + side * 20, 48);
+    c.lineTo(49 + side * 14, 57);
+    c.lineTo(49 + side * 18, 63);
+    c.stroke();
+  }
+  c.restore();
   poly(c, [0, 62, 100, 62, 96, 76, 4, 76], '#132a3d');
   poly(c, [0, 62, 100, 62, 97, 64, 3, 64], '#a79c78');
   label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 73, '#efe1ba', 9, true);
@@ -224,7 +393,6 @@ function resource(c: CanvasRenderingContext2D, type: number, x: number, y: numbe
   c.save();
   c.translate(x, y);
   if (type === 0) {
-    shadow(c, 3, 17, 17, 3, 0.22);
     poly(c, [-16, -11, 7, -16, 17, -9, 16, 14, -6, 18, -16, 12], '#523f54');
     poly(c, [-14, -10, 7, -14, 8, 12, -6, 15, -14, 11], '#bb6b87');
     poly(c, [-14, -10, -9, -11, -8, 14, -13, 12], '#794d6d');
@@ -293,6 +461,74 @@ function resource(c: CanvasRenderingContext2D, type: number, x: number, y: numbe
       poly(c, [-2, 18, 3, 18, 1, 22, 3, 26, 0, 28, -2, 23], '#c5b992');
     }
   }
+  if (type === 0) {
+    textureFace(
+      c,
+      [
+        { x: -8, y: -6 },
+        { x: 7, y: -9 },
+        { x: 8, y: 11 },
+        { x: -7, y: 14 },
+      ],
+      'leather',
+      0.35,
+    );
+    c.strokeStyle = '#d9c6a5';
+    c.lineWidth = 0.45;
+    for (let line = 0; line < 7; line++) {
+      c.beginPath();
+      c.moveTo(10, -5 + line * 2.3);
+      c.lineTo(13, -3 + line * 2.2);
+      c.stroke();
+    }
+  } else if (type === 1) {
+    textureFace(
+      c,
+      [
+        { x: -15, y: -9 },
+        { x: 10, y: -9 },
+        { x: 10, y: 14 },
+        { x: -15, y: 14 },
+      ],
+      'canvas',
+      0.18,
+    );
+    c.strokeStyle = '#d4dccc';
+    c.lineWidth = 0.6;
+    c.strokeRect(-12, -6, 19, 17);
+    c.strokeStyle = '#345e67';
+    c.lineWidth = 0.6;
+    c.setLineDash([1, 1]);
+    c.strokeRect(-13, -7, 21, 19);
+    c.setLineDash([]);
+    volume(c, -11, 10, 1.2, 1.2, '#cad2bb');
+    volume(c, 7, 10, 1.2, 1.2, '#cad2bb');
+  } else if (type === 2) {
+    c.strokeStyle = '#fff0bd';
+    c.lineWidth = 0.7;
+    c.beginPath();
+    c.moveTo(-12, -9);
+    c.quadraticCurveTo(-4, -17, 3, -9);
+    c.stroke();
+    textureFace(
+      c,
+      [
+        { x: -2, y: 3 },
+        { x: 3, y: 3 },
+        { x: 13, y: 14 },
+        { x: 9, y: 17 },
+      ],
+      'steel',
+      0.14,
+    );
+  } else if (type === 3) {
+    c.strokeStyle = '#fff0b4';
+    c.lineWidth = 0.6;
+    c.beginPath();
+    c.arc(0, 0, 14, Math.PI, Math.PI * 1.7);
+    c.stroke();
+  }
+
   c.restore();
 }
 
@@ -349,56 +585,137 @@ function neighborhood(
     rect(c, x + 33, top - 7, 3, 7, '#fff2de');
   }
 }
-export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: TycoonConfig) {
+export function render(
+  c: CanvasRenderingContext2D,
+  m: TycoonModel,
+  config: TycoonConfig,
+  reducedMotion = false,
+) {
   c.save();
   c.lineWidth = 1;
   c.textAlign = 'left';
   c.setLineDash([]);
   rect(c, 0, 0, 640, 410, '#112438');
-  const sky = c.createLinearGradient(0, 0, 0, 340);
-  sky.addColorStop(0, '#506c91');
-  sky.addColorStop(1, '#cfdbca');
-  c.fillStyle = sky;
-  c.fillRect(0, 0, 640, 342);
-  // Symmetric pale mansion, columned portico and recessed sash windows.
-  block(c, 24, 80, 580, 202, 8, '#d4d8ca');
-  for (let row = 0; row < 2; row++)
-    for (let col = 0; col < 12; col++) {
-      const x = 38 + col * 48,
-        y = 108 + row * 75;
-      block(c, x, y, 24, 48, 2, '#f2eedb');
-      rect(c, x + 3, y + 3, 18, 41, '#3b5668');
-      rect(c, x + 11, y + 3, 2, 41, '#ced7cb');
-      rect(c, x + 3, y + 22, 18, 2, '#ced7cb');
+  const facade = asset('whitehouse');
+  if (!facade) {
+    const sky = c.createLinearGradient(0, 0, 0, 340);
+    sky.addColorStop(0, '#506c91');
+    sky.addColorStop(1, '#cfdbca');
+    c.fillStyle = sky;
+    c.fillRect(0, 0, 640, 342);
+    // Symmetric pale mansion, columned portico and recessed sash windows.
+    block(c, 24, 80, 580, 202, 8, '#d4d8ca');
+    for (let y = 80; y < 282; y += 50)
+      for (let x = 24; x < 604; x += 58)
+        textureRect(c, x, y, 58, Math.min(50, 282 - y), 'limestone', 0.25);
+    for (let row = 0; row < 2; row++)
+      for (let col = 0; col < 12; col++) {
+        const x = 38 + col * 48,
+          y = 108 + row * 75;
+        block(c, x, y, 24, 48, 2, '#f2eedb');
+        rect(c, x + 3, y + 3, 18, 41, '#3b5668');
+        rect(c, x + 11, y + 3, 2, 41, '#ced7cb');
+        rect(c, x + 3, y + 22, 18, 2, '#ced7cb');
+      }
+    poly(c, [14, 80, 320, 24, 624, 80], '#eeeada');
+    poly(c, [32, 76, 320, 36, 607, 76], '#c5cbbb');
+    rect(c, 18, 79, 602, 8, '#f8f0d9');
+    for (const x of [235, 270, 370, 405]) {
+      block(c, x - 7, 86, 14, 186, 3, '#e9e8d6');
+      rect(c, x - 10, 87, 23, 7, '#fff4d9');
+      rect(c, x - 10, 267, 24, 9, '#f5ecd5');
     }
-  poly(c, [14, 80, 320, 24, 624, 80], '#eeeada');
-  poly(c, [32, 76, 320, 36, 607, 76], '#c5cbbb');
-  rect(c, 18, 79, 602, 8, '#f8f0d9');
-  for (const x of [235, 270, 370, 405]) {
-    block(c, x - 7, 86, 14, 186, 3, '#e9e8d6');
-    rect(c, x - 10, 87, 23, 7, '#fff4d9');
-    rect(c, x - 10, 267, 24, 9, '#f5ecd5');
+    rect(c, 312, 8, 3, 24, '#d7ded9');
+    poly(c, [315, 8, 342, 11, 338, 22, 315, 19], '#e4d5c4');
+    rect(c, 315, 8, 10, 7, '#436383');
+    for (let k = 0; k < 3; k++) rect(c, 326, 11 + k * 3, 13, 1, '#ba6b70');
+    poly(c, [0, 279, 640, 279, 640, 342, 0, 342], '#8d9d91');
+    for (let row = 0; row < 3; row++)
+      for (let col = -1; col < 11; col++) {
+        const top = 279 + row * 21,
+          bottom = top + 21;
+        const a = 320 + (col * 64 - 320) * (0.65 + row * 0.12),
+          b = 320 + ((col + 1) * 64 - 320) * (0.65 + row * 0.12);
+        const cc = 320 + (col * 64 - 320) * (0.65 + (row + 1) * 0.12),
+          d = 320 + ((col + 1) * 64 - 320) * (0.65 + (row + 1) * 0.12);
+        textureFace(
+          c,
+          [
+            { x: a, y: top },
+            { x: b, y: top },
+            { x: d, y: bottom },
+            { x: cc, y: bottom },
+          ],
+          'asphalt',
+          0.15,
+        );
+      }
+
+    for (let k = -2; k < 9; k++) {
+      c.strokeStyle = '#d6dfc355';
+      c.beginPath();
+      c.moveTo(320 + (k * 96 - 320) * 0.5, 280);
+      c.lineTo(k * 96, 342);
+      c.stroke();
+    }
+    for (const y of [292, 313, 339]) rect(c, 0, y, 640, 1, '#667f7c');
   }
-  rect(c, 312, 8, 3, 24, '#d7ded9');
-  poly(c, [315, 8, 342, 11, 338, 22, 315, 19], '#e4d5c4');
-  rect(c, 315, 8, 10, 7, '#436383');
-  for (let k = 0; k < 3; k++) rect(c, 326, 11 + k * 3, 13, 1, '#ba6b70');
-  poly(c, [0, 279, 640, 279, 640, 342, 0, 342], '#8d9d91');
-  for (let k = -2; k < 9; k++) {
-    c.strokeStyle = '#d6dfc355';
+  if (facade) {
+    c.save();
     c.beginPath();
-    c.moveTo(320 + (k * 96 - 320) * 0.5, 280);
-    c.lineTo(k * 96, 342);
-    c.stroke();
+    c.rect(0, 0, 640, 342);
+    c.clip();
+    const scale = 640 / facade.naturalWidth,
+      height = facade.naturalHeight * scale;
+    c.drawImage(facade, 0, 342 - height, 640, height);
+    const tint = c.createLinearGradient(0, 80, 0, 342);
+    tint.addColorStop(0, '#13243210');
+    tint.addColorStop(1, '#08131d25');
+    c.fillStyle = tint;
+    c.fillRect(0, 0, 640, 342);
+    c.restore();
   }
-  for (const y of [292, 313, 339]) rect(c, 0, y, 640, 1, '#667f7c');
+  if (facade) {
+    c.save();
+    c.beginPath();
+    c.rect(0, 83, 640, 259);
+    c.clip();
+    const weatherTime = reducedMotion ? 0 : m.time;
+    c.strokeStyle = '#d1dce524';
+    c.lineWidth = 0.6;
+    for (let i = 0; i < 34; i++) {
+      const rx = (i * 137 + 17) % 640,
+        ry = 83 + ((i * 53 + weatherTime * 115) % 259);
+      c.beginPath();
+      c.moveTo(rx, ry);
+      c.lineTo(rx - 1.5, ry + 5);
+      c.stroke();
+    }
+    for (let i = 0; i < 12; i++) {
+      const phase = (weatherTime * 0.8 + i * 0.137) % 1;
+      c.strokeStyle = `rgba(203,222,226,${(1 - phase) * 0.1})`;
+      c.beginPath();
+      c.ellipse(
+        20 + ((i * 71) % 610),
+        292 + ((i * 17) % 45),
+        1 + phase * 4,
+        0.5 + phase * 1.3,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      c.stroke();
+    }
+    c.restore();
+  }
   for (let i = 0; i < 3; i++) {
     const x = laneX[i] - 50;
     panel(c, x - 4, 2, 108, 80, '#243d50', '#ebd5a1');
-    portrait(c, i, x, 3);
+    portrait(c, i, x, 3, m.time, reducedMotion, m.reaction?.lane === i ? m.reaction.phase : 'idle');
   }
   const reaction = m.reaction;
   if (reaction) {
+    const effectTime = reducedMotion ? 0 : reaction.elapsed;
     const bx = laneX[reaction.lane] - 50;
     if (reaction.kind === 'flood') {
       const fill =
@@ -408,28 +725,39 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
       c.rect(bx + 1, 4, 98, 59);
       c.clip();
       c.globalAlpha = 0.66;
-      rect(c, bx, 63 - 15 * fill, 100, 15 * fill, '#f9dc32');
+      const liquid = c.createLinearGradient(0, 48, 0, 64);
+      liquid.addColorStop(0, '#ffed74');
+      liquid.addColorStop(0.3, '#e9c824');
+      liquid.addColorStop(1, '#b59b17');
+      c.fillStyle = liquid;
+      c.fillRect(bx, 63 - 15 * fill, 100, 15 * fill);
+      c.strokeStyle = '#fff7bd';
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(bx, 63 - 15 * fill);
+      c.bezierCurveTo(bx + 30, 61 - 15 * fill, bx + 70, 65 - 15 * fill, bx + 100, 63 - 15 * fill);
+      c.stroke();
       c.globalAlpha = 1;
       for (let i = 0; i < 4; i++) {
-        const yy = 48 - 15 * fill + ((i * 11 + reaction.elapsed * 18) % 15);
+        const yy = 48 - 15 * fill + ((i * 11 + effectTime * 18) % 15);
         rect(c, bx + 15 + i * 21, yy, 3, 2, '#fff4ae');
       }
       for (const ex of [43, 57]) {
         poly(c, [bx + ex, 28, bx + ex - 3, 36, bx + ex + 3, 36], '#95e6ff');
-        rect(c, bx + ex - 2, 36, 4, 18, '#86cceaaa');
+        c.strokeStyle = '#b4eaf0aa';
+        c.lineWidth = 2.2;
+        c.beginPath();
+        c.moveTo(bx + ex, 33);
+        c.bezierCurveTo(bx + ex - 2, 41, bx + ex + 2, 48, bx + ex, 54);
+        c.stroke();
+        c.strokeStyle = '#f1fdf277';
+        c.lineWidth = 0.6;
+        c.stroke();
       }
       // Open sobbing mouth, pinched brows and pulsing tear jets.
       c.fillStyle = '#573047';
       c.beginPath();
-      c.ellipse(
-        bx + 50,
-        40,
-        5,
-        3 + Math.abs(Math.sin(reaction.elapsed * 8)) * 2,
-        0,
-        0,
-        Math.PI * 2,
-      );
+      c.ellipse(bx + 50, 40, 5, 3 + Math.abs(Math.sin(effectTime * 8)) * 2, 0, 0, Math.PI * 2);
       c.fill();
       c.strokeStyle = '#583749';
       c.lineWidth = 2;
@@ -446,17 +774,51 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
         c.beginPath();
         c.rect(0, 65, 640, m.umbrella && Math.abs(m.netX - sx) < catchWidth(m) + 12 ? 183 : 237);
         c.clip();
-        poly(c, [sx - 16, 65, sx + 16, 65, sx + 9, 301, sx - 9, 301], '#f9d52dcc');
+        const flow = c.createLinearGradient(sx - 16, 0, sx + 16, 0);
+        flow.addColorStop(0, '#f6cd2433');
+        flow.addColorStop(0.3, '#f9d52ddd');
+        flow.addColorStop(0.54, '#fff196dd');
+        flow.addColorStop(0.8, '#dfb91bcc');
+        flow.addColorStop(1, '#f6cd2422');
+        c.fillStyle = flow;
+        c.beginPath();
+        c.moveTo(sx - 16, 65);
+        c.bezierCurveTo(sx - 6, 120, sx - 12, 210, sx - 9, 301);
+        c.lineTo(sx + 9, 301);
+        c.bezierCurveTo(sx + 13, 225, sx + 6, 150, sx + 16, 65);
+        c.closePath();
+        c.fill();
         for (let i = 0; i < 8; i++) {
-          const y = 80 + ((i * 31 + reaction.elapsed * 100) % 214);
+          const y = 80 + ((i * 31 + effectTime * 100) % 214);
           rect(c, sx - 7 + (i % 3) * 5, y, 3, 10, '#fff0a3');
         }
         c.restore();
+        const protectedNet = m.umbrella && Math.abs(m.netX - sx) < catchWidth(m) + 12;
+        const splashY = protectedNet ? 279 : 303;
+        for (let i = 0; i < 9; i++) {
+          const phase = (effectTime * 2 + i * 0.137) % 1,
+            side = i % 2 ? 1 : -1;
+          volume(
+            c,
+            (protectedNet ? m.netX : sx) + side * (12 + phase * 24),
+            splashY - phase * (1 - phase) * 28,
+            0.8,
+            1.7,
+            '#e6cc53',
+          );
+        }
       }
     } else if (reaction.phase === 'angry') {
       c.save();
       c.globalAlpha = 0.48;
-      poly(c, [bx + 32, 20, bx + 66, 20, bx + 65, 39, bx + 50, 47, bx + 33, 38], '#ff342f');
+      const flush = c.createRadialGradient(bx + 49, 31, 2, bx + 49, 29, 21);
+      flush.addColorStop(0, '#e8382ecc');
+      flush.addColorStop(0.65, '#cb413eaa');
+      flush.addColorStop(1, '#ce554400');
+      c.fillStyle = flush;
+      c.beginPath();
+      c.ellipse(bx + 49, 29, 19, 20, 0, 0, Math.PI * 2);
+      c.fill();
       c.restore();
       poly(c, [bx + 38, 24, bx + 46, 27, bx + 46, 29, bx + 38, 27], '#2b2431');
       poly(c, [bx + 54, 27, bx + 62, 24, bx + 62, 27, bx + 54, 29], '#2b2431');
@@ -467,13 +829,23 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
       c.lineTo(bx + 49, 35);
       c.lineTo(bx + 58, 39);
       c.stroke();
-      for (const side of [-1, 1])
+      for (const side of [-1, 1]) {
+        c.strokeStyle = '#e6efdeaa';
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(bx + 49 + side * 22, 28);
+        c.bezierCurveTo(bx + 49 + side * 42, 30, bx + 49 + side * 26, 15, bx + 49 + side * 43, 11);
+        c.stroke();
         for (let i = 0; i < 3; i++) {
-          c.fillStyle = '#edf1e7';
-          c.beginPath();
-          c.arc(bx + 50 + side * (26 + i * 7), 30 - i * 7, 4 + i, 0, Math.PI * 2);
-          c.fill();
+          const px = bx + 49 + side * (27 + i * 7),
+            py = 25 - i * 6;
+          const mist = c.createRadialGradient(px, py, 0, px, py, 5 + i);
+          mist.addColorStop(0, '#f5f4e8bb');
+          mist.addColorStop(1, '#f5f4e800');
+          c.fillStyle = mist;
+          c.fillRect(px - 8, py - 8, 16, 16);
         }
+      }
     }
   }
   // A subtle landing marker keeps the action readable over the detailed scene.
@@ -525,7 +897,8 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
   for (const target of m.targets) {
     const x = laneX[target.lane],
       y = target.warning > 0 ? 92 : target.y;
-    rect(c, x - 12, Math.min(331, y + 20), 26, 3, '#162b3c88');
+    const approach = Math.max(0, Math.min(1, (y - 90) / 210));
+    shadow(c, x, 334, 5 + approach * 13, 1 + approach * 3, 0.05 + approach * 0.2);
     if (target.warning > 0) {
       c.save();
       c.translate(x, y);
@@ -551,6 +924,13 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
     }
   }
   c.restore();
+  if (m.catchTime > 0) {
+    const glow = c.createRadialGradient(m.netX, 321, 3, m.netX, 321, catchWidth(m) + 18);
+    glow.addColorStop(0, '#b5e5b633');
+    glow.addColorStop(1, '#b5e5b600');
+    c.fillStyle = glow;
+    c.fillRect(m.netX - catchWidth(m) - 18, 285, catchWidth(m) * 2 + 36, 56);
+  }
   // A faceted, scooped net projects forward beneath the exact catch line.
   const width = catchWidth(m),
     x = m.netX;
@@ -613,17 +993,35 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
     poly(c, [x - 15, 317, x, 317, x - 3, 320, x - 13, 320], '#eed1a0');
     poly(c, [x + 13, 315, x + 27, 315, x + 22, 327, x + 11, 327], '#729bb7');
   }
+  textureFace(
+    c,
+    [
+      { x: x - width + 9, y: 315 },
+      { x: x + width - 9, y: 315 },
+      { x: x + width - 20, y: 334 },
+      { x: x - width + 20, y: 334 },
+    ],
+    config.variant === 'basket' ? 'wood' : 'mesh',
+    0.24,
+  );
   for (const side of [-1, 1]) {
     const hx = x + side * (width + 5);
-    poly(
-      c,
-      [hx - 4, 284, hx + 3, 283, hx + 6, 290, hx + 4, 304, hx - 4, 304, hx - 6, 291],
-      '#b38c6c',
-    );
-    poly(c, [hx - 4, 285, hx + 1, 284, hx + 2, 301, hx - 4, 301], '#e4c29a');
-    poly(c, [hx + 1, 284, hx + 4, 287, hx + 5, 296, hx + 2, 301], '#ccaa87');
-    block(c, hx - 6, 301, 12, 13, 3, '#487a91');
-    poly(c, [hx - 5, 301, hx + 5, 301, hx + 5, 305, hx - 5, 305], '#e2e4cb');
+    volume(c, hx, 296, 6.5, 10, '#bf9977', side * 0.16);
+    for (let finger = 0; finger < 4; finger++) {
+      const fx = hx - 4 + finger * 2.5;
+      volume(c, fx, 291 + Math.abs(finger - 1.5), 1.55, 6.2, '#cda987', side * 0.12);
+      volume(c, fx, 287 + Math.abs(finger - 1.5), 1.1, 1.5, '#e0c4a6');
+      c.strokeStyle = '#96755c';
+      c.lineWidth = 0.5;
+      c.beginPath();
+      c.moveTo(fx - 1, 292);
+      c.lineTo(fx + 1, 292.5);
+      c.stroke();
+    }
+    volume(c, hx - side * 5.5, 297, 3, 6, '#c7a07c', side * 0.5);
+    block(c, hx - 6, 303, 12, 12, 2, '#4e7181');
+    textureRect(c, hx - 5, 305, 10, 9, 'denim', 0.3);
+    poly(c, [hx - 6, 302, hx + 6, 302, hx + 6, 306, hx - 6, 306], '#d7d6be');
   }
   panel(c, 3, 342, 348, 66, '#1b3244', '#5b7883');
   for (let track = 0; track < 3; track++) {
@@ -633,15 +1031,15 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
     c.scale(0.48, 0.7);
     neighborhood(c, track, m.levels[track], 0, 0);
     c.restore();
-    label(c, ['EDUCATION', 'CARE', 'HOMES'][track], bx + 46, 360, '#dbe7cf', 8);
+    label(c, ['EDUCATION', 'CARE', 'HOMES'][track], bx + 44, 360, '#dbe7cf', 9);
     label(c, `${m.levels[track]}/2`, bx + 55, 376, '#b4cec8', 10);
     rect(c, bx + 46, 384, 58, 4, '#142c39');
     rect(c, bx + 46, 384, m.levels[track] * 29, 4, '#84c6a3');
   }
   panel(c, 357, 342, 279, 66, '#18313d', '#b9a879');
-  label(c, 'TRICKLE-DOWN TYCOON', 367, 352, '#e8d5a4', 8);
-  label(c, `ROUND ${m.round}/5   SCORE ${m.score}`, 367, 363, '#e8d5a4', 9);
-  label(c, `NET ${'♥'.repeat(m.integrity)}  AUDIT ${m.audits}`, 367, 375, '#b8ddd0', 8);
+
+  label(c, `ROUND ${m.round}/5   SCORE ${m.score}`, 367, 358, '#f1e3be', 11);
+  label(c, `NET ${'♥'.repeat(m.integrity)}  AUDIT ${m.audits}`, 367, 373, '#cbeade', 10);
   label(
     c,
     `BONUS +${Math.round(m.bonusPercent)}%  STORED ${m.storedPromises.length}`,
@@ -666,12 +1064,31 @@ export function render(c: CanvasRenderingContext2D, m: TycoonModel, config: Tyco
     label(c, 'PUBLIC AUDIT · READ THE FINE PRINT', 320, 272, '#e3f7d6', 10, true);
   }
   if (m.umbrella) {
-    poly(
-      c,
-      [x - width - 12, 280, x - width + 4, 258, x, 248, x + width - 4, 258, x + width + 12, 280],
-      '#6396c0',
-    );
-    poly(c, [x, 248, x - 15, 280, x + 15, 280], '#bfdfca');
+    c.save();
+    c.beginPath();
+    c.moveTo(x - width - 12, 280);
+    c.bezierCurveTo(x - width, 256, x - 24, 248, x, 248);
+    c.bezierCurveTo(x + 24, 248, x + width, 256, x + width + 12, 280);
+    c.quadraticCurveTo(x + width * 0.5, 273, x, 280);
+    c.quadraticCurveTo(x - width * 0.5, 273, x - width - 12, 280);
+    c.closePath();
+    const canopy = c.createLinearGradient(x - width, 250, x + width, 285);
+    canopy.addColorStop(0, '#83a7b6');
+    canopy.addColorStop(0.5, '#506e83');
+    canopy.addColorStop(1, '#243f55');
+    c.fillStyle = canopy;
+    c.fill();
+    c.clip();
+    textureRect(c, x - width - 12, 248, width * 2 + 24, 34, 'canvas', 0.3);
+    c.restore();
+    c.strokeStyle = '#b8cacc';
+    c.lineWidth = 0.65;
+    for (let rib = -2; rib <= 2; rib++) {
+      c.beginPath();
+      c.moveTo(x, 249);
+      c.quadraticCurveTo(x + rib * width * 0.22, 256, x + rib * width * 0.48, 279);
+      c.stroke();
+    }
     c.strokeStyle = '#e2e7ce';
     c.lineWidth = 2;
     c.beginPath();

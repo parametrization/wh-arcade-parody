@@ -68,6 +68,18 @@ export interface Store {
 export interface AudioService {
   unlock(): Promise<void>;
   tone(frequency?: number, duration?: number): void;
+  effect?(name: string): void;
+  setScene?(game: string): void;
+  setActive?(active: boolean): void;
+  inspect?(): {
+    active: boolean;
+    muted: boolean;
+    scene: string;
+    musicPlaying: boolean;
+    voices: number;
+    context: string;
+    trackReady: boolean;
+  };
   setMuted(muted: boolean): void;
   setVolume(volume: number): void;
   destroy(): void;
