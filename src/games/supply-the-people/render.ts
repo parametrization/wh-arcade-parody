@@ -1,3 +1,5 @@
+import { drawLoadingFloor } from './warehouse';
+import { crateTop, beltTop, WIDTH, HEIGHT } from './layout';
 import { textureRect } from '../../shared/fidelity/materials';
 import type { SupplyModel } from './model';
 import type { SupplyConfig } from './config';
@@ -106,263 +108,8 @@ function shadow(
   c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
   c.fill();
 }
-let castImage: HTMLImageElement | undefined;
-function photographicHead(c: CanvasRenderingContext2D, person: number) {
-  if (!castImage && typeof Image !== 'undefined') {
-    castImage = new Image();
-    castImage.src = '/assets/fidelity/political-heads.png';
-  }
-  if (!castImage?.complete || !castImage.naturalWidth) return;
-  c.save();
-  c.beginPath();
-  c.moveTo(35, 7);
-  c.bezierCurveTo(42, 1, 57, 1, 64, 8);
-  c.bezierCurveTo(68, 17, 68, 31, 62, 41);
-  c.bezierCurveTo(58, 50, 41, 50, 36, 41);
-  c.bezierCurveTo(30, 30, 30, 17, 35, 7);
-  c.closePath();
-  c.clip();
-  const cell = castImage.naturalWidth / 4;
-  c.drawImage(
-    castImage,
-    person * cell + cell * 0.18,
-    cell * 0.03,
-    cell * 0.64,
-    cell * 0.94,
-    27,
-    0,
-    45,
-    54,
-  );
-  c.restore();
-}
-export function portrait(
-  c: CanvasRenderingContext2D,
-  person: number,
-  x: number,
-  y: number,
-  time = 0,
-) {
-  c.save();
-  c.translate(x, y);
-  const bg = c.createLinearGradient(0, 0, 100, 76);
-  bg.addColorStop(0, '#63717a');
-  bg.addColorStop(1, '#14212c');
-  c.fillStyle = bg;
-  c.fillRect(0, 0, 100, 76);
-  textureRect(c, 0, 0, 100, 64, 'plaster', 0.13);
-  const ellipse = (x: number, y: number, rx: number, ry: number, color: string) => {
-    c.fillStyle = color;
-    c.beginPath();
-    c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-    c.fill();
-  };
-  const curve = (points: number[], fill: string | CanvasGradient) => {
-    c.fillStyle = fill;
-    c.beginPath();
-    c.moveTo(points[0], points[1]);
-    for (let i = 2; i < points.length; i += 6)
-      c.bezierCurveTo(
-        ...(points.slice(i, i + 6) as [number, number, number, number, number, number]),
-      );
-    c.closePath();
-    c.fill();
-  };
-  shadow(c, 50, 62, 35, 7, 0.4);
-  const jacket = c.createLinearGradient(20, 40, 82, 65);
-  jacket.addColorStop(0, '#506b82');
-  jacket.addColorStop(0.45, '#273d51');
-  jacket.addColorStop(1, '#111e2c');
-  curve(
-    [
-      15, 64, 18, 48, 25, 45, 38, 42, 43, 39, 57, 39, 63, 42, 78, 45, 83, 50, 86, 64, 65, 68, 34,
-      68, 15, 64,
-    ],
-    jacket,
-  );
-  textureRect(c, 25, 48, 47, 15, 'wool', 0.12);
-  poly(c, [38, 42, 49, 48, 61, 42, 55, 64, 43, 64], '#d9d9cd');
-  poly(c, [48, 48, 52, 48, 54, 53, 51, 56, 54, 65, 47, 65, 48, 56, 46, 53], '#873544');
-  c.strokeStyle = '#8292a04d';
-  c.lineWidth = 0.7;
-  for (const side of [-1, 1]) {
-    c.beginPath();
-    c.moveTo(49 + side * 10, 43);
-    c.lineTo(49 + side * 17, 50);
-    c.lineTo(49 + side * 7, 60);
-    c.stroke();
-  }
-  const skin = ['#d9a078', '#cbaa90', '#d5b395'][person];
-  ellipse(50, 43, 7, 7, '#a77b60');
-  ellipse(31, 28, 4, 7, skin);
-  ellipse(68, 28, 3, 7, '#ab7f66');
-  const flesh = c.createRadialGradient(43, 21, 3, 53, 28, 26);
-  flesh.addColorStop(0, '#f1c7a1');
-  flesh.addColorStop(0.55, skin);
-  flesh.addColorStop(1, '#8d624d');
-  curve([31, 19, 31, 6, 64, 4, 67, 18, 71, 30, 65, 42, 53, 45, 42, 47, 31, 39, 31, 19], flesh);
-  // Rounded cheeks, brow ridge, lower lids and asymmetry keep features organic.
-  ellipse(39, 29, 6, 4, '#d69b7b35');
-  ellipse(60, 29, 5, 4, '#99685122');
-  const blink = Math.sin(time * 0.7 + person) > 0.995;
-  for (const side of [-1, 1]) {
-    const xx = 50 + side * 9;
-    ellipse(xx, 24, 4.2, blink ? 0.5 : 1.6, '#eee1cc');
-    ellipse(xx + 0.4, 24, 1.3, blink ? 0.35 : 1.4, '#42505a');
-    ellipse(xx + 0.6, 24, 0.65, blink ? 0.3 : 1.1, '#252626');
-    c.strokeStyle = '#825f494f';
-    c.lineWidth = 0.7;
-    c.beginPath();
-    c.ellipse(xx, 25, 4.8, 2, 0, 0, Math.PI);
-    c.stroke();
-    c.strokeStyle = person === 0 ? '#9c774b' : '#584438';
-    c.lineWidth = 1.3;
-    c.beginPath();
-    c.moveTo(xx - 4, 21);
-    c.quadraticCurveTo(xx, 19.5, xx + 4, 21);
-    c.stroke();
-  }
-  const nose = c.createLinearGradient(46, 25, 54, 32);
-  nose.addColorStop(0, '#aa765c');
-  nose.addColorStop(0.5, '#efc39c');
-  nose.addColorStop(1, '#b38162');
-  curve([49, 23, 47, 26, 47, 29, 46, 31, 49, 34, 53, 33, 55, 31, 52, 30, 52, 26, 49, 23], nose);
-  c.strokeStyle = '#99634f';
-  c.lineWidth = 0.8;
-  c.beginPath();
-  c.moveTo(42, 36);
-  c.quadraticCurveTo(50, 38, 58, 35);
-  c.stroke();
-  c.strokeStyle = '#f4ccab77';
-  c.beginPath();
-  c.moveTo(45, 39);
-  c.quadraticCurveTo(51, 40, 56, 38);
-  c.stroke();
-  if (person === 0) {
-    curve(
-      [
-        30, 22, 27, 16, 27, 10, 33, 7, 44, 1, 59, 4, 66, 8, 77, 17, 57, 16, 51, 13, 42, 12, 38, 17,
-        30, 22,
-      ],
-      '#c5a261',
-    );
-    c.strokeStyle = '#f0d49a';
-    for (let i = 0; i < 6; i++) {
-      c.beginPath();
-      c.moveTo(31 + i, 12 + i * 0.6);
-      c.bezierCurveTo(41, 4 + i, 54, 6 + i, 64, 10 + i * 0.4);
-      c.stroke();
-    }
-  } else {
-    curve(
-      [
-        31, 24, 25, 17, 32, 7, 41, 5, 53, 0, 67, 8, 67, 20, 60, 18, 59, 11, 51, 12, 41, 11, 35, 17,
-        31, 24,
-      ],
-      person === 1 ? '#49372c' : '#5c4837',
-    );
-    c.strokeStyle = '#9e806033';
-    for (let i = 0; i < 7; i++) {
-      c.beginPath();
-      c.moveTo(32 + i * 2, 13);
-      c.quadraticCurveTo(47, 5 + i, 63, 13 + i * 0.2);
-      c.stroke();
-    }
-  }
-  if (person === 1) {
-    curve(
-      [
-        33, 29, 38, 33, 40, 33, 43, 32, 48, 35, 54, 35, 60, 31, 65, 27, 66, 33, 60, 41, 52, 48, 37,
-        42, 33, 29,
-      ],
-      '#604736',
-    );
-    c.strokeStyle = '#ba977353';
-    c.lineWidth = 0.5;
-    for (let i = 0; i < 15; i++) {
-      c.beginPath();
-      c.moveTo(35 + i * 1.8, 35 + (i % 3));
-      c.lineTo(37 + i * 1.7, 39 + (i % 3));
-      c.stroke();
-    }
-    ellipse(50, 36, 5, 1, '#c69174');
-  }
-  if (person === 2) {
-    c.strokeStyle = '#36393b';
-    c.lineWidth = 1.25;
-    for (const xx of [36, 52]) {
-      c.beginPath();
-      c.roundRect(xx, 21, 12, 8, 2);
-      c.stroke();
-    }
-    c.beginPath();
-    c.moveTo(48, 23);
-    c.lineTo(52, 23);
-    c.stroke();
-  }
-  photographicHead(c, person);
-  poly(c, [0, 62, 100, 62, 100, 76, 0, 76], '#17232f');
-  label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 73, '#e7dcc5', 9, true);
-  c.restore();
-}
-
 function destinationIcon(c: CanvasRenderingContext2D, d: number, x: number, y: number) {
-  if (d === 0) {
-    poly(c, [x, y - 9, x + 10, y + 8, x - 10, y + 8], '#122b35');
-    poly(c, [x, y - 5, x + 6, y + 5, x - 6, y + 5], '#eff2ca');
-  }
-  if (d === 1) {
-    rect(c, x - 4, y - 10, 8, 21, '#102c38');
-    rect(c, x - 10, y - 4, 20, 8, '#102c38');
-    rect(c, x - 2, y - 8, 4, 17, '#f7dfdc');
-    rect(c, x - 8, y - 2, 16, 4, '#f7dfdc');
-  }
-  if (d === 2) {
-    poly(
-      c,
-      [
-        x - 5,
-        y - 10,
-        x + 5,
-        y - 10,
-        x + 10,
-        y - 5,
-        x + 10,
-        y + 5,
-        x + 5,
-        y + 10,
-        x - 5,
-        y + 10,
-        x - 10,
-        y + 5,
-        x - 10,
-        y - 5,
-      ],
-      '#123444',
-    );
-    poly(
-      c,
-      [
-        x - 4,
-        y - 6,
-        x + 4,
-        y - 6,
-        x + 6,
-        y - 3,
-        x + 6,
-        y + 3,
-        x + 3,
-        y + 6,
-        x - 3,
-        y + 6,
-        x - 6,
-        y + 3,
-        x - 6,
-        y - 3,
-      ],
-      '#e6fae0',
-    );
-  }
+  label(c, ['△', '⌂', '+'][d], x, y + 7, '#f8edcf', 24, true);
 }
 function building(c: CanvasRenderingContext2D, d: number, x: number, y: number, time = 0) {
   shadow(c, x + 29, y + 37, 29, 4, 0.28);
@@ -469,93 +216,23 @@ export function render(
   c.textAlign = 'left';
   c.lineWidth = 1;
   c.setLineDash([]);
-  rect(c, 0, 0, 640, 390, '#172333');
-  // Fixed camera 2.5D warehouse: atmospheric depth and broad lit surfaces.
-  const room = c.createLinearGradient(0, 86, 0, 345);
-  room.addColorStop(0, '#9eafb4');
-  room.addColorStop(0.45, '#607681');
-  room.addColorStop(1, '#334958');
-  c.fillStyle = room;
-  c.fillRect(0, 86, 640, 260);
-  for (let tx = 0; tx < 640; tx += 80)
-    for (let ty = 86; ty < 346; ty += 80)
-      textureRect(c, tx, ty, Math.min(80, 640 - tx), Math.min(80, 346 - ty), 'concrete', 0.19);
-  poly(c, [0, 86, 640, 86, 575, 112, 68, 112], '#3c5264');
-  poly(c, [0, 86, 68, 112, 68, 345, 0, 345], '#506573');
-  poly(c, [640, 86, 575, 112, 575, 345, 640, 345], '#253e50');
-  // Dusty daylight pools are grounded to the warehouse floor, not a screen wash.
-  for (const lightX of [90, 310, 530]) {
-    const light = c.createLinearGradient(lightX, 90, lightX + 60, 344);
-    light.addColorStop(0, '#f5e7ba29');
-    light.addColorStop(0.65, '#ead7a00e');
-    light.addColorStop(1, '#d5bd8b00');
-    c.fillStyle = light;
-    c.beginPath();
-    c.moveTo(lightX - 18, 90);
-    c.lineTo(lightX + 18, 90);
-    c.lineTo(lightX + 100, 344);
-    c.lineTo(lightX - 85, 344);
-    c.closePath();
-    c.fill();
-  }
-  for (let beam = 0; beam < 8; beam++) {
-    const x = beam * 92;
-    poly(
-      c,
-      [x, 86, x + 11, 86, 320 + (x - 320) * 0.78, 112, 311 + (x - 320) * 0.78, 112],
-      '#83959b',
-    );
-  }
-  const floor = c.createLinearGradient(0, 95, 0, 345);
-  floor.addColorStop(0, '#a7b8b0');
-  floor.addColorStop(1, '#5a7376');
-  c.fillStyle = floor;
-  c.fillRect(63, 96, 518, 250);
-  for (let tx = 63; tx < 581; tx += 70)
-    for (let ty = 96; ty < 346; ty += 70)
-      textureRect(c, tx, ty, Math.min(70, 581 - tx), Math.min(70, 346 - ty), 'asphalt', 0.16);
-  for (let i = -5; i <= 8; i++) {
-    const x = 320 + i * 72;
-    c.strokeStyle = '#bed0c229';
-    c.lineWidth = 1;
-    c.beginPath();
-    c.moveTo(320 + (x - 320) * 0.3, 95);
-    c.lineTo(x, 345);
-    c.stroke();
-  }
-  for (let row = 0; row < 9; row++) {
-    const y = 102 + row * row * 4;
-    c.strokeStyle = '#304b5a30';
-    c.beginPath();
-    c.moveTo(60, y);
-    c.lineTo(582, y);
-    c.stroke();
-  }
-  for (let x = 30; x < 625; x += 120) {
-    block(c, x, 90, 67, 15, 6, '#576e7b');
-    poly(c, [x + 4, 92, x + 62, 92, x + 58, 98, x + 7, 98], '#dbeacb');
-    poly(c, [x + 9, 99, x + 60, 99, x + 92, 152, x - 15, 152], '#e5f2c619');
-  }
-  panel(c, 7, 4, 630, 82, '#263548', '#64747c');
-  for (let i = 0; i < 3; i++) portrait(c, i, 16 + i * 111, 6, reducedMotion ? 0 : m.time);
-  panel(c, 356, 9, 273, 63, '#132c35', '#aa9761');
-  label(c, 'SUPPLY THE PEOPLE', 369, 28, '#eee2aa', 15);
+  rect(c, 0, 0, WIDTH, HEIGHT, '#283c44');
+  for (let x = 0; x < WIDTH; x += 80)
+    for (let y = 0; y < HEIGHT; y += 80) textureRect(c, x, y, 80, 80, 'concrete', 0.18);
+  panel(c, 7, 5, 626, 43, '#172f3b', '#829aa0');
+  label(c, 'SUPPLY THE PEOPLE', 18, 25, '#eee2aa', 16);
   label(
     c,
-    `SHIFT ${m.shift}/${m.endless ? '∞' : '3'}   BUDGET ${m.budget}`,
-    369,
-    46,
-    '#badbcc',
+    `SHIFT ${m.shift}/${m.endless ? '∞' : '3'} · BUDGET ${m.budget} · SCORE ${m.score}`,
+    300,
+    23,
+    '#dce7dc',
     11,
   );
-  label(c, `SCORE ${m.score}  ·  BELLS ${m.bells}`, 369, 62, '#8eccc1', 10);
-  if (feedback) {
-    rect(c, 510, 68, 112, 15, '#163e35');
-    label(c, feedback, 566, 79, '#b8f1c7', 10, true);
-  }
+  label(c, `BELLS ${m.bells}${feedback ? ' · ' + feedback : ''}`, 300, 40, '#bfead3', 10);
   // Conveyor beds retain exactly the original interaction coordinates.
   for (let row = 0; row < 3; row++) {
-    const y = 109 + row * 79;
+    const y = beltTop(row);
     shadow(c, 264, y + 63, 249, 10, 0.27);
     for (const leg of [31, 461]) {
       block(c, leg, y + 49, 12, 26, 8, '#687d85');
@@ -669,7 +346,7 @@ export function render(
     building(c, d, 529, y + 1, reducedMotion ? 0 : m.time);
     destinationIcon(c, d, 604, y + 19);
     rect(c, 528, y + 42, 96, 12, '#112937');
-    label(c, ['SCHOOL △', 'CLINIC +', 'PANTRY ○'][d], 576, y + 51, '#e8e6c4', 10, true);
+    label(c, ['PHARMACY △', 'HOUSING ⌂', 'MEDICAL +'][d], 576, y + 51, '#e8e6c4', 10, true);
     if (m.event?.lane === row) {
       c.strokeStyle = m.event.activated ? '#ef927c' : '#edcc83';
       c.lineWidth = 2;
@@ -681,7 +358,7 @@ export function render(
   }
   for (const crate of m.crates) {
     const x = Math.round(crate.x),
-      y = 119 + crate.lane * 79,
+      y = crateTop(crate.lane),
       market = config.variant === 'market';
     shadow(c, x + 3, y + 34, 24, 6, 0.4);
     const wood = market ? '#a88192' : '#ae8756';
@@ -704,42 +381,43 @@ export function render(
     if (crate.sleeve) {
       panel(c, x - 24, y - 11, 49, 15, '#c99b45', '#fff0aa', '#563d2d');
       rect(c, x - 23, y - 8, 47, 1, '#f1d079');
-      label(c, 'TRUMP +8', x, y, '#4d3133', 8, true);
+      label(c, 'COATING $8', x, y, '#4d3133', 8, true);
       rect(c, x + 12, y + 5, 3, 27, '#e3bd6b');
     }
   }
-  panel(c, 6, 345, 628, 42, '#162d3b', '#5a7e83');
+  drawLoadingFloor(c, m, reducedMotion);
+  panel(c, 6, 592, 628, 42, '#162d3b', '#5a7e83');
   for (let d = 0; d < 3; d++) {
     const x = 18 + d * 158;
     label(
       c,
-      `${['SCHOOL', 'CLINIC', 'PANTRY'][d]} ${m.delivered[d]}/8`,
+      `${['PHARMACY', 'HOUSING', 'MEDICAL'][d]} ${m.delivered[d]}/8`,
       x,
-      359,
+      606,
       ['#c6e6b0', '#f0becd', '#b1ede0'][d],
       10,
     );
-    rect(c, x, 365, 139, 7, '#091c2a');
+    rect(c, x, 612, 139, 7, '#091c2a');
     rect(
       c,
       x + 1,
-      366,
+      613,
       Math.min(137, (m.delivered[d] / 8) * 137),
       4,
       ['#88b897', '#bc839b', '#6eaea8'][d],
     );
-    rect(c, x + 1, 366, Math.min(137, (m.delivered[d] / 8) * 137), 1, '#d8eccc');
+    rect(c, x + 1, 613, Math.min(137, (m.delivered[d] / 8) * 137), 1, '#d8eccc');
   }
-  label(c, `TOTAL ${m.delivered.reduce((a, b) => a + b, 0)}`, 500, 359, '#efdaaa', 10);
-  label(c, `BIN ${m.recovery.length}/${m.capacity}`, 500, 375, '#a8c1c1', 10);
+  label(c, `TOTAL ${m.delivered.reduce((a, b) => a + b, 0)}`, 500, 606, '#efdaaa', 10);
+  label(c, `BIN ${m.recovery.length}/${m.capacity}`, 500, 622, '#a8c1c1', 10);
   if (m.event) {
-    const name = ['TRUMP: BRANDING', 'VANCE: VIP DIVERSION', 'JOHNSON: FREEZE'][m.event.person];
-    rect(c, 356, 73, 271, 13, '#583b45');
+    const name = ['MARA: SURCHARGE', 'ELLIS: PRIORITY DIVERSION', 'ROWAN: FREEZE'][m.event.person];
+    rect(c, 180, 571, 440, 15, '#583b45');
     label(
       c,
       `${name}${m.event.blocked ? ' BLOCKED' : !m.event.activated ? ' …' : ''}`,
-      362,
-      83,
+      186,
+      582,
       '#ffdfa3',
       9,
     );
@@ -758,7 +436,7 @@ export function render(
     label(
       c,
       m.phase === 'title'
-        ? 'EVERYBODY EATS.'
+        ? 'KEEP SUPPLIES MOVING.'
         : m.phase === 'won'
           ? 'NEIGHBORHOOD STOCKED!'
           : 'TRY ANOTHER SHIFT',
@@ -771,7 +449,7 @@ export function render(
     label(
       c,
       m.phase === 'title'
-        ? 'Strip gold sleeves. Match △ + ○ gates.'
+        ? 'Strip gold sleeves. Match △ ⌂ + gates.'
         : `Delivered ${m.delivered.reduce((a, b) => a + b, 0)} · Score ${m.score}`,
       320,
       214,

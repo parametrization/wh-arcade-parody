@@ -54,7 +54,7 @@ export const games: readonly ArcadeEntry[] = [
     genre: 'SORT · SHARE · DELIVER',
     description: 'Keep the meals moving. Send the markup packing.',
     detail:
-      'Run a neighborhood cooperative conveyor, strip absurd branded markups and route provisions to schools, clinics and pantries. Fill shelves instead of a trophy cabinet.',
+      'Watch fictional operators load cargo from four supplier trucks. Remove gold coatings to avoid surcharges and route pharmacy, housing and medical supplies.',
     accent: '#ffba78',
     icon: 'supply',
     status: 'in-development',

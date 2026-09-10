@@ -6,12 +6,12 @@ const game: GameModule = {
     id: 'supply-the-people',
     title: 'Supply the People',
     description:
-      'Strip the markup. Route meals to schools, clinics and pantries. Three shifts, one neighborhood.',
+      'Follow fictional warehouse operators from supplier trucks to conveyor belts. Remove gold surcharges and route pharmacy, housing and medical cargo.',
     controls: [
-      'Arrows: select lane',
-      'Space: strip leading sleeve / block diversion',
+      'W/S or arrows: select lane',
+      'E / Space: strip leading gold coating / lock gate',
       '1 / 2 / 3: cycle gates',
-      'B: collective bargaining bell',
+      'Q / B: dispatch bell',
       'Touch: crate and gate buttons',
     ],
     assetIds: [],

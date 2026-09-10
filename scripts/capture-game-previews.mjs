@@ -4,11 +4,13 @@ import { mkdir } from 'node:fs/promises';
 // Capture the running game itself, including Flappy's HTML name plaques.
 // Start ./dev first. Re-run after renderer changes to keep the cards accurate.
 const origin = process.env.ARCADE_PREVIEW_ORIGIN ?? 'http://localhost:8643';
+const selectedGame = process.env.ARCADE_PREVIEW_GAME;
 const output = new URL('../public/assets/previews/', import.meta.url);
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ channel: 'chrome' });
 try {
   for (const slug of ['flappy-files', 'against-the-wall', 'rio-rescue', 'supply-the-people', 'trickle-down-tycoon']) {
+    if (selectedGame && slug !== selectedGame) continue;
     const page = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
     await page.clock.install({ time: new Date('2026-09-08T12:00:00Z') });
     await page.clock.pauseAt(new Date('2026-09-08T12:00:01Z'));
@@ -24,7 +26,7 @@ try {
       }
       await page.clock.runFor(50);
     } else {
-      await page.clock.runFor(slug === 'rio-rescue' ? 1200 : 2500);
+      await page.clock.runFor(slug === 'rio-rescue' ? 1200 : slug === 'supply-the-people' ? 6500 : 2500);
     }
     const surface = page.getByTestId('game-surface');
     if (await surface.getAttribute('data-state') !== 'running') throw new Error(`${slug} is not running`);

@@ -29,8 +29,10 @@ test('fullscreen fits each playfield to the display and restores normal sizing',
         .toBe(true);
       await expect
         .poll(async () => (await canvas.boundingBox())!.height)
-        .toBeGreaterThan(normal.height + (slug === 'against-the-wall' ? 2 : 20));
+        .toBeGreaterThan(normal.height + 2);
       const expanded = (await canvas.boundingBox())!;
+      // Nearly screen-height playfields have little room to grow; preserve their aspect ratio.
+      expect(expanded.width / expanded.height).toBeCloseTo(normal.width / normal.height, 2);
       const screen = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
       expect(expanded.x).toBeGreaterThanOrEqual(0);
       expect(expanded.y).toBeGreaterThanOrEqual(0);

@@ -1,6 +1,34 @@
 import type { SupplyConfig } from './config';
 export type Destination = 0 | 1 | 2;
-export const destinations = ['School △', 'Clinic +', 'Pantry ○'] as const;
+export const materialNames = ['Pharmacy', 'Housing', 'Medical supplies'] as const;
+export const destinations = ['Pharmacy △', 'Housing ⌂', 'Medical +'] as const;
+export const supplierNames = [
+  'Pill & Parcel',
+  'Roof & Beam',
+  'Care Package Medical',
+  'Financial Misappropriations',
+] as const;
+export const operatorNames = ['Mara', 'Ellis', 'Rowan'] as const;
+export type Material = Destination;
+export type TruckId = Destination | 3;
+export const loadingStages = [
+  { phase: 'announce', duration: 0.5 },
+  { phase: 'walk-to-truck', duration: 0.65 },
+  { phase: 'retrieve', duration: 0.45 },
+  { phase: 'walk-to-belt', duration: 0.65 },
+  { phase: 'place', duration: 0.25 },
+] as const;
+export interface LoadingJob {
+  id: number;
+  lane: Destination;
+  destination: Material;
+  truck: TruckId;
+  sleeve: boolean;
+  phase: (typeof loadingStages)[number]['phase'];
+  elapsed: number;
+  duration: number;
+}
+
 export interface Crate {
   id: number;
   lane: Destination;
@@ -22,6 +50,7 @@ export interface SupplyModel {
   bells: number;
   bellTime: number;
   crates: Crate[];
+  loadingJobs: LoadingJob[];
   gates: Destination[];
   recovery: Destination[];
   event: {
@@ -56,6 +85,7 @@ export function createModel(practice = false, endless = false): SupplyModel {
     bells: 1,
     bellTime: 0,
     crates: [],
+    loadingJobs: [],
     gates: [0, 1, 2],
     recovery: [],
     event: null,
@@ -64,7 +94,7 @@ export function createModel(practice = false, endless = false): SupplyModel {
     handling: 0,
     capacity: 6,
     bellBonus: 0,
-    message: 'Strip gold sleeves. Match the destination. Everybody eats.',
+    message: 'Strip gold sleeves. Match the destination. Keep all three destinations stocked.',
     balanced: 0,
     practice,
     endless,
@@ -79,7 +109,7 @@ export function stripCrate(m: SupplyModel, id: number): boolean {
   if (!crate?.sleeve) return false;
   crate.sleeve = false;
   m.score += 5;
-  m.message = 'Markup removed. Food stays on the belt.';
+  m.message = 'Gold sleeve removed. Materials stay on the belt.';
   return true;
 }
 export function cycleGate(m: SupplyModel, lane: Destination) {
@@ -90,7 +120,7 @@ export function cycleGate(m: SupplyModel, lane: Destination) {
 export function lockGate(m: SupplyModel, lane: Destination) {
   if (m.event?.person === 1 && m.event.lane === lane) {
     m.event.blocked = true;
-    m.message = 'VIP diversion blocked. Everyone uses the same gate.';
+    m.message = 'Supplier routing change blocked. Gate remains locked.';
   }
 }
 export function ringBell(m: SupplyModel) {
@@ -99,7 +129,7 @@ export function ringBell(m: SupplyModel) {
   m.bellTime = 4 + m.bellBonus;
   m.event = null;
   m.branding = 0;
-  m.message = 'Collective bargaining! Belt slowed and interference cancelled.';
+  m.message = 'Loading bell: belts slowed and supplier processing events cancelled.';
   return true;
 }
 export function dispatch(m: SupplyModel, crate: Crate) {
@@ -112,7 +142,7 @@ export function dispatch(m: SupplyModel, crate: Crate) {
     m.budget -= 4;
     m.combo = 0;
     if (m.recovery.length < m.capacity) m.recovery.push(crate.destination);
-    m.message = 'Misroute: food saved in recovery bin when space permits.';
+    m.message = 'Misroute: materials saved in recovery bin when space permits.';
   } else {
     m.score += 10;
     m.delivered[crate.destination]++;
@@ -177,20 +207,34 @@ export function tick(m: SupplyModel, dt: number, config: SupplyConfig, random: (
       blocked: false,
     };
     m.message = [
-      'Trump wants naming rights. Watch for gold sleeves.',
-      'Vance points at a VIP gate. Lock it or ring the bell.',
-      'Johnson readies a spending freeze. Other lanes stay open.',
+      'Packaging update incoming. Watch for gold sleeves.',
+      'Supplier routing update incoming. Lock the gate or ring the bell.',
+      'Supplier processing delay incoming. Other lanes stay open.',
     ][person];
   }
+  advanceLoading(m, dt);
   if (m.nextSpawn <= 0 && m.elapsed < config.shiftSeconds) {
     m.nextSpawn = 1.45;
     const lane = (m.serial % 3) as Destination;
-    if (!(m.event?.person === 2 && m.event.activated && m.event.lane === lane)) {
+    if (
+      !m.loadingJobs.some((job) => job.lane === lane) &&
+      !(m.event?.person === 2 && m.event.activated && m.event.lane === lane)
+    ) {
       const destination =
         m.recovery.shift() ?? ((m.shift === 1 ? lane : Math.floor(random() * 3)) as Destination);
       const sleeve = m.branding > 0 || random() < 0.35;
       if (m.branding > 0) m.branding--;
-      m.crates.push({ id: ++m.serial, lane, destination, x: 24, sleeve });
+      m.loadingJobs.push({
+        id: ++m.serial,
+        lane,
+        destination,
+        truck: sleeve ? 3 : destination,
+        sleeve,
+        phase: 'announce',
+        elapsed: 0,
+        duration: loadingStages[0].duration,
+      });
+      m.message = `${operatorNames[lane]}: next ${materialNames[destination]} from ${supplierNames[sleeve ? 3 : destination]}.`;
     } else m.serial++;
   }
   const velocity = (35 + Math.min(8, m.shift - 1) * 7) * config.speed * (m.bellTime > 0 ? 0.45 : 1);
@@ -201,7 +245,7 @@ export function tick(m: SupplyModel, dt: number, config: SupplyConfig, random: (
     dispatch(m, crate);
     if (m.phase !== 'shift') return;
   }
-  if (m.elapsed >= config.shiftSeconds && m.crates.length === 0) {
+  if (m.elapsed >= config.shiftSeconds && m.crates.length === 0 && m.loadingJobs.length === 0) {
     if (m.shift < 3 || m.endless) {
       m.phase = 'upgrade';
       m.message = 'Shift complete. Choose one cooperative upgrade.';
@@ -210,8 +254,39 @@ export function tick(m: SupplyModel, dt: number, config: SupplyConfig, random: (
       m.phase = total >= 36 && Math.min(...m.delivered) >= 8 ? 'won' : 'lost';
       m.message =
         m.phase === 'won'
-          ? 'Everybody eats! The neighborhood is stocked.'
+          ? 'Delivery complete! All three destinations are stocked.'
           : 'The neighborhood needs 36 deliveries and 8 per destination. Try again.';
     }
   }
+}
+
+/** Advance existing worker jobs; every handoff creates exactly one crate on its own belt. */
+export function advanceLoading(m: SupplyModel, dt: number) {
+  if (m.phase !== 'shift' || !Number.isFinite(dt) || dt <= 0) return;
+  const completed = new Set<number>();
+  for (const job of m.loadingJobs) {
+    let remaining = dt;
+    while (remaining > 0) {
+      const step = Math.min(remaining, job.duration - job.elapsed);
+      job.elapsed += step;
+      remaining -= step;
+      if (job.elapsed + 1e-9 < job.duration) break;
+      const stage = loadingStages.findIndex((item) => item.phase === job.phase) + 1;
+      if (stage === loadingStages.length) {
+        m.crates.push({
+          id: job.id,
+          lane: job.lane,
+          destination: job.destination,
+          sleeve: job.sleeve,
+          x: 24,
+        });
+        completed.add(job.id);
+        break;
+      }
+      job.phase = loadingStages[stage].phase;
+      job.duration = loadingStages[stage].duration;
+      job.elapsed = 0;
+    }
+  }
+  m.loadingJobs = m.loadingJobs.filter((job) => !completed.has(job.id));
 }

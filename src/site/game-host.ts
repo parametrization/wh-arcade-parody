@@ -40,7 +40,7 @@ export async function mountGame(
       'Bank 100 per delivered neighbor and 25 per carried supply; district completion adds 250.',
     ],
     'supply-the-people': [
-      'Route useful supplies to the matching school, clinic or pantry. W/S selects a lane; E acts; Q rings the bell. Pointer controls remain available.',
+      'Route pharmacy, housing and medical cargo to matching destinations. Fictional operators announce and load each crate from its supplier truck. W/S selects a lane; E acts; Q rings the bell. Pointer controls remain available.',
       'Remove a sleeve for 5, deliver correctly for 10, and complete balanced sets for 20 plus budget recovery. Misroutes cost budget.',
     ],
     'trickle-down-tycoon': [
@@ -59,6 +59,9 @@ export async function mountGame(
     item.textContent = text;
     instructions.append(item);
   }
+  if (module.manifest.id === 'supply-the-people')
+    main.querySelector('.satire-caption')!.textContent =
+      'Fictional warehouse operators and suppliers. Cargo values and surcharges are game rules.';
   const host = main.querySelector<HTMLElement>('.game-surface')!;
   host.dataset.gameId = module.manifest.id;
   host.dataset.reducedMotion = String(settings.reducedMotion);

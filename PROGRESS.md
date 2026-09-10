@@ -1,5 +1,7 @@
 # Arcade fidelity and playability upgrade
 
+Current round: **Supply loading complete (2026-09-09)**. Animated fictional operators, four supplier trucks, gold-coating scoring and refreshed preview are integrated. See [round review](.internal_docs/reviews/supply-loading.md). The ten-attempt results below describe the earlier fidelity project.
+
 Status: STOPPED AT CAP. All five games completed ten reviewed attempts. Final integration checks pass; none passed the full realistic PS3-era visual criteria. Maximum: 10 reviewed implementation attempts per game. A passing game stops; a game that still fails after attempt 10 is reported as exhausted. Root integrates and reviews three concurrent specialist slots. Existing unrelated README/art-document edits are preserved.
 
 ## Acceptance criteria
@@ -93,3 +95,9 @@ Independent review also fixed Supply's construction sound firing on every pointe
 ### Preview and release state
 
 All five main-page cards were recaptured from the running games with `scripts/capture-game-previews.mjs`, after Canvas-owned image requests settled. Root inspected all five final previews: they accurately show the implemented games and retain the documented realism limitations. Generated asset specifications/provenance and original audio regeneration sources are included.
+
+## 2026-09-09: agreed fictional Supply loading round
+
+Status: complete. Production build, 158 unit tests and 15 targeted desktop/mobile browser checks pass (one unsupported mobile fullscreen check skipped). This is a new user-authorized round after the earlier ten-attempt fidelity review. Scope is Supply the People only: fictional operators, supplier trucks, visible loading, and the agreed gold-coating scoring mechanic. Other proposed game changes remain outside this round.
+
+[Implementation specification](.internal_docs/specs/supply-loading.md) records the agreed names, state machine, layout, scoring and acceptance criteria. Three agents split model/tests, rendering, and pointer/browser verification; root integrates controls, accessible announcements, help, documentation and final checks. Earlier review results above remain historical.
