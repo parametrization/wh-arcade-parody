@@ -1,3 +1,5 @@
+import { publicPath } from '../paths';
+
 export const materialNames = [
   'limestone',
   'concrete',
@@ -21,7 +23,7 @@ let atlas: HTMLImageElement | null = null;
 function image() {
   if (!atlas && typeof Image !== 'undefined') {
     atlas = new Image();
-    atlas.src = '/assets/fidelity/materials.png';
+    atlas.src = publicPath('assets/fidelity/materials.png');
   }
   return atlas?.complete && atlas.naturalWidth ? atlas : null;
 }

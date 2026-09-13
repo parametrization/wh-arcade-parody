@@ -3,7 +3,7 @@ let source: HTMLImageElement | undefined, keyed: HTMLCanvasElement | undefined;
 function prepare() {
   if (!source) {
     source = new Image();
-    source.src = '/assets/fidelity/eagle.png';
+    source.src = publicPath('assets/fidelity/eagle.png');
   }
   if (keyed) return keyed;
   if (!source.complete || !source.naturalWidth) return;
@@ -64,3 +64,4 @@ export function drawFlight(c: CanvasRenderingContext2D, time: number, y: number,
   c.restore();
   return true;
 }
+import { publicPath } from '../../shared/paths';

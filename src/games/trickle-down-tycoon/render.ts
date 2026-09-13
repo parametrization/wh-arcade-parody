@@ -7,7 +7,7 @@ function asset(name: string) {
   let img = images.get(name);
   if (!img && typeof Image !== 'undefined') {
     img = new Image();
-    img.src = `/assets/fidelity/${name}.png`;
+    img.src = publicPath(`assets/fidelity/${name}.png`);
     images.set(name, img);
   }
   return img?.complete && img.naturalWidth ? img : null;
@@ -1193,3 +1193,4 @@ export function render(
   }
   c.restore();
 }
+import { publicPath } from '../../shared/paths';

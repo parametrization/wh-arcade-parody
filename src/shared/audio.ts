@@ -1,4 +1,5 @@
 import type { AudioService } from './contracts';
+import { publicPath } from './paths';
 
 /** Local original scores and physically shaped foley; one mix bus per disposed game runtime. */
 export function createAudio(): AudioService {
@@ -58,7 +59,7 @@ export function createAudio(): AudioService {
       requested = scene;
     loading = (async () => {
       try {
-        const response = await fetch(`/assets/audio/${requested}.ogg`, {
+        const response = await fetch(publicPath(`assets/audio/${requested}.ogg`), {
           signal: controller.signal,
         });
         if (!response.ok) return;

@@ -4,6 +4,7 @@ import { defaults, tuning, validate, type Config } from './config';
 import * as model from './model';
 import { render } from './render';
 import { rigHeight } from './characters';
+import { publicPath } from '../../shared/paths';
 export function createGame(host: HTMLElement, s: GameServices): GameInstance {
   let config: Config = {
       ...defaults,
@@ -40,7 +41,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     }
   };
   backgroundImage.onerror = () => {};
-  backgroundImage.src = '/assets/fidelity/mall.png';
+  backgroundImage.src = publicPath('assets/fidelity/mall.png');
   const portraitImage = new Image();
   portraitImage.onload = () => {
     if (!destroyed) {
@@ -51,7 +52,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
   portraitImage.onerror = () => {
     /* Individual procedural portraits remain available offline. */
   };
-  portraitImage.src = '/assets/fidelity/political-heads.png';
+  portraitImage.src = publicPath('assets/fidelity/political-heads.png');
   let muted = host.dataset.muted !== 'false',
     overlayKey = '';
   function publicState(): GameState {
