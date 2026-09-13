@@ -106,14 +106,17 @@ Status: complete. Production build, 158 unit tests and 15 targeted desktop/mobil
 
 ## 2026-09-09: camera, flight and net follow-up
 
-Status: implementation in progress, three concurrent game specialists plus root integration. After finishing Rio, its specialist moved to the Wall boss encounter.
+Status: complete. Four implementation teams completed the agreed Rio, Flappy, Tycoon and Wall follow-up, with cross-review and root integration.
 
 | Game | Agreed work | Status |
 | --- | --- | --- |
-| Rio Rescue | True top-down camera, readable footprints/current direction; preserve terrain, convoy and replay | Implementing |
-| Flappy Files | Held-letter pickups; selectable 5% bounce upgrades; unlocked temporary Fly/Helicopter modes and distinct eagle poses; face overlap review | Implementing |
-| Trickle-down Tycoon | Automatic net catches, majority-overlap promise returns, adjacent action keys, clear upgrades and rooftop figures | Implementing |
-| Against the Wall | GB Smallman sound-investigation/call/reinforcement sequence | Implementing after Rio |
+| Rio Rescue | True top-down camera, readable footprints/current direction; preserve terrain, convoy and replay | Complete |
+| Flappy Files | Held-letter pickups; selectable 5% bounce upgrades; unlocked temporary Fly/Helicopter modes and distinct eagle poses; face overlap review | Complete |
+| Trickle-down Tycoon | Automatic net catches, majority-overlap promise returns, adjacent action keys, clear upgrades and rooftop figures | Complete |
+| Against the Wall | GB Smallman sound-investigation/call/reinforcement sequence | Complete |
 | Supply the People | Fictional operators, suppliers and gold removal | Completed in 0f61321 |
 
 Acceptance: preserve prior model rules and saved controls; pause freezes new state; descriptions match actual keys; desktop/mobile lifecycle and pointer input remain functional; capture real gameplay previews and review faces at play size. User confirmed Flappy unlock at 80% of baseline remaining (about five upgrades along one path). New visual work is not a claim to meet the previously exhausted PS3-realism target.
+
+
+Final follow-up verification: production build passed; 178 unit tests passed in 20 files; 101 Playwright tests passed and 1 unsupported mobile fullscreen test skipped. All five production routes start/pause without page errors or external runtime requests. Preview gallery refreshed from the built localhost server.

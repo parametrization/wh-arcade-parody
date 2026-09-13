@@ -1,6 +1,6 @@
 # Camera, flight, net and boss integration — 2026-09-09
 
-Implementation complete; final browser integration in progress. Three specialist slots handled Rio, Flappy and Tycoon; the finished Rio slot then handled Against the Wall. The Flappy and Tycoon specialists cross-reviewed each other's gameplay after implementation.
+Implementation complete; final browser integration complete. Three specialist slots handled Rio, Flappy and Tycoon; the finished Rio slot then handled Against the Wall. The Flappy and Tycoon specialists cross-reviewed each other's gameplay after implementation.
 
 ## Review corrections
 
@@ -18,6 +18,9 @@ Source hot reload interrupted early parallel browser runs; these are not counted
 - Full unit suite: 178 tests in 20 files pass.
 - Prettier checks pass for the changed source/test files.
 - All five built production routes start and pause, with no page errors, no external runtime requests and no development tuning link.
-- Full 102-case Playwright suite running; final result pending.
+- Full Playwright suite: 101 passed, 1 unsupported mobile fullscreen case skipped in 3.6 minutes. The formerly flaky desktop drowning check passes in isolation and in the final run.
 
 Visual scope: Rio received one camera implementation/review; Flappy two visual iterations plus the independent touch correction; Tycoon two visual reviews plus the independent net-geometry correction; Wall two scene reviews (initial canopy, then existing-building entrance). All satisfy this round’s bounded feature criteria, with the stylized-art limitations retained. No new PS3-realism claim.
+
+
+Updated production previews for all five games are in `public/assets/previews/`; each was captured from the built localhost server after the feature round.
