@@ -3,7 +3,7 @@ import { drawHead } from './heads';
 import { textureRect } from '../../shared/fidelity/materials';
 import { grain, litFill } from './materials';
 import { drawBurger } from './burger';
-import { CAST, type Model } from './model';
+import { CAST, letterPosition, type Model } from './model';
 import { value } from './config';
 import { drawColumnCharacter, rigHeight } from './characters';
 export function render(
@@ -252,7 +252,7 @@ export function render(
       upper: false,
       available: 388 - bottom,
       time: m.time,
-      eagleX: 154,
+      eagleX: m.x + 12,
       eagleY: m.y + 20,
       reducedMotion: reduced,
       atlas: portraits,
@@ -264,11 +264,34 @@ export function render(
       upper: true,
       available: col.gapY,
       time: m.time,
-      eagleX: 154,
+      eagleX: m.x + 12,
       eagleY: m.y + 20,
       reducedMotion: reduced,
       atlas: portraits,
     });
+    if (!col.letterCollected) {
+      const letter = letterPosition(m, col);
+      ctx.strokeStyle = '#28415e';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(letter.x, bottom + 12);
+      ctx.lineTo(letter.x - 9, letter.y + 5);
+      ctx.stroke();
+      ctx.fillStyle = '#deb18b';
+      ctx.beginPath();
+      ctx.arc(letter.x - 8, letter.y + 4, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff4ce';
+      ctx.fillRect(letter.x - 10, letter.y - 6, 20, 12);
+      ctx.strokeStyle = '#9d713c';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(letter.x - 10, letter.y - 6, 20, 12);
+      ctx.beginPath();
+      ctx.moveTo(letter.x - 9, letter.y - 5);
+      ctx.lineTo(letter.x, letter.y + 1);
+      ctx.lineTo(letter.x + 9, letter.y - 5);
+      ctx.stroke();
+    }
     if (col.burger && !col.collected) hamburger(col.x + w / 2, col.gapY + col.gap / 2);
     if (m.config['presentation.showColliders']) {
       ctx.strokeStyle = '#ff00ff';
@@ -321,14 +344,19 @@ export function render(
   // Soft projected shadow supplies a ground reference while the eagle remains freely airborne.
   ctx.fillStyle = 'rgba(14,35,38,.19)';
   ctx.beginPath();
-  ctx.ellipse(159, 402, 12 + (352 - m.y) * 0.025, 2.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(m.x + 17, 402, 12 + (352 - m.y) * 0.025, 2.5, 0, 0, Math.PI * 2);
   ctx.fill();
   const wing = reduced ? 1 : Math.floor(m.time * 12) % 3;
   const y = m.y;
-  if (!drawFlight(ctx, m.time, y, reduced)) eagle(125, y - 5, wing);
+  ctx.save();
+  ctx.translate(m.x - 142, 0);
+  if (m.flight.mode === 'normal') {
+    if (!drawFlight(ctx, m.time, y, reduced)) eagle(125, y - 5, wing);
+  } else drawBurstBird(ctx, m.flight.mode, y, m.time, reduced);
+  ctx.restore();
   if (m.config['presentation.showColliders']) {
     ctx.strokeStyle = '#ff00ff';
-    ctx.strokeRect(142, y + 12, 24, 16);
+    ctx.strokeRect(m.x, y + 12, 24, 16);
   }
   if (m.deliveries > 0) {
     rect(386, 354, 110, 34, '#754b42');
@@ -909,4 +937,91 @@ export function render(
     ctx.font = 'bold 12px monospace';
     ctx.fillText('DONALD TRUMP', x + 24, y + 224);
   }
+}
+
+function drawBurstBird(
+  c: CanvasRenderingContext2D,
+  mode: 'fly' | 'helicopter',
+  y: number,
+  time: number,
+  reduced: boolean,
+) {
+  c.save();
+  c.translate(154, y + 20);
+  c.save();
+  c.translate(-154, 0);
+  c.scale(1, mode === 'fly' ? 0.62 : 0.82);
+  const textured = drawFlight(c, 0.17, -20, true);
+  c.restore();
+  if (!textured) {
+    c.fillStyle = '#573d2b';
+    c.beginPath();
+    c.ellipse(-5, 1, 22, 9, 0, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.moveTo(-15, 0);
+    c.lineTo(-35, -5);
+    c.lineTo(-31, 7);
+    c.closePath();
+    c.fill();
+    c.fillStyle = '#eee9d6';
+    c.beginPath();
+    c.ellipse(14, -3, 10, 9, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#e8b940';
+    c.beginPath();
+    c.moveTo(21, -4);
+    c.lineTo(32, 0);
+    c.lineTo(22, 3);
+    c.closePath();
+    c.fill();
+  }
+  if (mode === 'fly') {
+    c.fillStyle = '#4b6170';
+    c.beginPath();
+    c.arc(14, -5, 11, Math.PI, Math.PI * 2);
+    c.fill();
+    c.fillRect(8, -7, 16, 6);
+    c.fillStyle = '#17232c';
+    c.fillRect(16, -5, 8, 4);
+    c.fillStyle = '#715339';
+    c.beginPath();
+    c.moveTo(0, 0);
+    c.lineTo(-26, -9);
+    c.lineTo(-17, 4);
+    c.closePath();
+    c.fill();
+    if (!reduced) {
+      c.strokeStyle = '#ffffff66';
+      for (let i = 0; i < 3; i++) {
+        c.beginPath();
+        c.moveTo(-40 - ((time * 90) % 12), i * 7 - 9);
+        c.lineTo(-58, i * 7 - 9);
+        c.stroke();
+      }
+    }
+  } else {
+    c.fillStyle = '#101719';
+    c.fillRect(9, -6, 7, 5);
+    c.fillRect(18, -6, 7, 5);
+    c.fillRect(15, -5, 4, 2);
+    c.strokeStyle = '#b59b72aa';
+    c.lineWidth = 4;
+    c.beginPath();
+    c.ellipse(-7, -13, 29, reduced ? 4 : 3 + Math.sin(time * 55) * 2, 0, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = '#e9dcc388';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.ellipse(-7, -16, 25, 3, 0, 0, Math.PI * 2);
+    c.stroke();
+  }
+  if (!textured) {
+    c.fillStyle = '#fff1cd';
+    c.fillRect(-9, 12, 20, 11);
+    c.fillStyle = '#584a32';
+    c.font = 'bold 5px sans-serif';
+    c.fillText('FILES', -6, 19);
+  }
+  c.restore();
 }

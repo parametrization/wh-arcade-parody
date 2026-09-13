@@ -20,7 +20,7 @@ The no-argument launcher serves **http://localhost:8643** with hot reload. Depen
 | Supply the People | `/games/supply-the-people/` | Strip branded markups, route food to community destinations and balance deliveries over a campaign. |
 | Trump Trickle-Down Tycoon | `/games/trickle-down-tycoon/` | Catch resources, reject hollow promises and invest in education, care and housing. |
 
-All five share Start, Pause/Resume, Restart and Exit controls. Play areas scale up to 150% of their logical resolution on desktop and shrink to fit mobile screens. Each provides keyboard and touch controls. Settings store local preferences and remapped actions; no account or backend is required. The sixth arcade tile remains a nonplayable coming-soon placeholder.
+All five share Start, Pause/Resume, Restart and Exit controls. Play areas scale up to 150% of their logical resolution on desktop and shrink to fit mobile screens. Fullscreen fits the playfield to the available display and restores normal sizing on exit. Each provides keyboard and touch controls. Settings store local preferences and remapped actions; no account or backend is required. The sixth arcade tile remains a nonplayable coming-soon placeholder.
 
 ## Current stage
 

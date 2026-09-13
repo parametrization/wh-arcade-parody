@@ -9,10 +9,10 @@ const game: GameModule = {
       'Catch useful resources, return empty promises and build the community safety net across five rounds.',
     controls: [
       'Arrows / A-D: move the net',
-      'Space: catch window',
-      'Q: return a caught promise · U: toggle umbrella · F: public audit',
+      'Catch automatically when cargo touches the net',
+      'J: audit · K: umbrella · L: return promise (legacy F / U / Q also work)',
       '1 / 2 / 3: select lane',
-      'Touch: drag and Catch button',
+      'Touch: drag to catch; Return when a promise is over halfway in the net',
     ],
     assetIds: [],
   },

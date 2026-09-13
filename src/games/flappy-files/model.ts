@@ -11,6 +11,7 @@ export interface Column {
   collected: boolean;
   name: string;
   topName: string;
+  letterCollected?: boolean;
 }
 export interface Model {
   phase: Phase;
@@ -21,7 +22,15 @@ export interface Model {
   time: number;
   phaseTime: number;
   y: number;
+  x: number;
   vy: number;
+  flight: {
+    speedFactor: number;
+    varianceFactor: number;
+    pending: number;
+    mode: 'normal' | 'fly' | 'helicopter';
+    remaining: number;
+  };
   columns: Column[];
   clearances: number;
   deliveries: number;
@@ -67,6 +76,8 @@ export function create(
     time: 0,
     phaseTime: 0,
     y: 170,
+    x: 142,
+    flight: { speedFactor: 1, varianceFactor: 1, pending: 0, mode: 'normal', remaining: 0 },
     vy: 0,
     columns: [],
     clearances: 0,
@@ -92,10 +103,39 @@ export function flap(m: Model) {
     m.phase = 'running';
     m.effects.push('start');
   }
-  if (m.phase === 'running') {
-    m.vy = value(m.config, 'physics.flapVelocity');
+  if (m.phase === 'running' && m.flight.mode === 'normal' && !m.flight.pending) {
+    m.vy = value(m.config, 'physics.flapVelocity') * Math.sqrt(m.flight.varianceFactor);
     m.effects.push('flap');
   }
+}
+export type FlightUpgrade = 'speed' | 'variance' | 'fly' | 'helicopter';
+export const burstUnlocked = (m: Model) =>
+  Math.min(m.flight.speedFactor, m.flight.varianceFactor) <= 0.8;
+export function chooseFlightUpgrade(m: Model, choice: FlightUpgrade) {
+  if (m.phase !== 'running' || !m.flight.pending) return false;
+  if ((choice === 'fly' || choice === 'helicopter') && !burstUnlocked(m)) return false;
+  if (choice === 'speed') m.flight.speedFactor *= 0.95;
+  else if (choice === 'variance') m.flight.varianceFactor *= 0.95;
+  else {
+    m.flight.mode = choice;
+    m.flight.remaining = value(m.config, 'flight.burstSeconds');
+    m.vy = 0;
+  }
+  m.flight.pending--;
+  m.effects.push('upgrade');
+  return true;
+}
+/** The letter is held just inside the gap, reachable without entering column collision. */
+export const letterPosition = (m: Model, col: Column) => ({
+  x: col.x + value(m.config, 'columns.width') / 2,
+  y: col.gapY + col.gap - 22,
+});
+export interface FlightInput {
+  up?: boolean;
+  down?: boolean;
+  left?: boolean;
+  right?: boolean;
+  lift?: boolean;
 }
 export function pause(m: Model) {
   if (['running', 'falling'].includes(m.phase)) {
@@ -168,6 +208,7 @@ export function nextChapter(m: Model) {
   m.chapter++;
   m.phase = 'running';
   m.y = 170;
+  m.x = 142;
   m.vy = 0;
   m.columns = [];
   cooldown(m);
@@ -177,7 +218,8 @@ export function speed(m: Model) {
     (value(m.config, 'scroll.start') +
       (value(m.config, 'scroll.max') - value(m.config, 'scroll.start')) *
         Math.min(1, m.clearances / value(m.config, 'difficulty.capClearances'))) *
-    (m.config['assist.enabled'] ? 0.8 : 1)
+    (m.config['assist.enabled'] ? 0.8 : 1) *
+    (m.flight.mode === 'fly' ? 2 : 1)
   );
 }
 export function spawn(m: Model, x: number) {
@@ -218,13 +260,41 @@ function crash(m: Model, ground = false) {
   m.event.phase = 'idle';
   m.effects.push('crash');
 }
-export function step(m: Model, dt: number) {
-  if (!['running', 'falling'].includes(m.phase)) return;
+export function step(m: Model, dt: number, input: FlightInput = {}) {
+  if (!['running', 'falling'].includes(m.phase) || m.flight.pending) return;
   m.time += dt;
   m.phaseTime += dt;
   const c = m.config;
-  m.vy = Math.min(value(c, 'physics.terminalVelocity'), m.vy + value(c, 'physics.gravity') * dt);
-  m.y += m.vy * dt;
+  if (m.phase === 'running' && m.flight.mode !== 'normal') {
+    m.flight.remaining = Math.max(0, m.flight.remaining - dt);
+    if (m.flight.mode === 'fly') {
+      m.x = Math.max(
+        24,
+        Math.min(450, m.x + (Number(!!input.right) - Number(!!input.left)) * 160 * dt),
+      );
+      m.vy = (Number(!!input.down) - Number(!!input.up)) * 150;
+    } else {
+      const target =
+        input.lift || input.up
+          ? -value(c, 'flight.helicopterRise')
+          : input.down
+            ? Math.max(80, value(c, 'flight.helicopterSink'))
+            : value(c, 'flight.helicopterSink');
+      m.vy += (target - m.vy) * Math.min(1, dt * 8);
+    }
+    m.y += m.vy * dt;
+    if (!m.flight.remaining) {
+      m.flight.mode = 'normal';
+      m.vy = 0;
+    }
+  } else {
+    const factor = m.phase === 'falling' ? 1 : m.flight.speedFactor;
+    m.vy = Math.min(
+      value(c, 'physics.terminalVelocity'),
+      m.vy + value(c, 'physics.gravity') * dt * factor,
+    );
+    m.y += m.vy * dt * factor;
+  }
   if (m.y < 0) {
     m.y = 0;
     m.vy = 0;
@@ -240,7 +310,7 @@ export function step(m: Model, dt: number) {
   m.columns = m.columns.filter((col) => col.x + value(c, 'columns.width') > 0);
   if (!m.columns.length) spawn(m, 572);
   while (m.columns.at(-1)!.x < 512) spawn(m, m.columns.at(-1)!.x + value(c, 'columns.spacing'));
-  const bird = { x: 142, y: m.y + 12, w: 24, h: 16 };
+  const bird = { x: m.x, y: m.y + 12, w: 24, h: 16 };
   for (const col of m.columns) {
     if (
       bird.x < col.x + value(c, 'columns.width') &&
@@ -252,6 +322,16 @@ export function step(m: Model, dt: number) {
     }
   }
   for (const col of m.columns) {
+    const letter = letterPosition(m, col);
+    if (
+      !col.letterCollected &&
+      Math.abs(bird.x + 12 - letter.x) < 22 &&
+      Math.abs(bird.y + 8 - letter.y) < 18
+    ) {
+      col.letterCollected = true;
+      m.flight.pending++;
+      m.effects.push('letter');
+    }
     const bx = col.x + value(c, 'columns.width') / 2,
       by = col.gapY + col.gap / 2;
     if (
@@ -264,7 +344,7 @@ export function step(m: Model, dt: number) {
       m.burgers = Math.min(value(c, 'burger.capacity'), m.burgers + 1);
       m.effects.push('pickup');
     }
-    if (!col.passed && col.x + value(c, 'columns.width') < 154) {
+    if (!col.passed && col.x + value(c, 'columns.width') < m.x + 12) {
       col.passed = true;
       m.clearances++;
       m.effects.push('score');

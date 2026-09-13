@@ -548,6 +548,8 @@ export function drawScene(
     dead: boolean,
     climb = false,
     crawl = false,
+    outfit: 'normal' | 'ICE' | 'BP' | 'boss' = 'normal',
+    tactical = false,
   ) => {
     const cs = Math.cos(heading),
       sn = Math.sin(heading);
@@ -559,7 +561,14 @@ export function drawScene(
         b *= 0.8;
         h = 0.97 + (h - 0.97) * 0.8;
       }
-      return v(x + a * cs - b * sn, y + a * sn + b * cs, ground + h);
+      const width = outfit === 'ICE' ? 1.55 : outfit === 'boss' ? 0.7 : 1;
+      a *= width;
+      b *= width;
+      return v(
+        x + a * cs - b * sn,
+        y + a * sn + b * cs,
+        ground + h * (outfit === 'boss' ? 0.5 : 1),
+      );
     };
     const screen = project(local(0, 0, 0.5));
     if (screen.x < -100 || screen.x > 1060 || screen.y < -120 || screen.y > 800) return;
@@ -714,7 +723,37 @@ export function drawScene(
     oval(0.125, 0, 1.102, 0.036, 0.026, 0.042, skin);
     beam(local(0.117, -0.035, 1.057), local(0.122, 0.035, 1.057), 0.005, '#775443');
     oval(-0.02, 0, 1.208, 0.106, 0.096, 0.051, player ? '#3b3029' : coat);
-    if (!player) oval(0.08, 0, 1.197, 0.109, 0.109, 0.015, '#3e473c');
+    if (!player && outfit !== 'boss') oval(0.08, 0, 1.197, 0.109, 0.109, 0.015, '#3e473c');
+    if (outfit === 'ICE' || outfit === 'BP') {
+      oval(0.139, 0, 1.075, 0.032, 0.085, 0.057, outfit === 'ICE' ? '#202d38' : '#899183');
+      for (const side of [-1, 1])
+        beam(local(0.11, side * 0.07, 1.1), local(-0.02, side * 0.1, 1.1), 0.008, '#bbc2ae');
+    }
+    if (tactical) {
+      oval(0.1, 0, 0.77, 0.08, 0.19, 0.17, '#25352e');
+      for (const side of [-1, 1]) oval(0.15, side * 0.1, 0.65, 0.045, 0.055, 0.06, '#697761');
+      beam(local(0.14, -0.17, 0.74), local(0.5, -0.17, 0.72), 0.04, '#1f282d');
+    }
+    if (outfit === 'boss') {
+      oval(-0.01, 0, 1.223, 0.08, 0.05, 0.055, '#292b2b');
+      beam(local(0.14, -0.15, 0.9), local(0.14, 0.15, 0.48), 0.025, '#79553b');
+      face([local(0.15, 0, 0.53), local(0.15, -0.12, 0.34), local(0.15, 0.12, 0.34)], '#6b879066');
+      const alarm = ['to-radio', 'radio', 'phone'].includes(s.boss.phase);
+      if (alarm) {
+        for (const side of [-1, 1]) {
+          const drop = reducedMotion ? 0.03 : (s.time * 1.8 + side * 0.15) % 0.2;
+          oval(0.145, side * 0.056, 1.105 - drop, 0.013, 0.012, 0.028, '#a9dff1');
+        }
+        const phone = s.boss.phase === 'phone';
+        beam(local(0.08, -0.22, 0.72), local(0.15, -0.12, phone ? 1.1 : 0.92), 0.04, skin);
+        beam(
+          local(0.16, -0.13, phone ? 1.02 : 0.84),
+          local(0.16, -0.13, phone ? 1.16 : 1.02),
+          phone ? 0.035 : 0.05,
+          '#121c28',
+        );
+      }
+    }
     if (player) {
       oval(-0.145, 0, 0.72, 0.105, 0.155, 0.19, '#78674f');
       for (const side of [-1, 1])
@@ -741,6 +780,53 @@ export function drawScene(
         );
     }
   };
+  const boss = s.boss;
+  const alarm = ['to-radio', 'radio', 'phone'].includes(boss.phase);
+  // The canopy and doorway mark an existing solid building; its forecourt remains walkable.
+  const bx = boss.cantina.x,
+    by = boss.cantina.y;
+  for (const dx of [-0.7, 0.7])
+    box(bx + dx, by - 0.65, 0, 0.06, 0.06, 1.4, '#645840', '#ad976f', '#534d40');
+  box(bx - 0.8, by - 0.8, 1.35, 1.6, 0.35, 0.13, '#526368', '#abb29d', '#374851');
+  face(
+    [
+      v(bx - 0.3, by - 0.49, 0),
+      v(bx + 0.3, by - 0.49, 0),
+      v(bx + 0.3, by - 0.49, 1.15),
+      v(bx - 0.3, by - 0.49, 1.15),
+    ],
+    '#20333c',
+  );
+  labels.push({ p: v(bx, by - 0.65, 1.65), text: 'ICE & BP · CANTINA', color: '#ffe9b1' });
+  for (const puddle of boss.trails) {
+    const alpha = Math.max(0, Math.min(1, (puddle.expires - s.time) / 10));
+    const points = Array.from({ length: 12 }, (_, i) =>
+      v(
+        puddle.x + Math.cos((i * Math.PI) / 6) * 0.2,
+        puddle.y + Math.sin((i * Math.PI) / 6) * 0.13,
+        0.012,
+      ),
+    );
+    face(points, `rgba(130,165,155,${alpha * 0.5})`, true, undefined, true);
+  }
+  person(
+    boss.x,
+    boss.y,
+    boss.heading,
+    !reducedMotion && boss.moving ? Math.sin(boss.walkDistance * 13) * 0.12 : 0,
+    '#171d28',
+    alarm ? '#dc7c72' : '#d1a27e',
+    false,
+    false,
+    false,
+    false,
+    'boss',
+  );
+  labels.push({
+    p: v(boss.x, boss.y, 0.82),
+    text: `GB SMALLMAN · ${boss.phase.toUpperCase()}${boss.remaining > 0 ? ' ' + Math.ceil(boss.remaining) + 's' : ''}`,
+    color: '#f0cdb6',
+  });
   const cast = [...s.enemies.map((e) => ({ x: e.x, y: e.y, e })), { x: s.x, y: s.y, e: null }];
   if (!s.companion.helped)
     person(s.companion.x, s.companion.y, Math.PI / 2, 0, '#c8a064', '#cb9e7d', true, false);
@@ -773,6 +859,8 @@ export function drawScene(
       player ? s.health <= 0 : e?.state === 'dead',
       player && s.crossing?.material === 'fence',
       player && s.crossing?.material === 'concrete',
+      e?.faction === 'ICE' ? 'ICE' : e?.faction === 'Border Patrol' ? 'BP' : 'normal',
+      !!e?.reinforcement,
     );
     if (e?.state !== 'dead')
       labels.push({

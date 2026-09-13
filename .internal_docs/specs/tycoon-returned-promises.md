@@ -26,3 +26,11 @@ On capitulation arrival, increase the bonus, count all stored resource units, ad
 Booths sit over lane centers140,320,500 on a pale, symmetric White House-style facade. Compact Education/Care/Homes occupy the bottom-left panel; game title, score, bonus, stored-promise count and wet/speed readouts occupy the bottom-right panel.
 
 Tests cover attribution/FIFO returns, concurrent-return blocking, flood timing, frame-independent wetness, umbrella and off-lane protection, all reward phases, automatic arrival, integer bonus awards, the 200% cap, normal/practice round gating, pause, controls and restart. Gameplay preview is recaptured from the updated renderer.
+
+## September 9 refinement (supersedes controls/layout above)
+
+Useful cargo now catches automatically on contact with the visible net. Hollow promises require strictly more than half their icon area inside the net, using the same tapered geometry as rendering; stored promises keep their issuer and remain returnable. The optional legacy Catch action remains compatible with practice, but is not required. J/K/L provide Audit/Umbrella/Return next to one another; F/U/E/Q remain aliases. Saved overrides reserve their keys ahead of defaults, and button labels show effective bindings.
+
+The three issuers stand on a supported rooftop terrace, with roof-edge name plaques rather than portrait boxes. A loaded headshot suppresses the fallback face entirely. Education now slows falling cargo by 8 percentage points per level (replacing the obsolete manual catch window); care restores two integrity per level between rounds, and housing widens the net by 15% per level. Upgrade controls state costs and effects. All reaction timers and bonus arithmetic above remain in force.
+
+See [refinement review](../reviews/tycoon-refinement.md) and the top-level progress tracker for final verification.

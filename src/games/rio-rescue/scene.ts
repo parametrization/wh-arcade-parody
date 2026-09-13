@@ -1,4 +1,5 @@
 import { textureFace, textureWorldFace, type MaterialName } from '../../shared/fidelity/materials';
+import { createTopDownCamera, TILE_SIZE } from './camera';
 import { dock, getCameraViews, cameraSees, type Model } from './model';
 import { getTerrain, terrainHeight, riverCurrent, MAP_WIDTH, MAP_HEIGHT } from './terrain';
 
@@ -11,7 +12,7 @@ function shade(color: string, light: number) {
     Math.max(0, Math.min(255, Math.round(((value >> shift) & 255) * light)));
   return `rgb(${channel(16)} ${channel(8)} ${channel(0)})`;
 }
-/** Fixed-heading perspective camera: east stays screen-right and south stays screen-down. */
+/** Orthographic overhead view: height never moves an object's collision footprint. */
 export function drawScene(
   c: CanvasRenderingContext2D,
   m: Model,
@@ -19,29 +20,12 @@ export function drawScene(
   reducedMotion: boolean,
 ) {
   const lead = poses[0] ?? m.body[0];
-  const cx = lead.x + 0.5,
-    cy = lead.y + 0.5;
+  const camera = createTopDownCamera(lead);
+  const project = camera.project;
   const heightAt = (x: number, y: number) =>
     terrainHeight(m.district, Math.floor(x), Math.floor(y), m.seed);
-  const smoothHeight = (x: number, y: number) => {
-    const fx = x - Math.floor(x),
-      fy = y - Math.floor(y);
-    return (
-      heightAt(x, y) * (1 - fx) * (1 - fy) +
-      heightAt(x + 1, y) * fx * (1 - fy) +
-      heightAt(x, y + 1) * (1 - fx) * fy +
-      heightAt(x + 1, y + 1) * fx * fy
-    );
-  };
-  const cameraHeight = smoothHeight(lead.x, lead.y);
-  const depth = (v: V) => 15 - (v.y - cy) * 0.68 - (v.z - cameraHeight) * 0.73;
-  const project = (v: V) => {
-    const d = Math.max(2, depth(v));
-    return {
-      x: 480 + ((v.x - cx) * 1000) / d,
-      y: 350 + (((v.y - cy) * 0.73 - (v.z - cameraHeight) * 0.68) * 1000) / d,
-    };
-  };
+  const smoothHeight = (x: number, y: number) => heightAt(x + 0.5, y + 0.5);
+  const depth = (v: V) => -v.z;
   const faces: Face[] = [];
   const v = (x: number, y: number, z = 0): V => ({ x, y, z });
   const face = (
@@ -51,7 +35,12 @@ export function drawScene(
     ground = false,
     material?: MaterialName,
   ) => {
-    if (points.some((p) => depth(p) < 2)) return;
+    // Vertical sides have zero area in an overhead view. Skip their textures too.
+    const area = points.reduce((sum, p, i) => {
+      const q = points[(i + 1) % points.length];
+      return sum + p.x * q.y - q.x * p.y;
+    }, 0);
+    if (Math.abs(area) < 1e-8) return;
     faces.push({
       points,
       color,
@@ -95,24 +84,8 @@ export function drawScene(
       color,
     );
   };
-  const sky = c.createLinearGradient(0, 0, 0, 640);
-  sky.addColorStop(0, '#849599');
-  sky.addColorStop(0.55, '#d8c5a1');
-  sky.addColorStop(1, '#978974');
-  c.fillStyle = sky;
+  c.fillStyle = '#b2a17d';
   c.fillRect(0, 0, 960, 640);
-  for (let layer = 0; layer < 3; layer++) {
-    c.fillStyle = ['#a9a68f', '#99977f', '#848c79'][layer];
-    c.beginPath();
-    c.moveTo(0, 640);
-    for (let x = -100; x <= 1060; x += 80)
-      c.lineTo(
-        x,
-        90 + layer * 52 + Math.sin(x * 0.013 + layer) * 24 + ((x + 100) % 160 === 0 ? 18 : 0),
-      );
-    c.lineTo(960, 640);
-    c.fill();
-  }
   const labels: { point: V; text: string; color: string }[] = [];
   for (let y = 0; y < MAP_HEIGHT; y++)
     for (let x = 0; x < MAP_WIDTH; x++) {
@@ -227,10 +200,34 @@ export function drawScene(
         }
       if (terrain === 'mountain') {
         const peak = v(x + 0.38, y + 0.58, elevation + 1.1 + (seed % 3) * 0.2);
-        face([v(x, y, elevation), v(x + 1, y, elevation), peak], '#a29b80');
-        face([v(x + 1, y, elevation), v(x + 1, y + 1, elevation), peak], '#7e806d');
-        face([v(x + 1, y + 1, elevation), v(x, y + 1, elevation), peak], '#8f876c');
-        face([v(x, y + 1, elevation), v(x, y, elevation), peak], '#c4b693');
+        face(
+          [v(x, y, elevation), v(x + 1, y, elevation), peak],
+          '#a29b80',
+          undefined,
+          false,
+          'rock',
+        );
+        face(
+          [v(x + 1, y, elevation), v(x + 1, y + 1, elevation), peak],
+          '#7e806d',
+          undefined,
+          false,
+          'rock',
+        );
+        face(
+          [v(x + 1, y + 1, elevation), v(x, y + 1, elevation), peak],
+          '#8f876c',
+          undefined,
+          false,
+          'rock',
+        );
+        face(
+          [v(x, y + 1, elevation), v(x, y, elevation), peak],
+          '#c4b693',
+          undefined,
+          false,
+          'rock',
+        );
       }
       if (terrain === 'wall') box(x, y, 0, 1, 1, 0.9, '#8c7c62', '#c8b594', '#776b58');
       else if (terrain === 'bridge') {
@@ -698,29 +695,61 @@ export function drawScene(
         textureWorldFace(c, points, f.points, f.material, f.material === 'water' ? 0.25 : 0.38);
       else textureFace(c, points, f.material, 0.25);
     }
-    // Distance haze is applied to each opaque material face, leaving status/vision overlays clear.
-    if (f.material) {
-      const distance =
-        f.points.reduce((sum, p) => sum + Math.max(0, cy - p.y - 2), 0) / f.points.length;
-      const haze = Math.min(0.19, distance * 0.014);
-      if (haze > 0) {
-        c.beginPath();
-        points.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
-        c.closePath();
-        c.fillStyle = `rgba(198,188,158,${haze})`;
-        c.fill();
-      }
-    }
     if (f.edge) {
       c.strokeStyle = f.edge;
       c.lineWidth = 0.6;
       c.stroke();
     }
   }
+  // Overhead cliff rims stay within their own cells; no vertical face hides a route.
+  for (let y = 0; y < MAP_HEIGHT; y++)
+    for (let x = 0; x < MAP_WIDTH; x++) {
+      const terrain = getTerrain(m.district, x, y, m.seed);
+      const p = project(v(x, y));
+      if (p.x < -TILE_SIZE || p.x > 960 || p.y < -TILE_SIZE || p.y > 640) continue;
+      if (terrain === 'canyon' || terrain === 'mesa' || terrain === 'plateau') {
+        c.strokeStyle = terrain === 'canyon' ? '#d4b58b' : '#715a40';
+        c.lineWidth = terrain === 'canyon' ? 4 : 2;
+        for (const [dx, dy] of [
+          [-1, 0],
+          [1, 0],
+          [0, -1],
+          [0, 1],
+        ]) {
+          if (getTerrain(m.district, x + dx, y + dy, m.seed) === terrain) continue;
+          c.beginPath();
+          if (dx) {
+            const edge = p.x + (dx > 0 ? TILE_SIZE - 2 : 2);
+            c.moveTo(edge, p.y + 2);
+            c.lineTo(edge, p.y + TILE_SIZE - 2);
+          } else {
+            const edge = p.y + (dy > 0 ? TILE_SIZE - 2 : 2);
+            c.moveTo(p.x + 2, edge);
+            c.lineTo(p.x + TILE_SIZE - 2, edge);
+          }
+          c.stroke();
+        }
+      }
+      if (terrain === 'river' && (x + y) % 3 === 0) {
+        const current = riverCurrent(m.district, x, y, m.seed);
+        if (!current) continue;
+        c.fillStyle = '#d9f2e8aa';
+        c.font = '18px sans-serif';
+        c.textAlign = 'center';
+        c.fillText(current.y < 0 ? '↑' : '↓', p.x + TILE_SIZE / 2, p.y + TILE_SIZE / 2 + 6);
+      }
+    }
+  const player = project(v(lead.x + 0.5, lead.y + 0.5));
+  c.strokeStyle = '#8dffe1';
+  c.lineWidth = 2;
+  c.beginPath();
+  c.arc(player.x, player.y, TILE_SIZE * 0.37, 0, Math.PI * 2);
+  c.stroke();
   c.textAlign = 'center';
   c.font = 'bold 12px monospace';
   for (const label of labels) {
-    const p = project(label.point);
+    const anchor = project(label.point);
+    const p = { x: anchor.x, y: anchor.y - TILE_SIZE * 0.43 };
     if (p.x < 30 || p.x > 930 || p.y < 30 || p.y > 610) continue;
     const width = c.measureText(label.text).width;
     c.fillStyle = '#182d35dd';
@@ -730,11 +759,14 @@ export function drawScene(
   }
   const destination = project(v(dock.x + 0.5, dock.y + 0.5));
   if (destination.x < 40 || destination.x > 920 || destination.y < 30 || destination.y > 600) {
+    const dx = dock.x - lead.x,
+      dy = dock.y - lead.y;
+    const arrow = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? '←' : '→') : dy < 0 ? '↑' : '↓';
     c.fillStyle = '#17392de8';
-    c.fillRect(12, 12, 208, 27);
+    c.fillRect(12, 12, 235, 27);
     c.fillStyle = '#bef2ca';
     c.textAlign = 'left';
-    c.fillText(`${destination.x < 480 ? '←' : '→'} WELCOME CENTER`, 24, 31);
+    c.fillText(`${arrow} WELCOME CENTER · ${Math.ceil(Math.hypot(dx, dy))}`, 24, 31);
   }
   // Full-map overview makes the larger procedural terrain navigable.
   c.save();
@@ -760,6 +792,14 @@ export function drawScene(
       c.fillStyle = colors[getTerrain(m.district, x, y, m.seed)] ?? '#b2a37e';
       c.fillRect(mapX + x * scale, mapY + y * scale, scale, scale);
     }
+  c.strokeStyle = '#ffffffaa';
+  c.lineWidth = 1;
+  c.strokeRect(
+    mapX + camera.left * scale,
+    mapY + camera.top * scale,
+    camera.columns * scale,
+    camera.rows * scale,
+  );
   const marker = (x: number, y: number, color: string, r = 2) => {
     c.fillStyle = '#0b2029';
     c.fillRect(mapX + x * scale - r - 1, mapY + y * scale - r - 1, r * 2 + 2, r * 2 + 2);

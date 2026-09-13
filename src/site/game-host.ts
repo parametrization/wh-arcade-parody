@@ -27,15 +27,15 @@ export async function mountGame(
   const quickGuides: Record<string, string[]> = {
     'flappy-files': [
       'Keep the eagle airborne and thread the column gaps. Collect burgers to dismiss the obstruction with Q, E or H.',
-      'Earn one point for each cleared column. Beat your best while keeping a steady rhythm.',
+      'Earn one point per cleared column. Touch a held letter to choose 1: slower bounce or 2: smaller bounce. At 80% remaining, choose 3: eight-second Fly (WASD/arrows, double forward speed), or 4: Helicopter (hold Space to rise, release to descend gently). Upgrade choices freeze the action.',
     ],
     'against-the-wall': [
       'Reach the Asylum Office beyond the border. WASD/arrows move; Shift sprints for four seconds; Q/B builds; E collects or helps.',
       'Use cover until attention drains. Nighttime flashlights and friendly fire change patrol encounters. Hidden tunnel exits can collapse or flood.',
-      'Bank 50 per supply and 200 per rescued neighbor at district completion; finishing awards 1,000. Injury never earns points.',
+      'GB Smallman investigates sounds on the far side. Interrupt his five-second radio and ten-second phone sequence with a new distraction before four faster-firing responders arrive. Live trail marks alert him; one dispatch is available per district. Bank 50 per supply, 200 per rescued neighbor and 1,000 for finishing.',
     ],
     'rio-rescue': [
-      'Steer a growing convoy to neighbors and return to the Welcome Center. Leave room to turn: your own trail is an obstacle.',
+      'Steer a growing convoy from directly overhead: arrows/WASD move in the matching screen direction. Reach neighbors and return to the Welcome Center; your own trail is an obstacle.',
       'Bridges avoid river drift. Marked fence sections climb automatically. Q/Space shares supplies; E/X waits for camera sweeps.',
       'Bank 100 per delivered neighbor and 25 per carried supply; district completion adds 250.',
     ],
@@ -44,7 +44,7 @@ export async function mountGame(
       'Remove a sleeve for 5, deliver correctly for 10, and complete balanced sets for 20 plus budget recovery. Misroutes cost budget.',
     ],
     'trickle-down-tycoon': [
-      'Move the basket with A/D or the pointer. Catch useful resources; Q returns stored empty promises; E/U opens the umbrella during yellow soda floods.',
+      'Move the net with arrows, A/D or the pointer; useful resources are caught automatically on contact. Use J to audit, K for the umbrella and L to return a promise once more than half is inside the net or it is stored. Q and E/U remain return and umbrella shortcuts.',
       'Capitulation fulfills promises automatically. Its stacking bonus grows by 10% up to 200% and applies to positive scores. Protect the basket while chasing your best.',
     ],
   };
@@ -53,6 +53,12 @@ export async function mountGame(
     const p = document.createElement('p');
     p.textContent = text;
     instructions.before(p);
+  }
+  if (Object.keys(loadBindings()).length) {
+    const note = document.createElement('p');
+    note.textContent =
+      'Your saved key remappings take priority over the default shortcuts described here. Conflicting default shortcuts are disabled; other aliases remain available.';
+    instructions.before(note);
   }
   for (const text of module.manifest.controls) {
     const item = document.createElement('li');

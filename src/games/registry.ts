@@ -18,7 +18,7 @@ export const games: readonly ArcadeEntry[] = [
     genre: 'FLAP · DODGE · DELIVER',
     description: 'Keep the records in the air. Get them to the people.',
     detail:
-      'Carry the Epstein Files through a maze of red tape, named political caricatures and very large distractions. Hamburger countermeasures included. An invented political cartoon; appearing here does not allege involvement in a crime.',
+      'Carry the Epstein Files through a maze of red tape, named political caricatures and very large distractions. Collect held letters to improve flight and unlock Fly or Helicopter bursts. Hamburger countermeasures included. An invented political cartoon; appearing here does not allege involvement in a crime.',
     accent: '#62f3eb',
     icon: 'files',
     status: 'in-development',
@@ -30,7 +30,7 @@ export const games: readonly ArcadeEntry[] = [
     genre: 'EVADE · OUTSMART · ARRIVE',
     description: 'A different side of the wall. A chance to build a future.',
     detail:
-      'Find a route through a divided border landscape. Cut wire, build a ladder or dig under concrete, evade competing pursuers and reach the Asylum Office.',
+      'Find a route through a divided border landscape. Cut wire, build a ladder or dig under concrete, evade competing pursuers and GB Smallman’s noisy cantina response, and reach the Asylum Office.',
     accent: '#ef89e8',
     icon: 'wall',
     status: 'in-development',
@@ -42,7 +42,7 @@ export const games: readonly ArcadeEntry[] = [
     genre: 'CONNECT · GUIDE · RESCUE',
     description: 'Make room in the welcome wagon. Nobody gets left behind.',
     detail:
-      'Guide a growing convoy over canyon bridges, across rivers and through climbable fence sections. Time your route around scanning cameras, share supplies and bring everyone to safety.',
+      'Guide a growing convoy from directly overhead, over canyon bridges, across rivers and through climbable fence sections. Time your route around scanning cameras, share supplies and bring everyone to safety.',
     accent: '#d4ff76',
     icon: 'rio',
     status: 'in-development',
@@ -52,7 +52,7 @@ export const games: readonly ArcadeEntry[] = [
     title: 'Supply the People',
     originalTitle: 'Supply Line',
     genre: 'SORT · SHARE · DELIVER',
-    description: 'Keep the meals moving. Send the markup packing.',
+    description: 'Keep supplies moving. Send the markup packing.',
     detail:
       'Watch fictional operators load cargo from four supplier trucks. Remove gold coatings to avoid surcharges and route pharmacy, housing and medical supplies.',
     accent: '#ffba78',
@@ -66,7 +66,7 @@ export const games: readonly ArcadeEntry[] = [
     genre: 'CATCH · INVEST · REBUILD',
     description: 'Build the safety net. Catch more than promises.',
     detail:
-      'Operate the community safety net beneath a very ornate promise machine. Catch resources, dodge hollow gold balloons and build homes, clinics and schools between arcade rounds.',
+      'Operate the community safety net beneath a very ornate promise machine. Catch resources automatically, return hollow promises to their issuers, and build homes, clinics and schools between arcade rounds.',
     accent: '#e9d875',
     icon: 'tycoon',
     status: 'in-development',

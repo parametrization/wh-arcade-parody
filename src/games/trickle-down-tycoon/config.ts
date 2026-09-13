@@ -34,7 +34,12 @@ export const tuning: TuningField[] = [
     restart: true,
   },
   { key: 'practice', label: 'Untimed practice', type: 'boolean', default: false, restart: true },
-  { key: 'autoCatch', label: 'Auto-catch while aligned', type: 'boolean', default: false },
+  {
+    key: 'autoCatch',
+    label: 'Legacy assisted score category (catching is always automatic)',
+    type: 'boolean',
+    default: false,
+  },
   {
     key: 'variant',
     label: 'Safety net artwork',

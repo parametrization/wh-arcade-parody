@@ -37,7 +37,7 @@ export const game: GameModule = {
   create(host, services) {
     const root = document.createElement('section');
     root.innerHTML =
-      '<p class="rio-route-help">Swim across winding rivers: current pushes you downstream · Bridges avoid drift · Climb marked fence sections · X: wait for cameras · Space: share supplies</p><p data-hud role="status" aria-live="polite"></p><canvas></canvas><p data-message></p><p data-points aria-live="polite"></p><p>Earn 100 points per neighbor delivered, 25 per supply delivered, and 250 per completed district. Retry restores the last delivery; a route jam ends the current group. Space/Q shares supplies; X/E waits; F advances single-step practice.</p><p data-board></p><div data-controls style="display:flex;flex-wrap:wrap;gap:8px"></div>';
+      '<p class="rio-route-help">Top-down view: north is up, each tile has the same scale. Swim across winding rivers: current pushes you downstream · Bridges avoid drift · Climb marked fence sections · X: wait for cameras · Space: share supplies</p><p data-hud role="status" aria-live="polite"></p><canvas></canvas><p data-message></p><p data-points aria-live="polite"></p><p>Earn 100 points per neighbor delivered, 25 per supply delivered, and 250 per completed district. Retry restores the last delivery; a route jam ends the current group. Space/Q shares supplies; X/E waits; F advances single-step practice.</p><p data-board></p><div data-controls style="display:flex;flex-wrap:wrap;gap:8px"></div>';
     host.append(root);
     const canvas = root.querySelector('canvas')!;
     const { ctx } = fitCanvas(canvas, 960, 640);
@@ -45,7 +45,7 @@ export const game: GameModule = {
     canvas.style.touchAction = 'none';
     canvas.setAttribute(
       'aria-label',
-      'Perspective canyon rescue route with bridges, river crossings, climbable fences and scanning cameras. Arrow keys steer; X waits.',
+      'Top-down canyon rescue route with bridges, river crossings, climbable fences and scanning cameras. Arrow keys steer; X waits.',
     );
     const hud = root.querySelector<HTMLElement>('[data-hud]')!,
       message = root.querySelector<HTMLElement>('[data-message]')!,

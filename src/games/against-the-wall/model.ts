@@ -1,3 +1,4 @@
+import { initialBoss, resetBoss, hearBoss, stepBoss, firingInterval, type Boss } from './boss';
 import {
   createBarriers,
   barrierRules,
@@ -12,6 +13,7 @@ import { wallEntry, VISION_HALF_ANGLE, DISTRACTION_RANGE } from './visibility';
 export type Faction = 'Cartel' | 'Paramilitary' | 'Border Patrol' | 'ICE';
 export type Phase = 'title' | 'running' | 'paused' | 'checkpoint' | 'district' | 'won';
 export interface Actor {
+  reinforcement?: boolean;
   x: number;
   y: number;
   id: number;
@@ -67,6 +69,7 @@ export interface Tunnel {
   repairProgress: number;
 }
 export interface State {
+  boss: Boss;
   tunnelPlacement: null | { entrance: null | { x: number; y: number } };
   tunnels: Tunnel[];
   tunnelTransit: null | {
@@ -121,6 +124,7 @@ export interface State {
 export const key = (x: number, y: number) => `${Math.floor(x)},${Math.floor(y)}`;
 export function create(seed = 1, config = { ...defaults }): State {
   const s: State = {
+    boss: initialBoss(),
     tunnelPlacement: null,
     tunnels: [],
     tunnelTransit: null,
@@ -330,6 +334,7 @@ export function loadDistrict(s: State) {
     for (const k of cells) s.water.add(k);
     ponds++;
   }
+  resetBoss(s);
   s.message = 'Find or build a crossing. The Asylum Office is north of the border.';
 }
 export function solid(s: State, x: number, y: number) {
@@ -507,6 +512,7 @@ export function distract(s: State, x: number, y: number) {
   if (!canDistract(s, x, y)) return false;
   s.tokens--;
   s.beacon = { x, y, time: 4 };
+  hearBoss(s, { x, y });
   for (const e of s.enemies) {
     e.arrival = -1;
     if (
@@ -534,6 +540,8 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
   }
   if (s.phase !== 'running') return;
   s.time += dt;
+  if (s.construction) hearBoss(s, s.construction);
+  stepBoss(s, dt);
   gateStep(s, dt);
   if (Math.hypot(input.x, input.y) > 0) cancelBreach(s);
   barrierStep(s, dt);
@@ -638,7 +646,10 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
         Math.min(1, e.meter + dt * (visible ? 1 / s.config.detection : -1 / 1.2)),
       );
       if (visible && target) e.lastSeen = { x: target.x, y: target.y };
-      if (e.meter >= 1 - 1e-9) e.committed = true;
+      if (e.meter >= 1 - 1e-9) {
+        if (!e.committed) hearBoss(s, e);
+        e.committed = true;
+      }
       if (e.meter <= 0) {
         clearTarget(e);
         target = null;
@@ -648,7 +659,8 @@ export function step(s: State, dt: number, input = { x: 0, y: 0, sprint: false }
         e.heading = Math.atan2(target.y - e.y, target.x - e.x);
         if ((e.fireCooldown ?? 0) <= 0 && e.target != null) {
           shots.push({ from: e, target: e.target });
-          e.fireCooldown = 0.8;
+          e.fireCooldown = firingInterval(e);
+          hearBoss(s, e);
           e.shot = 0.12;
         }
         continue;

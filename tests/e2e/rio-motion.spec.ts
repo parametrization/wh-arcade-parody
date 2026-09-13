@@ -13,7 +13,7 @@ test('Rio renders movement between grid ticks and freezes it on pause', async ({
       for (let frame = 0; frame < 12; frame++) {
         await new Promise(requestAnimationFrame);
         const pixels = ctx.getImageData(32, 32, 576, 432).data;
-        // The perspective camera follows the leader: track scene movement
+        // The top-down camera follows the leader: track scene movement
         // between ticks instead of expecting the leader to leave screen center.
         let signature = 2166136261;
         for (let i = 0; i < pixels.length; i += 64)

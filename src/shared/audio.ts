@@ -108,6 +108,9 @@ export function createAudio(): AudioService {
             flap: 0.18,
             step: 0.15,
             gunshot: 0.42,
+            radio: 0.65,
+            phone: 0.8,
+            sniffle: 0.75,
             water: 0.7,
             flood: 1.1,
             build: 0.35,
@@ -139,7 +142,25 @@ export function createAudio(): AudioService {
         else if (name === 'flap') sample = smooth * Math.sin(Math.PI * u) ** 2 * 0.75;
         else if (name === 'gunshot')
           sample = noise * 0.38 * Math.exp(-t * 75) + deep * 2 * Math.exp(-t * 9);
-        else if (name === 'water' || name === 'flood')
+        else if (name === 'radio') {
+          const chirp = t < 0.09 || (t > 0.48 && t < 0.57);
+          sample = (chirp ? Math.sin(2 * Math.PI * 1450 * t) * 0.18 : smooth * 0.7) * tail;
+        } else if (name === 'phone') {
+          const pulse = t % 0.3 < 0.16 ? 1 : 0;
+          sample =
+            (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 480 * t)) *
+            0.1 *
+            pulse *
+            tail;
+        } else if (name === 'sniffle') {
+          // Original breath/formant-like cartoon sob; never a sampled or imitated voice.
+          const breath = Math.sin(Math.PI * u) ** 2;
+          const wobble = 230 + 35 * Math.sin(t * 18);
+          sample =
+            (smooth * 0.9 + Math.sin(2 * Math.PI * wobble * t) * 0.08) *
+            breath *
+            (0.3 + 0.7 * Math.sin(t * 15) ** 2);
+        } else if (name === 'water' || name === 'flood')
           sample =
             (smooth * 0.5 + Math.sin(t * 1500 + Math.sin(t * 83) * 7) * 0.08) *
             Math.sin(Math.PI * u) ** 0.5;

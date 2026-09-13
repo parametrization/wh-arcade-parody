@@ -260,3 +260,23 @@ it('validates and persists only usable action binding overrides', async () => {
   saveBindings({});
   expect(loadBindings()).toEqual({});
 });
+
+it('reserves remapped keys over defaults, including host pause and primary action aliases', async () => {
+  const { resolveBindings } = await import('./input');
+  expect(
+    resolveBindings(
+      { umbrella: ['KeyK', 'KeyU'], flap: ['Space'], select: ['KeyL'] },
+      { pause: ['k'], action: ['KeyL'] },
+    ),
+  ).toEqual({ umbrella: ['KeyU'], flap: ['KeyL'], select: [] });
+  expect(
+    resolveBindings(
+      { action: ['Space'], lane: ['Digit1', 'Digit2'], umbrella: ['KeyK'] },
+      { action: ['1'], unrelated: ['KeyK'] },
+    ),
+  ).toEqual({ action: ['1'], lane: ['Digit2'], umbrella: ['KeyK'] });
+  expect(resolveBindings({ left: ['KeyA'], right: ['KeyD'] }, {})).toEqual({
+    left: ['KeyA'],
+    right: ['KeyD'],
+  });
+});

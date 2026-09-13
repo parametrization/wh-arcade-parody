@@ -14,6 +14,8 @@ import {
   tick,
   moveNet,
   laneX,
+  returnPromise,
+  netOverlap,
 } from './model';
 import { createRandom } from '../../shared/random';
 import { defaults, validateConfig } from './config';
@@ -31,7 +33,7 @@ describe('public dividend rules', () => {
     expect(m.targets).toHaveLength(0);
     expect(m.resources[0]).toBe(1);
   });
-  it('only catches aligned targets during a live window', () => {
+  it('automatically catches aligned cargo without a catch action', () => {
     const m = createModel();
     startModel(m);
     m.targets = [
@@ -39,11 +41,85 @@ describe('public dividend rules', () => {
       { id: 2, type: 1, lane: 0, y: 295, warning: 0 },
     ];
     resolveCatches(m);
-    expect(m.resources[0]).toBe(0);
-    activateCatch(m);
+    expect(m.resources[0]).toBe(1);
     resolveCatches(m);
     expect(m.resources).toEqual([1, 0, 0, 0]);
     expect(m.targets).toHaveLength(1);
+  });
+  it('requires strictly over half a promise inside the net and returns it without a catch press', () => {
+    const m = createModel();
+    startModel(m);
+    const promise = {
+      id: 1,
+      type: 4 as const,
+      lane: 1,
+      y: 302,
+      warning: 0,
+      promiseType: 2 as const,
+    };
+    m.targets = [promise];
+    expect(netOverlap(m, promise)).toBe(0.5);
+    expect(returnPromise(m, () => 0.9)).toBe(false);
+    promise.y = 303;
+    expect(returnPromise(m, () => 0.9)).toBe(true);
+    expect(m.targets).toHaveLength(0);
+    expect(m.reaction).toMatchObject({ kind: 'capitulation', type: 2, lane: 1 });
+    expect(m.resources).toEqual([0, 0, 0, 0]);
+  });
+  it('does not collect warning previews or cargo above the rear edge', () => {
+    const m = createModel();
+    startModel(m);
+    m.targets = [
+      { id: 1, type: 0, lane: 1, y: 281, warning: 0 },
+      { id: 2, type: 1, lane: 1, y: 310, warning: 1 },
+    ];
+    resolveCatches(m);
+    expect(m.score).toBe(0);
+    m.targets[0].y = 282;
+    resolveCatches(m);
+    expect(m.resources[0]).toBe(1);
+    expect(m.targets).toHaveLength(1);
+  });
+  it('uses the drawn tapered sides instead of a rectangular promise catch region', () => {
+    const m = createModel();
+    startModel(m);
+    m.netX = 354;
+    const promise = { id: 1, type: 4 as const, lane: 1, y: 315, warning: 0 };
+    m.targets = [promise];
+    // Rectangular bounds would incorrectly report 64%; actual silhouette is 47.75%.
+    expect(netOverlap(m, promise)).toBeCloseTo(0.4775);
+    expect(returnPromise(m, () => 0.9)).toBe(false);
+    resolveCatches(m);
+    expect(m.targets).toHaveLength(1);
+    moveNet(m, 350);
+    resolveCatches(m);
+    expect(m.storedPromises).toHaveLength(1);
+  });
+  it('rejects cargo outside the tapered front while accepting exact rear-edge contact', () => {
+    const m = createModel();
+    startModel(m);
+    m.netX = 371;
+    m.targets = [{ id: 1, type: 0, lane: 1, y: 350, warning: 0 }];
+    // x=300..340,y=330..370 reaches rectangular bounds, but misses the tapered surface.
+    resolveCatches(m);
+    expect(m.targets).toHaveLength(1);
+    m.netX = 320;
+    m.targets[0].y = 282;
+    resolveCatches(m);
+    expect(m.resources[0]).toBe(1);
+  });
+  it('education buys more movement time by slowing falling cargo eight percent per level', () => {
+    const normal = createModel(),
+      educated = createModel();
+    for (const m of [normal, educated]) {
+      startModel(m);
+      m.spawnIn = 10;
+      m.targets = [{ id: 1, type: 0, lane: 0, y: 100, warning: 0 }];
+    }
+    educated.levels[0] = 2;
+    tick(normal, 1, defaults, () => 0);
+    tick(educated, 1, defaults, () => 0);
+    expect(educated.targets[0].y - 100).toBeCloseTo((normal.targets[0].y - 100) * 0.84);
   });
   it('enforces one affordable upgrade per investment phase', () => {
     const m = createModel();

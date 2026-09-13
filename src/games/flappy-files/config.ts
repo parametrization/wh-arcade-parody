@@ -9,6 +9,9 @@ const n = (
   restart = true,
 ): TuningField => ({ key, label, type: 'number', default: value, min, max, step, restart });
 export const tuning: TuningField[] = [
+  n('flight.burstSeconds', 'Flight burst duration (seconds)', 8, 2, 20, 0.5),
+  n('flight.helicopterRise', 'Helicopter rise speed', 95, 40, 180),
+  n('flight.helicopterSink', 'Helicopter idle descent speed', 28, 5, 80),
   n('physics.gravity', 'Gravity', 1280, 600, 1800),
   n('physics.flapVelocity', 'Flap impulse', -392, -600, -200),
   n('physics.terminalVelocity', 'Terminal speed', 536, 300, 800),

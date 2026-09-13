@@ -1,3 +1,4 @@
+import { netGeometry } from './net-geometry';
 import { textureFace, textureRect } from '../../shared/fidelity/materials';
 import type { TycoonConfig } from './config';
 import { catchWidth, laneX, resourceNames, type TycoonModel } from './model';
@@ -163,15 +164,12 @@ export function portrait(
 ) {
   c.save();
   c.translate(x, y);
-  const backdrop = c.createLinearGradient(0, 0, 100, 70);
-  backdrop.addColorStop(0, '#788b94');
-  backdrop.addColorStop(0.35, '#3a566b');
-  backdrop.addColorStop(1, '#102439');
-  c.fillStyle = backdrop;
-  c.fillRect(0, 0, 100, 76);
-  poly(c, [0, 0, 26, 0, 77, 64, 42, 64], '#97afbd25');
-  poly(c, [100, 0, 82, 0, 58, 64, 86, 64], '#d9e4d515');
-  shadow(c, 51, 63, 34, 9, 0.5);
+  // Feet and shadow anchor the full figure to the continuous roof walkway.
+  shadow(c, 50, 77, 27, 3, 0.4);
+  rect(c, 35, 60, 12, 15, '#243449');
+  rect(c, 53, 60, 12, 15, '#1a283d');
+  volume(c, 39, 76, 10, 3, '#101923');
+  volume(c, 61, 76, 10, 3, '#101923');
   c.save();
   const breathe = reducedMotion ? 0 : Math.sin(time * 1.7 + person) * 0.45;
   c.translate(0, breathe);
@@ -189,121 +187,126 @@ export function portrait(
   poly(c, [33, 44, 43, 54, 38, 60, 27, 48], tone(jacket, -5));
   poly(c, [64, 43, 55, 54, 60, 61, 72, 47], tone(jacket, -10));
   const skin = ['#e2a273', '#d1ad92', '#dbbba0'][person];
-  // Sculpted volumes, shaded cheeks and small anatomical features at booth scale.
-  volume(c, 49, 25, 19, 22, skin, -0.04);
-  volume(c, 31, 26, 3.4, 6.3, tone(skin, -10));
-  volume(c, 68, 26, 3.3, 6.1, tone(skin, -21));
-  volume(c, 40, 29, 9, 9, tone(skin, 5));
-  volume(c, 58, 30, 8, 9, tone(skin, -8));
-  volume(c, 50, 39, 10, 6, tone(skin, -12));
-  for (const ex of [41, 58]) {
-    volume(c, ex, 23, 6, 3, tone(skin, -29));
-    volume(c, ex, 23, 4.8, 1.7, '#d8d5c9');
-    volume(c, ex + 0.4, 23, 1.35, 1.5, '#5a6f78');
-    rect(c, ex + 0.1, 22.4, 0.8, 1.7, '#1f2d31');
-    rect(c, ex - 0.3, 22.1, 0.6, 0.6, '#f0ebd9');
-    c.strokeStyle = tone(skin, -42);
+  const heads = asset('political-heads');
+  // Draw exactly one head: never layer a raster crop over the fallback face.
+  if (!heads) {
+    volume(c, 49, 25, 19, 22, skin, -0.04);
+    volume(c, 31, 26, 3.4, 6.3, tone(skin, -10));
+    volume(c, 68, 26, 3.3, 6.1, tone(skin, -21));
+    volume(c, 40, 29, 9, 9, tone(skin, 5));
+    volume(c, 58, 30, 8, 9, tone(skin, -8));
+    volume(c, 50, 39, 10, 6, tone(skin, -12));
+    for (const ex of [41, 58]) {
+      volume(c, ex, 23, 6, 3, tone(skin, -29));
+      volume(c, ex, 23, 4.8, 1.7, '#d8d5c9');
+      volume(c, ex + 0.4, 23, 1.35, 1.5, '#5a6f78');
+      rect(c, ex + 0.1, 22.4, 0.8, 1.7, '#1f2d31');
+      rect(c, ex - 0.3, 22.1, 0.6, 0.6, '#f0ebd9');
+      c.strokeStyle = tone(skin, -42);
+      c.lineWidth = 0.65;
+      c.beginPath();
+      c.moveTo(ex - 5, 20);
+      c.quadraticCurveTo(ex, 18.7, ex + 5, 20.5);
+      c.stroke();
+      c.strokeStyle = tone(skin, -22);
+      c.beginPath();
+      c.moveTo(ex - 4, 26);
+      c.quadraticCurveTo(ex, 28, ex + 4, 26.5);
+      c.stroke();
+    }
+    volume(c, 49, 28, 3.1, 7.2, tone(skin, 2), -0.08);
+    volume(c, 49.5, 32, 4, 2.2, tone(skin, -4));
+    c.strokeStyle = tone(skin, -58);
     c.lineWidth = 0.65;
     c.beginPath();
-    c.moveTo(ex - 5, 20);
-    c.quadraticCurveTo(ex, 18.7, ex + 5, 20.5);
+    c.moveTo(45.5, 32.5);
+    c.quadraticCurveTo(47, 34, 48, 32.9);
+    c.moveTo(51, 33);
+    c.lineTo(53, 32);
     c.stroke();
-    c.strokeStyle = tone(skin, -22);
+    volume(c, 49.5, 37.1, 6.7, 1.55, '#9d6d60');
+    c.strokeStyle = '#69453d';
+    c.lineWidth = 0.7;
     c.beginPath();
-    c.moveTo(ex - 4, 26);
-    c.quadraticCurveTo(ex, 28, ex + 4, 26.5);
+    c.moveTo(43, 37);
+    c.quadraticCurveTo(49.5, 38, 56, 36.6);
     c.stroke();
+    c.strokeStyle = tone(skin, -27);
+    c.lineWidth = 0.45;
+    for (let i = 0; i < 3; i++) {
+      c.beginPath();
+      c.moveTo(38 + i, 13 + i * 2);
+      c.quadraticCurveTo(48, 11 + i * 2, 60 - i, 14 + i * 2);
+      c.stroke();
+    }
+    for (const side of [-1, 1]) {
+      c.beginPath();
+      c.moveTo(49 + side * 6, 30);
+      c.quadraticCurveTo(49 + side * 10, 34, 49 + side * 9, 38);
+      c.stroke();
+    }
+    if (person === 0) {
+      poly(
+        c,
+        [28, 18, 28, 9, 36, 5, 56, 4, 68, 8, 70, 13, 59, 17, 45, 13, 35, 19, 32, 26],
+        '#b38a44',
+      );
+      poly(c, [28, 10, 37, 5, 57, 5, 67, 8, 58, 11, 41, 10, 32, 16], '#edcc7a');
+      poly(c, [37, 5, 57, 5, 64, 7, 48, 8], '#ffe4a1');
+      poly(c, [32, 16, 42, 10, 53, 12, 44, 15, 35, 20], '#d9b46d');
+      poly(c, [59, 11, 69, 10, 65, 16, 58, 18, 51, 14], '#bd914e');
+      poly(c, [37, 19, 45, 18, 47, 21, 39, 22], '#b78f56');
+      poly(c, [54, 19, 61, 18, 64, 21, 54, 22], '#af8049');
+      block(c, 76, 35, 11, 8, 3, '#d4af58');
+      block(c, 79, 29, 5, 6, 2, '#a6874c');
+      rect(c, 77, 35, 10, 2, '#ffe4a0');
+    } else if (person === 1) {
+      poly(
+        c,
+        [29, 24, 29, 13, 35, 7, 48, 3, 62, 7, 67, 14, 67, 22, 60, 16, 53, 12, 39, 14, 34, 22],
+        '#342c2d',
+      );
+      poly(c, [30, 14, 36, 8, 49, 5, 61, 8, 53, 10, 40, 12], '#705443');
+      poly(c, [33, 15, 42, 11, 54, 10, 46, 15, 36, 19], '#584539');
+      poly(
+        c,
+        [32, 28, 40, 31, 45, 33, 54, 33, 61, 29, 65, 29, 62, 40, 51, 45, 40, 42, 34, 36],
+        '#584237',
+      );
+      poly(c, [39, 34, 48, 37, 59, 33, 57, 39, 50, 42, 43, 39], '#87654b');
+      poly(c, [44, 33, 55, 33, 53, 35, 46, 35], '#e1b693');
+      rect(c, 38, 18, 9, 2, '#574032');
+      rect(c, 53, 18, 9, 2, '#574032');
+      block(c, 79, 33, 3, 23, 2, '#b69a64');
+      shadow(c, 80, 57, 7, 2);
+      poly(c, [73, 37, 79, 37, 85, 42, 91, 43, 91, 47, 83, 46, 77, 41, 73, 41], '#ba5a72');
+    } else {
+      poly(
+        c,
+        [
+          29, 23, 29, 14, 35, 7, 48, 5, 60, 7, 67, 15, 66, 25, 62, 20, 59, 13, 45, 12, 36, 17, 34,
+          26,
+        ],
+        '#45372e',
+      );
+      poly(c, [31, 14, 36, 8, 49, 7, 59, 9, 48, 10, 40, 14, 33, 18], '#8e7353');
+      poly(c, [40, 8, 53, 7, 60, 9, 50, 10], '#b29771');
+      c.strokeStyle = '#283342';
+      c.lineWidth = 2;
+      c.strokeRect(36, 20, 13, 9);
+      c.strokeRect(51, 20, 13, 9);
+      c.beginPath();
+      c.moveTo(49, 23);
+      c.lineTo(51, 23);
+      c.stroke();
+      poly(c, [37, 21, 47, 21, 40, 26, 37, 26], '#cbe2dc55');
+      poly(c, [52, 21, 62, 21, 56, 26, 52, 26], '#cbe2dc44');
+      block(c, 76, 31, 14, 21, 2, '#a49678');
+      poly(c, [77, 32, 88, 32, 88, 49, 77, 49], '#e0d6b9');
+      rect(c, 80, 29, 6, 4, '#7c7464');
+      for (let row = 0; row < 3; row++) rect(c, 79, 36 + row * 4, 7, 1, '#8c887a');
+    }
   }
-  volume(c, 49, 28, 3.1, 7.2, tone(skin, 2), -0.08);
-  volume(c, 49.5, 32, 4, 2.2, tone(skin, -4));
-  c.strokeStyle = tone(skin, -58);
-  c.lineWidth = 0.65;
-  c.beginPath();
-  c.moveTo(45.5, 32.5);
-  c.quadraticCurveTo(47, 34, 48, 32.9);
-  c.moveTo(51, 33);
-  c.lineTo(53, 32);
-  c.stroke();
-  volume(c, 49.5, 37.1, 6.7, 1.55, '#9d6d60');
-  c.strokeStyle = '#69453d';
-  c.lineWidth = 0.7;
-  c.beginPath();
-  c.moveTo(43, 37);
-  c.quadraticCurveTo(49.5, 38, 56, 36.6);
-  c.stroke();
-  c.strokeStyle = tone(skin, -27);
-  c.lineWidth = 0.45;
-  for (let i = 0; i < 3; i++) {
-    c.beginPath();
-    c.moveTo(38 + i, 13 + i * 2);
-    c.quadraticCurveTo(48, 11 + i * 2, 60 - i, 14 + i * 2);
-    c.stroke();
-  }
-  for (const side of [-1, 1]) {
-    c.beginPath();
-    c.moveTo(49 + side * 6, 30);
-    c.quadraticCurveTo(49 + side * 10, 34, 49 + side * 9, 38);
-    c.stroke();
-  }
-  if (person === 0) {
-    poly(
-      c,
-      [28, 18, 28, 9, 36, 5, 56, 4, 68, 8, 70, 13, 59, 17, 45, 13, 35, 19, 32, 26],
-      '#b38a44',
-    );
-    poly(c, [28, 10, 37, 5, 57, 5, 67, 8, 58, 11, 41, 10, 32, 16], '#edcc7a');
-    poly(c, [37, 5, 57, 5, 64, 7, 48, 8], '#ffe4a1');
-    poly(c, [32, 16, 42, 10, 53, 12, 44, 15, 35, 20], '#d9b46d');
-    poly(c, [59, 11, 69, 10, 65, 16, 58, 18, 51, 14], '#bd914e');
-    poly(c, [37, 19, 45, 18, 47, 21, 39, 22], '#b78f56');
-    poly(c, [54, 19, 61, 18, 64, 21, 54, 22], '#af8049');
-    block(c, 76, 35, 11, 8, 3, '#d4af58');
-    block(c, 79, 29, 5, 6, 2, '#a6874c');
-    rect(c, 77, 35, 10, 2, '#ffe4a0');
-  } else if (person === 1) {
-    poly(
-      c,
-      [29, 24, 29, 13, 35, 7, 48, 3, 62, 7, 67, 14, 67, 22, 60, 16, 53, 12, 39, 14, 34, 22],
-      '#342c2d',
-    );
-    poly(c, [30, 14, 36, 8, 49, 5, 61, 8, 53, 10, 40, 12], '#705443');
-    poly(c, [33, 15, 42, 11, 54, 10, 46, 15, 36, 19], '#584539');
-    poly(
-      c,
-      [32, 28, 40, 31, 45, 33, 54, 33, 61, 29, 65, 29, 62, 40, 51, 45, 40, 42, 34, 36],
-      '#584237',
-    );
-    poly(c, [39, 34, 48, 37, 59, 33, 57, 39, 50, 42, 43, 39], '#87654b');
-    poly(c, [44, 33, 55, 33, 53, 35, 46, 35], '#e1b693');
-    rect(c, 38, 18, 9, 2, '#574032');
-    rect(c, 53, 18, 9, 2, '#574032');
-    block(c, 79, 33, 3, 23, 2, '#b69a64');
-    shadow(c, 80, 57, 7, 2);
-    poly(c, [73, 37, 79, 37, 85, 42, 91, 43, 91, 47, 83, 46, 77, 41, 73, 41], '#ba5a72');
-  } else {
-    poly(
-      c,
-      [29, 23, 29, 14, 35, 7, 48, 5, 60, 7, 67, 15, 66, 25, 62, 20, 59, 13, 45, 12, 36, 17, 34, 26],
-      '#45372e',
-    );
-    poly(c, [31, 14, 36, 8, 49, 7, 59, 9, 48, 10, 40, 14, 33, 18], '#8e7353');
-    poly(c, [40, 8, 53, 7, 60, 9, 50, 10], '#b29771');
-    c.strokeStyle = '#283342';
-    c.lineWidth = 2;
-    c.strokeRect(36, 20, 13, 9);
-    c.strokeRect(51, 20, 13, 9);
-    c.beginPath();
-    c.moveTo(49, 23);
-    c.lineTo(51, 23);
-    c.stroke();
-    poly(c, [37, 21, 47, 21, 40, 26, 37, 26], '#cbe2dc55');
-    poly(c, [52, 21, 62, 21, 56, 26, 52, 26], '#cbe2dc44');
-    block(c, 76, 31, 14, 21, 2, '#a49678');
-    poly(c, [77, 32, 88, 32, 88, 49, 77, 49], '#e0d6b9');
-    rect(c, 80, 29, 6, 4, '#7c7464');
-    for (let row = 0; row < 3; row++) rect(c, 79, 36 + row * 4, 7, 1, '#8c887a');
-  }
-  const heads = asset('political-heads');
   if (heads) {
     c.save();
     c.beginPath();
@@ -319,10 +322,10 @@ export function portrait(
     c.closePath();
     c.clip();
     const cell = heads.naturalWidth / 4;
-    c.drawImage(heads, person * cell + 42, 18, cell - 80, 407, 26, 1, 48, 49);
+    c.drawImage(heads, person * cell + 71, 23, cell - 143, 399, 28, 1, 43, 48);
     c.restore();
   }
-  if (!reducedMotion && (time + person * 0.9) % 4.4 < 0.13) {
+  if (!heads && !reducedMotion && (time + person * 0.9) % 4.4 < 0.13) {
     for (const ex of [41, 57]) {
       c.fillStyle = tone(skin, -4);
       c.beginPath();
@@ -383,9 +386,9 @@ export function portrait(
     c.stroke();
   }
   c.restore();
-  poly(c, [0, 62, 100, 62, 96, 76, 4, 76], '#132a3d');
-  poly(c, [0, 62, 100, 62, 97, 64, 3, 64], '#a79c78');
-  label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 73, '#efe1ba', 9, true);
+  rect(c, 0, 80, 100, 12, '#283b43');
+  rect(c, 0, 80, 100, 1, '#d4c49b');
+  label(c, ['DONALD TRUMP', 'JD VANCE', 'MIKE JOHNSON'][person], 50, 89, '#efe1ba', 9, true);
   c.restore();
 }
 
@@ -667,7 +670,9 @@ export function render(
     c.clip();
     const scale = 640 / facade.naturalWidth,
       height = facade.naturalHeight * scale;
+    c.filter = 'blur(0.7px) saturate(0.7)';
     c.drawImage(facade, 0, 342 - height, 640, height);
+    c.filter = 'none';
     const tint = c.createLinearGradient(0, 80, 0, 342);
     tint.addColorStop(0, '#13243210');
     tint.addColorStop(1, '#08131d25');
@@ -708,9 +713,16 @@ export function render(
     }
     c.restore();
   }
+  // A roof terrace spans all three lanes and connects visibly into the facade.
+  poly(c, [30, 80, 610, 80, 598, 89, 42, 89], '#dedccf');
+  rect(c, 30, 79, 580, 3, '#fff3d2');
+  rect(c, 42, 89, 556, 7, '#777b79');
+  for (const support of [55, 226, 406, 578]) {
+    rect(c, support, 94, 7, 20, '#9ea89e');
+    poly(c, [support, 94, support + 7, 94, support + 18, 114, support + 12, 114], '#6b787a');
+  }
   for (let i = 0; i < 3; i++) {
     const x = laneX[i] - 50;
-    panel(c, x - 4, 2, 108, 80, '#243d50', '#ebd5a1');
     portrait(c, i, x, 3, m.time, reducedMotion, m.reaction?.lane === i ? m.reaction.phase : 'idle');
   }
   const reaction = m.reaction;
@@ -851,7 +863,7 @@ export function render(
   // A subtle landing marker keeps the action readable over the detailed scene.
   for (let i = 0; i < 3; i++) {
     const x = laneX[i];
-    label(c, `${i + 1}`, x, 117, '#b1c4c1', 9, true);
+    label(c, `${i + 1}`, x, 154, '#b1c4c1', 9, true);
     rect(c, x - 18, 281, 36, 2, '#bed9c0');
     rect(c, x - 15, 284, 30, 1, '#617f88');
   }
@@ -892,11 +904,11 @@ export function render(
   // Resources emerge from below the gantry; keep previews off the name plaques.
   c.save();
   c.beginPath();
-  c.rect(0, 83, 640, 252);
+  c.rect(0, 97, 640, 238);
   c.clip();
   for (const target of m.targets) {
     const x = laneX[target.lane],
-      y = target.warning > 0 ? 92 : target.y;
+      y = target.warning > 0 ? 109 : target.y;
     const approach = Math.max(0, Math.min(1, (y - 90) / 210));
     shadow(c, x, 334, 5 + approach * 13, 1 + approach * 3, 0.05 + approach * 0.2);
     if (target.warning > 0) {
@@ -919,8 +931,8 @@ export function render(
       } else resource(c, target.type, x, y);
     }
     if (target.warning > 0) {
-      panel(c, x - 53, 101, 106, 17, '#18364a', '#8cacac');
-      label(c, resourceNames[target.type].toUpperCase(), x, 113, '#fff0bc', 9, true);
+      panel(c, x - 53, 120, 106, 17, '#18364a', '#8cacac');
+      label(c, resourceNames[target.type].toUpperCase(), x, 132, '#fff0bc', 9, true);
     }
   }
   c.restore();
@@ -936,22 +948,11 @@ export function render(
     x = m.netX;
   shadow(c, x + 6, 335, width + 15, 7, 0.3);
   const netColor = m.catchTime > 0 ? '#a5e6c2' : m.cooldown > 0 ? '#6c8993' : '#69acaa';
-  poly(c, [x - width, 302, x + width, 302, x + width - 9, 315, x - width + 9, 315], '#365e71');
-  poly(
-    c,
-    [x - width + 9, 315, x + width - 9, 315, x + width - 20, 334, x - width + 20, 334],
-    tone(netColor, -25),
-  );
-  poly(
-    c,
-    [x - width, 302, x - width + 9, 315, x - width + 20, 334, x - width + 10, 324],
-    tone(netColor, 12),
-  );
-  poly(
-    c,
-    [x + width, 302, x + width - 9, 315, x + width - 20, 334, x + width - 10, 324],
-    tone(netColor, -42),
-  );
+  const geometry = netGeometry(x, width);
+  poly(c, geometry.back.flat(), '#365e71');
+  poly(c, geometry.front.flat(), tone(netColor, -25));
+  poly(c, geometry.left.flat(), tone(netColor, 12));
+  poly(c, geometry.right.flat(), tone(netColor, -42));
   for (let i = 0; i < 8; i++) {
     const ax = x - width + 12 + (i * (width * 2 - 24)) / 8,
       bx = x - width + 23 + (i * (width * 2 - 46)) / 8;
@@ -1170,7 +1171,7 @@ export function render(
     label(
       c,
       m.phase === 'title'
-        ? 'Catch resources. Return promises with Q. Umbrella: U.'
+        ? 'Catch automatically. Audit / Umbrella / Return controls below.'
         : `Community levels ${m.levels.join(' / ')} · Score ${m.score}`,
       320,
       213,

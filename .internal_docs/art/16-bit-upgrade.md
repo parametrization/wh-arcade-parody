@@ -24,3 +24,17 @@ The People's House Arcade now follows the reference page's centered masthead, ne
 - Existing rule mechanics and hitboxes retained. Build and38 desktop/mobile browser checks passed; desktop screenshots of all5 and Flappy mobile reviewed. A mobile plaque-overlap issue found in visual review was corrected before publication.
 
 Remaining refinement: additional animation frames and more detailed body/hand sprites can extend this pass; generated portraits are framed bust tiles rather than full character animation sheets. Concept sheets from the earlier checkpoint remain as design references, not the current production art.
+
+## Animated column characters follow-up
+
+Replace framed portrait tiles with full-bodied bobblehead caricatures. Retain original atlas as head textures; render limbs, suits, props and suspension rigs as native Canvas artwork. Each cast member has a distinct timed swipe: Trump's two-handed slap, Vance's lazy couch reach, Johnson's paperwork paddle, Thune's long-arm windmill, Bessent's ledger fan, Blanche's pointing grab and Burgum's overhead arm sweep. JD Vance always reclines on a tufted leather couch; upper couches hang from chains. Other upper characters hang upside down from visible supports. Nameplates are bolted to the stone shafts, independent of the moving people.
+
+Fullscreen must scale the playfield against the actual available viewport, remove normal canvas/container caps, preserve aspect ratio and restore normal sizing/focus on exit. Verify actual before/after canvas bounds, not merely presence of the fullscreen element.
+
+## Tool interception and DOJ vehicle sequence
+
+User follow-up: column bobbleheads use flyswatters, nets, a rifle and a bow/arrow to intercept the envelope at close range. Tool-specific windup/strike visuals precede the detached envelope. An original black Escalade-style SUV marked DOJ in white drives along the lower strip, adjusts speed toward the envelope's landing point, collects it, shows REDACTED!, and leaves the screen.
+
+This is a nonfatal fictional obstruction event. During the sequence the eagle has no visible envelope; another packet appears when the SUV exits. Keep existing flight/collision rules and scoring, record a separate redaction count, gate new interceptions behind a cooldown, and freeze all sequence clocks while paused. A simultaneous Trump screen-obstruction should not conceal the interception sequence. REDACTED! is a small localized blinking label at no more than one cycle per second, static under reduced motion.
+
+Implementation split: Flappy model/controller owns deterministic trigger/phase, envelope trajectory, vehicle interception position/speed and cleanup; character/scene renderers consume that state and own tool silhouettes, strike effects and vehicle art. Tests must cover safe-near-miss trigger, phase order, capture, cooldown and reset/pause behavior.

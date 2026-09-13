@@ -1,6 +1,8 @@
 # Arcade fidelity and playability upgrade
 
-Current round: **Supply loading complete (2026-09-09)**. Animated fictional operators, four supplier trucks, gold-coating scoring and refreshed preview are integrated. See [round review](.internal_docs/reviews/supply-loading.md). The ten-attempt results below describe the earlier fidelity project.
+Current round: **Four-game follow-up in progress (2026-09-09)**. Rio top-down navigation, Flappy flight upgrades and Tycoon automatic catching/roof staging are being implemented in parallel; the freed Rio slot is now implementing the Wall boss encounter.
+
+Previous round: **Supply loading complete (2026-09-09)**. Animated fictional operators, four supplier trucks, gold-coating scoring and refreshed preview are integrated. See [round review](.internal_docs/reviews/supply-loading.md). The ten-attempt results below describe the earlier fidelity project.
 
 Status: STOPPED AT CAP. All five games completed ten reviewed attempts. Final integration checks pass; none passed the full realistic PS3-era visual criteria. Maximum: 10 reviewed implementation attempts per game. A passing game stops; a game that still fails after attempt 10 is reported as exhausted. Root integrates and reviews three concurrent specialist slots. Existing unrelated README/art-document edits are preserved.
 
@@ -101,3 +103,17 @@ All five main-page cards were recaptured from the running games with `scripts/ca
 Status: complete. Production build, 158 unit tests and 15 targeted desktop/mobile browser checks pass (one unsupported mobile fullscreen check skipped). This is a new user-authorized round after the earlier ten-attempt fidelity review. Scope is Supply the People only: fictional operators, supplier trucks, visible loading, and the agreed gold-coating scoring mechanic. Other proposed game changes remain outside this round.
 
 [Implementation specification](.internal_docs/specs/supply-loading.md) records the agreed names, state machine, layout, scoring and acceptance criteria. Three agents split model/tests, rendering, and pointer/browser verification; root integrates controls, accessible announcements, help, documentation and final checks. Earlier review results above remain historical.
+
+## 2026-09-09: camera, flight and net follow-up
+
+Status: implementation in progress, three concurrent game specialists plus root integration. After finishing Rio, its specialist moved to the Wall boss encounter.
+
+| Game | Agreed work | Status |
+| --- | --- | --- |
+| Rio Rescue | True top-down camera, readable footprints/current direction; preserve terrain, convoy and replay | Implementing |
+| Flappy Files | Held-letter pickups; selectable 5% bounce upgrades; unlocked temporary Fly/Helicopter modes and distinct eagle poses; face overlap review | Implementing |
+| Trickle-down Tycoon | Automatic net catches, majority-overlap promise returns, adjacent action keys, clear upgrades and rooftop figures | Implementing |
+| Against the Wall | GB Smallman sound-investigation/call/reinforcement sequence | Implementing after Rio |
+| Supply the People | Fictional operators, suppliers and gold removal | Completed in 0f61321 |
+
+Acceptance: preserve prior model rules and saved controls; pause freezes new state; descriptions match actual keys; desktop/mobile lifecycle and pointer input remain functional; capture real gameplay previews and review faces at play size. User confirmed Flappy unlock at 80% of baseline remaining (about five upgrades along one path). New visual work is not a claim to meet the previously exhausted PS3-realism target.

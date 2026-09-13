@@ -1,3 +1,4 @@
+import { ICON_SIZE, netIconIntersection, polygonArea } from './net-geometry';
 import type { TycoonConfig } from './config';
 export type ResourceType = 0 | 1 | 2 | 3;
 export type Resource = ResourceType | 4;
@@ -133,7 +134,7 @@ export function collect(m: TycoonModel, target: Target) {
       type: target.promiseType ?? (target.lane as ResourceType),
       lane: target.lane,
     });
-    m.message = 'Promise stored. Return it to its issuer with Q.';
+    m.message = 'Promise stored. Use Return promise to send it back to its issuer.';
     return;
   }
   m.resources[target.type]++;
@@ -154,17 +155,30 @@ export function miss(m: TycoonModel, target: Target) {
     m.message = 'The safety net needs repairs. Restart for another try.';
   }
 }
+/** Fraction of the 40px icon inside the actual rendered, tapered net. */
+export function netOverlap(m: TycoonModel, target: Target) {
+  return (
+    polygonArea(netIconIntersection(m.netX, catchWidth(m), laneX[target.lane], target.y)) /
+    (ICON_SIZE * ICON_SIZE)
+  );
+}
+export function returnablePromise(m: TycoonModel) {
+  return m.targets.find(
+    (target) => target.type === 4 && target.warning <= 0 && netOverlap(m, target) > 0.5,
+  );
+}
 export function resolveCatches(m: TycoonModel) {
-  if (m.phase !== 'round' || m.catchTime <= 0) return;
+  if (m.phase !== 'round') return;
   const caught = m.targets.filter(
     (target) =>
       target.warning <= 0 &&
-      Math.abs(laneX[target.lane] - m.netX) <= catchWidth(m) &&
-      target.y >= 278 &&
-      target.y <= 325,
+      (target.type === 4
+        ? netOverlap(m, target) > 0.5
+        : netIconIntersection(m.netX, catchWidth(m), laneX[target.lane], target.y).length > 0),
   );
   m.targets = m.targets.filter((target) => !caught.includes(target));
   for (const target of caught) collect(m, target);
+  if (caught.length) m.catchTime = 0.18;
 }
 export function spawn(m: TycoonModel, random: () => number, practice = false) {
   const type = (m.spawned % 5) as Resource;
@@ -173,7 +187,7 @@ export function spawn(m: TycoonModel, random: () => number, practice = false) {
     id: ++m.serial,
     type,
     lane,
-    y: practice ? 295 : 63,
+    y: practice ? 315 : 63,
     warning: practice ? 0 : 1.1,
     ...(type === 4 ? { promiseType: (Math.floor(m.spawned / 5) % 4) as ResourceType } : {}),
   });
@@ -190,7 +204,7 @@ export function practiceNext(m: TycoonModel, random: () => number) {
     return;
   }
   spawn(m, random, true);
-  m.message = `Next: ${resourceNames[m.targets[0].type]}, lane ${m.targets[0].lane + 1}. Select that lane and catch, or pass.`;
+  m.message = `Next: ${resourceNames[m.targets[0].type]}, lane ${m.targets[0].lane + 1}. Move to that lane to catch automatically, or pass.`;
 }
 export function practicePass(m: TycoonModel) {
   if (m.phase !== 'round' || !m.practice) return;
@@ -295,20 +309,9 @@ export function tick(m: TycoonModel, dt: number, config: TycoonConfig, random: (
   }
   for (const target of m.targets) {
     if (target.warning > 0) target.warning = Math.max(0, target.warning - dt);
-    else if (m.freeze <= 0) target.y += dt * (62 + (m.round - 1) * 3) * config.speed;
+    else if (m.freeze <= 0)
+      target.y += dt * (62 + (m.round - 1) * 3) * config.speed * (1 - 0.08 * m.levels[0]);
   }
-  if (
-    config.autoCatch &&
-    m.cooldown <= 0 &&
-    m.targets.some(
-      (target) =>
-        target.type !== 4 &&
-        target.y >= 278 &&
-        target.y <= 325 &&
-        Math.abs(laneX[target.lane] - m.netX) <= catchWidth(m),
-    )
-  )
-    activateCatch(m);
   resolveCatches(m);
   const missed = m.targets.filter((target) => target.y > 334);
   m.targets = m.targets.filter((target) => target.y <= 334);
@@ -336,7 +339,13 @@ export function toggleUmbrella(m: TycoonModel) {
   return m.umbrella;
 }
 export function returnPromise(m: TycoonModel, random: () => number) {
-  if (m.phase !== 'round' || m.reaction || !m.storedPromises.length) return false;
+  if (m.phase !== 'round' || m.reaction) return false;
+  const eligible = returnablePromise(m);
+  if (!m.storedPromises.length && eligible) {
+    m.targets = m.targets.filter((target) => target !== eligible);
+    collect(m, eligible);
+  }
+  if (!m.storedPromises.length) return false;
   const promise = m.storedPromises.shift()!;
   const flood = random() < 0.5;
   m.reaction = {

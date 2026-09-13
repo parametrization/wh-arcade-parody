@@ -26,6 +26,42 @@ export function loadBindings(): Record<string, string[]> {
   return validateBindings(createStorage('controls').get<unknown>('bindings', {}));
 }
 
+/** User overrides own their keys; defaults yield, including host-owned pause. */
+export function resolveBindings(
+  actions: Record<string, string[]>,
+  overrides: Record<string, string[]>,
+): Record<string, string[]> {
+  const primary = Object.hasOwn(actions, 'action')
+    ? 'action'
+    : Object.entries(actions).find(
+        ([name, keys]) =>
+          name !== 'pause' && keys.some((key) => key === ' ' || key.toLowerCase() === 'space'),
+      )?.[0];
+  const normalize = (key: string) => {
+    const lower = key.toLowerCase();
+    if (/^key[a-z]$/.test(lower)) return lower.slice(3);
+    if (/^digit[0-9]$/.test(lower)) return lower.slice(5);
+    return lower === ' ' ? 'space' : lower;
+  };
+  const explicit = Object.fromEntries(
+    Object.keys(actions).map((name) => [
+      name,
+      overrides[name] ?? (name === primary ? overrides.action : undefined),
+    ]),
+  );
+  const reserved = new Set(
+    [...Object.values(explicit).flatMap((keys) => keys ?? []), ...(overrides.pause ?? [])].map(
+      normalize,
+    ),
+  );
+  return Object.fromEntries(
+    Object.entries(actions).map(([name, keys]) => [
+      name,
+      explicit[name] ? [...explicit[name]] : keys.filter((key) => !reserved.has(normalize(key))),
+    ]),
+  );
+}
+
 export function createInput(host: HTMLElement): Input {
   let destroyed = false;
   let bindings: Record<string, string[]> = {};
@@ -97,20 +133,7 @@ export function createInput(host: HTMLElement): Input {
   return {
     bind(actions) {
       const overrides = loadBindings();
-      // The settings screen calls the primary Space action "action"; games may
-      // name it flap, aim or share. Explicit per-game bindings take precedence.
-      const primary = Object.hasOwn(actions, 'action')
-        ? 'action'
-        : Object.entries(actions).find(
-            ([name, keys]) =>
-              name !== 'pause' && keys.some((key) => key === ' ' || key.toLowerCase() === 'space'),
-          )?.[0];
-      bindings = Object.fromEntries(
-        Object.entries(actions).map(([name, keys]) => [
-          name,
-          [...(overrides[name] ?? (name === primary ? overrides.action : undefined) ?? keys)],
-        ]),
-      );
+      bindings = resolveBindings(actions, overrides);
       clear();
     },
     on(action, handler) {

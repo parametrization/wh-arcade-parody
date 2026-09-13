@@ -1,17 +1,23 @@
 import { chromium } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 // Capture the running game itself, including Flappy's HTML name plaques.
 // Start ./dev first. Re-run after renderer changes to keep the cards accurate.
 const origin = process.env.ARCADE_PREVIEW_ORIGIN ?? 'http://localhost:8643';
 const selectedGame = process.env.ARCADE_PREVIEW_GAME;
-const output = new URL('../public/assets/previews/', import.meta.url);
+const output = process.env.ARCADE_PREVIEW_OUTPUT
+  ? pathToFileURL(resolve(process.env.ARCADE_PREVIEW_OUTPUT) + '/')
+  : new URL('../public/assets/previews/', import.meta.url);
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ channel: 'chrome' });
 try {
   for (const slug of ['flappy-files', 'against-the-wall', 'rio-rescue', 'supply-the-people', 'trickle-down-tycoon']) {
     if (selectedGame && slug !== selectedGame) continue;
     const page = await browser.newPage({ viewport: { width: 1440, height: 1100 }, deviceScaleFactor: 1 });
+    // Keep concurrent dev edits from resetting the scene during an evidence capture.
+    await page.routeWebSocket('**', socket => socket.close());
     await page.clock.install({ time: new Date('2026-09-08T12:00:00Z') });
     await page.clock.pauseAt(new Date('2026-09-08T12:00:01Z'));
     await page.goto(`${origin}/games/${slug}/`);

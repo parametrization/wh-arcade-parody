@@ -22,7 +22,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     saved = false;
   const root = document.createElement('section');
   root.className = 'flappy-files';
-  root.innerHTML = `<style>.flappy-files{max-width:1100px;margin:auto;color:#f4eaca;font:15px system-ui}.ff-hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;padding:12px;background:#132640;border:1px solid #a19268}.ff-stage{position:relative;background:#12223b;max-width:768px;margin:auto}.ff-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none}.ff-plaque{position:absolute;color:#fff6d9;background:linear-gradient(#233951,#10243e);border:2px solid #eed49b;border-radius:3px;font:800 14px/1.15 system-ui,sans-serif;letter-spacing:.1px;padding:4px 9px;text-align:center;transform:translate(-50%,-50%);width:112px;white-space:normal;box-shadow:0 2px 0 #071425,inset 0 0 0 1px #4d6177}.ff-plaque::before,.ff-plaque::after{content:"";position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:#e2c483;box-shadow:0 1px 0 #78623d;transform:translateY(-50%)}.ff-plaque::before{left:3px}.ff-plaque::after{right:3px}.ff-plaque--bracket::after{right:calc(-1 * var(--bracket-span));width:var(--bracket-span);height:5px;border-radius:0;background:#acb6bd;border:1px solid #304052;box-shadow:0 2px 0 #142136}.ff-plaque--bracket-right::after{right:auto;left:calc(-1 * var(--bracket-span))}.ff-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}.ff-controls button,.ff-controls select,.ff-overlay button{min-height:44px;padding:10px 14px;font:inherit;background:#203c57;color:#fff4c6;border:1px solid #d4b46b}.ff-overlay{position:absolute;inset:10% 8%;align-content:center;text-align:center;background:#10203bf2;border:2px solid #e6cc87;padding:18px}.ff-overlay h2{font:900 27px monospace;color:#f5d779}.ff-overlay p{line-height:1.5}.ff-note{font-size:13px;line-height:1.5}.ff-status{min-height:40px}.ff-controls label{align-content:center}@media(max-width:500px){.ff-plaque{font-size:11px;width:104px;padding:3px 7px;border-width:1px}.ff-plaque::before,.ff-plaque::after{width:3px;height:3px}.ff-overlay{inset:4%;padding:12px}.ff-overlay h2{font-size:21px}.ff-overlay p{font-size:13px}}</style><div class="ff-hud"><strong>FLAPPY FILES</strong><span data-score></span><span data-burgers></span></div><div class="ff-stage"><canvas aria-label="Eagle carrying files through named cartoon columns"></canvas><div class="ff-labels"></div><div class="ff-overlay"></div></div><div class="ff-controls"><button data-flap>Flap · Space</button><button data-burger>Burger · Q / H</button><button data-pause>Pause · P</button><button data-mute>Sound off · M</button><label>Mode <select data-mode><option value="story">Story · 60 columns</option><option value="endless">Endless</option></select></label><label><input type="checkbox" data-assist> Assist</label></div><div class="ff-status" role="status" aria-live="polite"></div><p class="ff-note">Space / ↑ / W: flap · Q / E / H: hamburger · P / Escape: pause · R: restart. Each cleared column earns 1 point; every 10 delivers a packet. Burgers dismiss the seven-second distraction immediately. Personal best is separate for story/endless and assist. Named characters are fictional political satire, not allegations of involvement in Epstein’s crimes.</p>`;
+  root.innerHTML = `<style>.flappy-files{max-width:1100px;margin:auto;color:#f4eaca;font:15px system-ui}.ff-hud{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;padding:12px;background:#132640;border:1px solid #a19268}.ff-stage{position:relative;background:#12223b;max-width:768px;margin:auto}.ff-labels{position:absolute;inset:0;overflow:hidden;pointer-events:none}.ff-plaque{position:absolute;color:#fff6d9;background:linear-gradient(#233951,#10243e);border:2px solid #eed49b;border-radius:3px;font:800 14px/1.15 system-ui,sans-serif;letter-spacing:.1px;padding:4px 9px;text-align:center;transform:translate(-50%,-50%);width:112px;white-space:normal;box-shadow:0 2px 0 #071425,inset 0 0 0 1px #4d6177}.ff-plaque::before,.ff-plaque::after{content:"";position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:#e2c483;box-shadow:0 1px 0 #78623d;transform:translateY(-50%)}.ff-plaque::before{left:3px}.ff-plaque::after{right:3px}.ff-plaque--bracket::after{right:calc(-1 * var(--bracket-span));width:var(--bracket-span);height:5px;border-radius:0;background:#acb6bd;border:1px solid #304052;box-shadow:0 2px 0 #142136}.ff-plaque--bracket-right::after{right:auto;left:calc(-1 * var(--bracket-span))}.ff-controls[hidden]{display:none}.ff-controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0}.ff-upgrades button,.ff-controls button,.ff-controls select,.ff-overlay button{min-height:44px;padding:10px 14px;font:inherit;background:#203c57;color:#fff4c6;border:1px solid #d4b46b}.ff-overlay{position:absolute;inset:10% 8%;align-content:center;text-align:center;background:#10203bf2;border:2px solid #e6cc87;padding:18px}.ff-overlay h2{font:900 27px monospace;color:#f5d779}.ff-overlay p{line-height:1.5}.ff-note{font-size:13px;line-height:1.5}.ff-status{min-height:40px}.ff-controls label{align-content:center}@media(max-width:500px){.ff-plaque{font-size:11px;width:104px;padding:3px 7px;border-width:1px}.ff-plaque::before,.ff-plaque::after{width:3px;height:3px}.ff-overlay{inset:4%;padding:12px}.ff-overlay h2{font-size:21px}.ff-overlay p{font-size:13px}}</style><div class="ff-hud"><strong>FLAPPY FILES</strong><span data-score></span><span data-burgers></span></div><div class="ff-stage"><canvas aria-label="Eagle carrying files through named cartoon columns"></canvas><div class="ff-labels"></div><div class="ff-overlay"></div></div><div class="ff-controls"><button data-flap>Flap · Space</button><button data-burger>Burger · Q / H</button><button data-pause>Pause · P</button><button data-mute>Sound off · M</button><label>Mode <select data-mode><option value="story">Story · 60 columns</option><option value="endless">Endless</option></select></label><label><input type="checkbox" data-assist> Assist</label></div><div class="ff-controls" data-flight-controls role="group" aria-label="Flight steering" hidden><button data-steer="left" aria-label="Fly left">←</button><button data-steer="up" aria-label="Fly up">↑</button><button data-steer="down" aria-label="Fly down">↓</button><button data-steer="right" aria-label="Fly right">→</button></div><div class="ff-upgrades" role="group" aria-label="Letter flight upgrades"></div><div class="ff-status" role="status" aria-live="polite"></div><p class="ff-note">Space / ↑ / W: flap · Q / E / H: hamburger · P / Escape: pause · R: restart. Touch the held letter near the lower gap edge to choose a 5% bounce improvement (1/2). At 80% remaining, choose a <span data-burst-duration>8</span>-second Fly (3, WASD) or Helicopter (4, hold Space or Flap button) burst. Each cleared column earns 1 point; every 10 delivers a packet. Burgers dismiss the seven-second distraction immediately. Personal best is separate for story/endless and assist. Named characters are fictional political satire, not allegations of involvement in Epstein’s crimes.</p>`;
   host.append(root);
   const canvas = root.querySelector('canvas')!,
     ctx = fitCanvas(canvas, 512, 448).ctx;
@@ -55,17 +55,26 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
   let muted = host.dataset.muted !== 'false',
     overlayKey = '';
   function publicState(): GameState {
-    return m.phase === 'falling' ? 'running' : m.phase === 'chapter' ? 'paused' : m.phase;
+    return m.flight.pending
+      ? 'paused'
+      : m.phase === 'falling'
+        ? 'running'
+        : m.phase === 'chapter'
+          ? 'paused'
+          : m.phase;
   }
   function draw() {
     if (destroyed) return;
     // Reflect applied configuration; staged restart settings remain unapplied.
     root.querySelector<HTMLInputElement>('[data-assist]')!.checked = !!config['assist.enabled'];
+    const burstDuration = root.querySelector('[data-burst-duration]')!;
+    if (burstDuration.textContent !== String(config['flight.burstSeconds']))
+      burstDuration.textContent = String(config['flight.burstSeconds']);
     render(ctx, m, portraitAtlas, background);
     root.querySelector('[data-score]')!.textContent =
       `${m.deliveries} deliveries · ${m.clearances} points · Best ${Math.max(m.clearances, s.storage.get(`best.${m.mode}.${config['assist.enabled'] ? 'assist' : 'standard'}`, 0))}`;
     root.querySelector('[data-burgers]')!.textContent =
-      `Burgers ${m.burgers} / ${config['burger.capacity']}`;
+      `Burgers ${m.burgers} / ${config['burger.capacity']} · ${m.flight.mode}${m.flight.remaining ? ` ${m.flight.remaining.toFixed(1)}s` : ''} · Bounce ${Math.round(m.flight.speedFactor * 100)}% / height ${Math.round(m.flight.varianceFactor * 100)}%`;
     labels.replaceChildren();
     const stageWidth = labels.clientWidth;
     for (const c of m.columns) {
@@ -114,6 +123,22 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
         }
       }
     }
+    root.querySelector<HTMLElement>('[data-flight-controls]')!.hidden = m.flight.mode !== 'fly';
+    const upgrades = root.querySelector<HTMLElement>('.ff-upgrades')!;
+    const flightKey = `${m.flight.pending}:${model.burstUnlocked(m)}`;
+    if (upgrades.dataset.state !== flightKey) {
+      upgrades.dataset.state = flightKey;
+      upgrades.hidden = !m.flight.pending;
+      upgrades.innerHTML = m.flight.pending
+        ? `<p>Letter collected! Choose an improvement. Play is frozen while choosing. Reach 80% remaining bounce speed or height to unlock ${config['flight.burstSeconds']}-second bursts.</p><button data-upgrade="speed">1 · 5% slower bounce</button> <button data-upgrade="variance">2 · 5% smaller flap height</button>${model.burstUnlocked(m) ? `<button data-upgrade="fly">3 · Fly for ${config['flight.burstSeconds']}s — WASD, double speed</button> <button data-upgrade="helicopter">4 · Helicopter for ${config['flight.burstSeconds']}s — hold Space</button>` : ''}`
+        : '';
+      upgrades
+        .querySelectorAll<HTMLButtonElement>('[data-upgrade]')
+        .forEach(
+          (button) =>
+            (button.onclick = () => choose(button.dataset.upgrade as model.FlightUpgrade)),
+        );
+    }
     const key = m.phase;
     if (key !== overlayKey) {
       overlayKey = key;
@@ -160,7 +185,10 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
   }
   function process() {
     for (const effect of m.effects) {
-      if (effect === 'pickup') {
+      if (effect === 'letter') {
+        notice = 'Letter collected. Choose a flight upgrade below the game, or press 1–4.';
+        sound('pickup', 880, 0.1);
+      } else if (effect === 'pickup') {
         notice = `Burger collected. ${m.burgers} available.`;
         sound('pickup', 740, 0.08);
       } else if (effect === 'distraction') {
@@ -191,8 +219,21 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
       s.storage.set(key, Math.max(s.storage.get(key, 0), m.clearances));
     }
   }
+  function choose(choice: model.FlightUpgrade) {
+    if (model.chooseFlightUpgrade(m, choice)) {
+      notice = `${choice} selected. Bounce speed ${Math.round(m.flight.speedFactor * 100)}%, height ${Math.round(m.flight.varianceFactor * 100)}%.`;
+      host.focus({ preventScroll: true });
+      draw();
+    }
+  }
   function update(dt: number) {
-    model.step(m, dt);
+    model.step(m, dt, {
+      up: s.input.pressed('flap') || steering.up || pointerLift,
+      down: s.input.pressed('down') || steering.down,
+      left: s.input.pressed('left') || steering.left,
+      right: s.input.pressed('right') || steering.right,
+      lift: s.input.pressed('flap') || pointerLift,
+    });
     process();
   }
   function start() {
@@ -212,6 +253,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     draw();
   }
   function pause() {
+    clearPointer();
     model.pause(m);
     s.clock.pause();
     draw();
@@ -222,6 +264,7 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     draw();
   }
   function reset(nextSeed = seed) {
+    clearPointer();
     seed = nextSeed >>> 0;
     config = { ...pending };
     m = model.create(
@@ -266,12 +309,23 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
   }
   s.input.bind({
     flap: ['Space', 'ArrowUp', 'KeyW'],
+    down: ['KeyS', 'ArrowDown'],
+    left: ['KeyA', 'ArrowLeft'],
+    right: ['KeyD', 'ArrowRight'],
+    upgradeSpeed: ['Digit1'],
+    upgradeVariance: ['Digit2'],
+    upgradeFly: ['Digit3'],
+    upgradeHelicopter: ['Digit4'],
     burger: ['KeyH', 'KeyQ', 'KeyE'],
     pause: ['Escape', 'KeyP'],
     restart: ['KeyR'],
     mute: ['KeyM'],
   });
   const unbind = [
+    s.input.on('upgradeSpeed', () => choose('speed')),
+    s.input.on('upgradeVariance', () => choose('variance')),
+    s.input.on('upgradeFly', () => choose('fly')),
+    s.input.on('upgradeHelicopter', () => choose('helicopter')),
     s.input.on('flap', doFlap),
     s.input.on('burger', doBurger),
     s.input.on('pause', () => (m.phase === 'paused' ? resume() : pause())),
@@ -290,6 +344,44 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
     ['[data-mute]', toggleMute],
   ] as const)
     root.querySelector(sel)!.addEventListener('click', fn, { signal: abort.signal });
+  let pointerLift = false;
+  const steering = { left: false, up: false, down: false, right: false };
+  type Hold = keyof typeof steering | 'lift';
+  const heldPointers = new Map<number, Hold>();
+  const syncPointers = () => {
+    const held = new Set(heldPointers.values());
+    pointerLift = held.has('lift');
+    for (const key of Object.keys(steering) as (keyof typeof steering)[])
+      steering[key] = held.has(key);
+  };
+  const clearPointer = () => {
+    heldPointers.clear();
+    syncPointers();
+  };
+  const hold = (target: HTMLElement, action: Hold) => {
+    target.style.touchAction = 'none';
+    target.addEventListener(
+      'pointerdown',
+      (event) => {
+        heldPointers.set(event.pointerId, action);
+        syncPointers();
+      },
+      { signal: abort.signal },
+    );
+  };
+  root
+    .querySelectorAll<HTMLButtonElement>('[data-steer]')
+    .forEach((button) => hold(button, button.dataset.steer as keyof typeof steering));
+  hold(canvas, 'lift');
+  hold(root.querySelector<HTMLButtonElement>('[data-flap]')!, 'lift');
+  const releasePointer = (event: PointerEvent) => {
+    heldPointers.delete(event.pointerId);
+    syncPointers();
+  };
+  window.addEventListener('pointerup', releasePointer, { signal: abort.signal });
+  window.addEventListener('pointercancel', releasePointer, { signal: abort.signal });
+  window.addEventListener('lostpointercapture', releasePointer, { signal: abort.signal });
+  window.addEventListener('blur', clearPointer, { signal: abort.signal });
   canvas.addEventListener(
     'pointerdown',
     (e) => {
@@ -348,7 +440,8 @@ export function createGame(host: HTMLElement, s: GameServices): GameInstance {
       time: m.time,
       fps: s.clock.fps,
       score: m.clearances,
-      player: { y: m.y, vy: m.vy },
+      player: { x: m.x, y: m.y, vy: m.vy },
+      flight: { ...m.flight },
       columns: m.columns.map((c) => ({ ...c })),
       deliveries: m.deliveries,
       burgers: m.burgers,
