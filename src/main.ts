@@ -2,6 +2,7 @@ import { createShell } from './site/shell';
 import { isPlayable, loadGame } from './games/registry';
 import { mountGame } from './site/game-host';
 import './site/styles.css';
+import { appRoute } from './shared/routes';
 
 const root = document.querySelector<HTMLElement>('#app');
 if (!root) throw new Error('Missing arcade application root.');
@@ -19,7 +20,7 @@ async function renderRoute() {
   const routeSignal = routeAbort.signal;
   disposeRoute?.();
   disposeRoute = undefined;
-  const route = location.hash.slice(1) || location.pathname || '/';
+  const route = appRoute(location.pathname, location.hash);
   const [rawPath, query = ''] = route.split('?');
   const path = rawPath.replace(/\/+$/, '') || '/';
   if (import.meta.env.DEV && path === '/workbench') {
